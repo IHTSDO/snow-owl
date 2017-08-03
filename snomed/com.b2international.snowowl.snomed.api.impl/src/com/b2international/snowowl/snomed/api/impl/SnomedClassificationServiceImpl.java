@@ -532,7 +532,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	private Integer getMaxReasonerRuns() {
 		if (maxReasonerRuns == null) {
 			maxReasonerRuns = ApplicationContext.getInstance().getServiceChecked(SnowOwlConfiguration.class)
-					.getModuleConfig(SnomedCoreConfiguration.class).getMaxReasonerRuns();
+					.getModuleConfig(SnomedCoreConfiguration.class).getClassificationConfig().getMaxReasonerRuns();
 		}
 		return Preconditions.checkNotNull(maxReasonerRuns, "maximum number of reasoner runs must be configured");
 	}

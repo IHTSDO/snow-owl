@@ -17,10 +17,19 @@ auth:
 snomed:
   # Disable concrete domains, we are going to import the required concepts to an extension
   concreteDomainSupport: false
-  classification:
-    maxReasonerCount: 1
   ids:
     strategy : EMBEDDED
+  classification:
+    maxReasonerCount: 1
+    defaultReasoner: org.semanticweb.elk.elk.reasoner.factory
+    showReasonerUsageWarning: false
+    maxReasonerCount: 1
+    maxReasonerResults: 20
+    maxReasonerRuns: 10000
+    externalService:
+      url: extServiceUrl
+      userName: extServiceUserName
+      password: extServicePassword
   
 metrics:
   enabled: true

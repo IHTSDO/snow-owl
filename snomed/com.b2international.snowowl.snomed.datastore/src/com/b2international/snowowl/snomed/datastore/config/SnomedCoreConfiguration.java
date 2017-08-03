@@ -16,8 +16,6 @@
 package com.b2international.snowowl.snomed.datastore.config;
 
 import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
@@ -32,15 +30,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	
-	public static final String ELK_REASONER_ID = "org.semanticweb.elk.elk.reasoner.factory"; //$NON-NLS-1$
-	
-	public static final String DEFAULT_REASONER = ELK_REASONER_ID;
 	public static final String DEFAULT_LANGUAGE = "en-gb"; //$NON-NLS-1$
-	
-	public static final int DEFAULT_MAXIMUM_REASONER_COUNT = 2;
-	public static final int DEFAULT_MAXIMUM_REASONER_RESULTS = 10;
-	public static final int DEFAULT_MAXIMUM_REASONER_RUNS = 1000;
-	
 	public static final String DEFAULT_NAMESPACE = ""; //$NON-NLS-1$
 	public static final String DEFAULT_MODULE = Concepts.MODULE_SCT_CORE;
 	
@@ -49,21 +39,6 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	public static final String BRANCH_DEFAULT_REASONER_NAMESPACE_KEY = "defaultReasonerNamespace";
 	public static final String BRANCH_DEFAULT_MODULE_ID_KEY = "defaultModuleId";
 	public static final String BRANCH_ASSERTION_GROUP_NAMES_KEY = "assertionGroupNames";
-	
-	@Min(1)
-	@Max(3)
-	private int maxReasonerCount = DEFAULT_MAXIMUM_REASONER_COUNT;
-	
-	@Min(1)
-	@Max(100)
-	private int maxReasonerResults = DEFAULT_MAXIMUM_REASONER_RESULTS;
-	
-	@Min(1)
-	@Max(1_000_000)
-	private int maxReasonerRuns = DEFAULT_MAXIMUM_REASONER_RUNS;
-	
-	@NotEmpty
-	private String defaultReasoner = DEFAULT_REASONER;
 	
 	@NotEmpty
 	private String language = DEFAULT_LANGUAGE;
@@ -89,63 +64,17 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	@Valid
 	private SnomedIdentifierConfiguration ids = new SnomedIdentifierConfiguration();
 	
+	@Valid
+	@JsonProperty(value = "classification")
+	private SnomedClassificationConfiguration classificationConfig = new SnomedClassificationConfiguration();
+	
 	private boolean collectSystemChanges = false;
 	
 	private boolean concreteDomainSupport = false;
 	
-	private boolean showReasonerUsageWarning = true;
-	
-	//enables the manual editing of inferred relationships and concrete data types
+	// enables the manual editing of inferred relationships and concrete data types
 	private boolean inferredEditingEnabled = false;
 		
-	/**
-	 * @return the number of reasoners that are permitted to run simultaneously.
-	 */
-	@JsonProperty
-	public int getMaxReasonerCount() {
-		return maxReasonerCount;
-	}
-	
-	/**
-	 * @param maxReasonerCount the maxReasonerCount to set
-	 */
-	@JsonProperty
-	public void setMaxReasonerCount(int maxReasonerCount) {
-		this.maxReasonerCount = maxReasonerCount;
-	}
-	
-	/**
-	 * @return the number of inferred taxonomies that should be kept in memory. The user can only choose to save
-	 *         the results of the classification run if the corresponding inferred taxonomy is still present.
-	 */
-	@JsonProperty
-	public int getMaxReasonerResults() {
-		return maxReasonerResults;
-	}
-	
-	/**
-	 * @param maxReasonerResults the maxReasonerResults to set
-	 */
-	@JsonProperty
-	public void setMaxReasonerResults(int maxReasonerResults) {
-		this.maxReasonerResults = maxReasonerResults;
-	}
-	
-	/**
-	 * @return the number of classification run details to preserve. Details include inferred and redundant 
-	 *         relationships, the list of equivalent concepts found during classification, and job metadata
-	 *         (creation, start and end times, final state, requesting user). 
-	 */
-	@JsonProperty
-	public int getMaxReasonerRuns() {
-		return maxReasonerRuns;
-	}
-	
-	@JsonProperty
-	public void setMaxReasonerRuns(int maxReasonerRuns) {
-		this.maxReasonerRuns = maxReasonerRuns;
-	}
-	
 	/**
 	 * @return the language code currently used for SNOMED CT
 	 */
@@ -162,22 +91,6 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 		this.language = language;
 	}
 	
-	/**
-	 * @return the currently set default reasoner ID 
-	 */
-	@JsonProperty
-	public String getDefaultReasoner() {
-		return defaultReasoner;
-	}
-	
-	/**
-	 * @param defaultReasoner - the reasoner to set as default
-	 */
-	@JsonProperty
-	public void setDefaultReasoner(String defaultReasoner) {
-		this.defaultReasoner = defaultReasoner;
-	}
-
 	@JsonProperty("concreteDomainSupport")
 	public boolean isConcreteDomainSupported() {
 		return concreteDomainSupport;
@@ -188,16 +101,6 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 		this.concreteDomainSupport = concreteDomainSupport;
 	}
 
-	@JsonProperty("showReasonerUsageWarning")
-	public boolean isShowReasonerUsageWarningEnabled() {
-		return showReasonerUsageWarning ;
-	}
-	
-	@JsonProperty("showReasonerUsageWarning")
-	public void setShowReasonerUsageWarningEnabled(boolean showReasonerUsageWarning) {
-		this.showReasonerUsageWarning = showReasonerUsageWarning;
-	}
-	
 	@JsonProperty("inferredEditingEnabled")
 	public boolean isInferredEditingEnabled() {
 		return inferredEditingEnabled;
@@ -218,14 +121,34 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 		this.collectSystemChanges = collectSystemChanges;
 	}
 	
+	/**
+	 * Get all identifier service related configuration options
+	 */
 	public SnomedIdentifierConfiguration getIds() {
 		return ids;
 	}
 	
+	/**
+	 * Sets the identifier service related configurations
+	 */
 	public void setIds(SnomedIdentifierConfiguration ids) {
 		this.ids = ids;
 	}
 
+	/**
+	 * Get all classification related configurations
+	 */
+	public SnomedClassificationConfiguration getClassificationConfig() {
+		return classificationConfig;
+	}
+	
+	/**
+	 * Sets the classification related configurations
+	 */
+	public void setClassificationConfig(SnomedClassificationConfiguration classificationConfig) {
+		this.classificationConfig = classificationConfig;
+	}
+	
 	/**
 	 * The ID of the concrete domain type reference set identifier concept
 	 * 
