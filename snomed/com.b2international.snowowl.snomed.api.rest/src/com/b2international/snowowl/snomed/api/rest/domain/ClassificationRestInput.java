@@ -25,6 +25,8 @@ public class ClassificationRestInput {
 	@NotEmpty
 	private String reasonerId;
 
+	private boolean useExternalService = false;
+	
 	public String getReasonerId() {
 		return reasonerId;
 	}
@@ -32,13 +34,24 @@ public class ClassificationRestInput {
 	public void setReasonerId(final String reasonerId) {
 		this.reasonerId = reasonerId;
 	}
+	
+	public boolean isUseExternalService() {
+		return useExternalService;
+	}
+	
+	public void setUseExternalService(boolean useExternalService) {
+		this.useExternalService = useExternalService;
+	}
 
 	@Override
 	public String toString() {
 		final StringBuilder builder = new StringBuilder();
 		builder.append("ClassificationRestInput [reasonerId=");
 		builder.append(reasonerId);
+		builder.append(", useExternalService=");
+		builder.append(useExternalService);
 		builder.append("]");
 		return builder.toString();
 	}
+	
 }
