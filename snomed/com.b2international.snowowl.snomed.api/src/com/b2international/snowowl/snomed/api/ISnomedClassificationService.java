@@ -63,7 +63,7 @@ public interface ISnomedClassificationService {
 	 * @throws NotFoundException
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found
 	 */
-	IClassificationRun beginClassification(String branchPath, String reasonerId, boolean useExternalService, String userId);
+	IClassificationRun beginClassification(String branchPath, String reasonerId, String userId);
 
 	/**
 	 * Retrieves a single classification run with the specified unique identifier.

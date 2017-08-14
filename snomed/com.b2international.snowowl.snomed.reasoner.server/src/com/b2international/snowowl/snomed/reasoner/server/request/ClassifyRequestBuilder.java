@@ -37,7 +37,7 @@ public final class ClassifyRequestBuilder extends BaseRequestBuilder<ClassifyReq
 
 	@Override
 	protected Request<ServiceProvider, ApiError> doBuild() {
-		return settings.isUseExternalService() ? new ExternalClassifyRequest(settings) : new ClassifyRequest(settings);
+		return new ClassifyRequest(settings);
 	}
 
 	public AsyncRequest<String> buildAsync() {

@@ -25,7 +25,7 @@ import java.util.UUID;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.snomed.reasoner.model.ConceptDefinition;
-import com.google.common.base.MoreObjects;
+import com.google.common.base.Objects;
 
 /**
  * Carries all parameters required for starting a classification for a branch.
@@ -41,7 +41,6 @@ public class ClassificationSettings implements Serializable {
 	
 	private String parentContextDescription = DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW;
 	private String reasonerId;
-	private boolean useExternalService;
 	
 	public ClassificationSettings(String userId, IBranchPath snomedBranchPath) {
 		checkNotNull(userId, "User identifier may not be null.");
@@ -49,7 +48,6 @@ public class ClassificationSettings implements Serializable {
 		
 		this.userId = userId;
 		this.snomedBranchPath = snomedBranchPath;
-		this.useExternalService = false;
 	}
 	
 	public ClassificationSettings withAdditionalDefinitions(List<ConceptDefinition> additionalDefinitions) {
@@ -69,11 +67,6 @@ public class ClassificationSettings implements Serializable {
 
 	public ClassificationSettings withReasonerId(String reasonerId) {
 		this.reasonerId = reasonerId;
-		return this;
-	}
-	
-	public ClassificationSettings withExternalService(boolean useExternalService) {
-		this.useExternalService = useExternalService;
 		return this;
 	}
 
@@ -101,20 +94,15 @@ public class ClassificationSettings implements Serializable {
 		return reasonerId;
 	}
 	
-	public boolean isUseExternalService() {
-		return useExternalService;
-	}
-	
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
+		return Objects.toStringHelper(this)
 				.add("classificationId", classificationId)
 				.add("userId", userId)
 				.add("snomedBranchPath", snomedBranchPath)
 				.add("additionalDefinitions", additionalDefinitions)
 				.add("parentContextDescription", parentContextDescription)
 				.add("reasonerId", reasonerId)
-				.add("useExternalService", useExternalService)
 				.toString();
 	}
 }

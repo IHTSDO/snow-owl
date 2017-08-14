@@ -36,11 +36,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 import com.b2international.commons.http.ExtendedLocale;
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
-import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
@@ -52,9 +50,6 @@ import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRestInpu
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRunRestUpdate;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
-import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationServiceConfiguration;
-import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.google.common.base.Strings;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -116,22 +111,8 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 
 			final Principal principal) {
 		ApiValidation.checkInput(request);
-		
-		if (request.isUseExternalService() && !isExternalServiceConfigPresent()) {
-			throw new BadRequestException("External classification service is not configured properly");
-		}
-		
-		final IClassificationRun classificationRun = delegate.beginClassification(branchPath, request.getReasonerId(), request.isUseExternalService(), principal.getName());
+		final IClassificationRun classificationRun = delegate.beginClassification(branchPath, request.getReasonerId(), principal.getName());
 		return Responses.created(getClassificationUri(branchPath, classificationRun)).build();
-	}
-	
-	private boolean isExternalServiceConfigPresent() {
-		SnomedCoreConfiguration snomedConfig = ApplicationContext.getServiceForClass(SnomedCoreConfiguration.class);
-		if (snomedConfig.getClassificationConfig() != null && snomedConfig.getClassificationConfig().getExternalService() != null) {
-			SnomedClassificationServiceConfiguration externalService = snomedConfig.getClassificationConfig().getExternalService();
-			return !Strings.isNullOrEmpty(externalService.getUrl()) && !Strings.isNullOrEmpty(externalService.getUserName()) && !Strings.isNullOrEmpty(externalService.getPassword());
-		}
-		return false;
 	}
 
 	@ApiOperation(
