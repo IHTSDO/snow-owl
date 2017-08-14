@@ -126,7 +126,7 @@ public class ReasonerPreferencesService extends Notifier implements IReasonerPre
 			final ReasonerMetadata metadata = new ReasonerMetadata(ID_PROVIDER.getAndIncrement(), name, version, extensionId);
 
 			if (StringUtil.isEmpty(selectedReasonerId)) {
-				final String defaultReasoner = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDefaultReasoner();
+				final String defaultReasoner = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getClassificationConfig().getDefaultReasoner();
 				if (defaultReasoner.equals(metadata.getExtensionId())) {
 					metadata.setDefault(true);
 					systemPreferences.put(SELECTED_REASONER_ID, metadata.getExtensionId());
