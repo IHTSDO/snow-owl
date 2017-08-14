@@ -571,12 +571,13 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public IClassificationRun beginClassification(final String branchPath, final String reasonerId, final String userId) {
+	public IClassificationRun beginClassification(final String branchPath, final String reasonerId, final boolean useExternalService, final String userId) {
 		checkServices();
 		Branch branch = getBranchIfExists(branchPath);
 
 		final ClassificationSettings settings = new ClassificationSettings(userId, branch.branchPath())
 				.withParentContextDescription(DatastoreLockContextDescriptions.ROOT)
+				.withExternalService(useExternalService)
 				.withReasonerId(reasonerId);
 
 		final ClassificationRun classificationRun = new ClassificationRun();
