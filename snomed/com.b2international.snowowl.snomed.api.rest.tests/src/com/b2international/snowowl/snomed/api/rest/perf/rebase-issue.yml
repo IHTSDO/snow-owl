@@ -26,8 +26,7 @@ repository:
     password: snowowl
 
 snomed:
-  classification:
-    maxReasonerCount: 1
+  maxReasonerCount: 1
   ids:
     strategy : MEMORY
   

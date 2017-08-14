@@ -54,8 +54,8 @@ public class SnomedReasonerServerConfigJob extends ServiceConfigJob {
 		ApplicationContext.getInstance().registerService(IReasonerPreferencesService.class, new ReasonerPreferencesService());
 
 		final SnomedCoreConfiguration snomedConfiguration = getSnowOwlConfiguration().getModuleConfig(SnomedCoreConfiguration.class);
-		final int maximumReasonerCount = snomedConfiguration.getClassificationConfig().getMaxReasonerCount();
-		final int maximumTaxonomiesToKeep = snomedConfiguration.getClassificationConfig().getMaxReasonerResults();
+		final int maximumReasonerCount = snomedConfiguration.getMaxReasonerCount();
+		final int maximumTaxonomiesToKeep = snomedConfiguration.getMaxReasonerResults();
 		final SnomedReasonerServerService reasonerService = new SnomedReasonerServerService(maximumReasonerCount, maximumTaxonomiesToKeep);
 		ApplicationContext.getInstance().registerService(SnomedReasonerService.class, reasonerService);
 		reasonerService.registerListeners();

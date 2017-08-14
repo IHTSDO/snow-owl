@@ -19,8 +19,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.xtext.parser.IParser;
 import org.eclipse.xtext.serializer.ISerializer;
 import org.eclipse.xtext.validation.IResourceValidator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.setup.DefaultBootstrapFragment;
@@ -36,14 +34,12 @@ import com.b2international.snowowl.snomed.core.ecl.EclSerializer;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.core.lang.StaticLanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationServiceConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdentiferReservationService;
 import com.b2international.snowowl.snomed.datastore.id.reservations.Reservation;
 import com.b2international.snowowl.snomed.datastore.id.reservations.Reservations;
 import com.b2international.snowowl.snomed.ecl.EclStandaloneSetup;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Injector;
 
@@ -52,19 +48,11 @@ import com.google.inject.Injector;
  */
 @ModuleConfig(fieldName = "snomed", type = SnomedCoreConfiguration.class)
 public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
-	
-	private static final Logger LOGGER = LoggerFactory.getLogger("bootstrap");
 
 	@Override
 	public void init(SnowOwlConfiguration configuration, Environment env) throws Exception {
 		final SnomedCoreConfiguration coreConfig = configuration.getModuleConfig(SnomedCoreConfiguration.class);
 		env.services().registerService(SnomedCoreConfiguration.class, coreConfig);
-		if (coreConfig.getClassificationConfig() != null && coreConfig.getClassificationConfig().getExternalService() != null) {
-			SnomedClassificationServiceConfiguration externalService = coreConfig.getClassificationConfig().getExternalService();
-			if (!Strings.isNullOrEmpty(externalService.getUrl())) {
-				LOGGER.info("External classification service url is set to {}", externalService.getUrl());
-			}
-		}
 		env.services().registerService(LanguageSetting.class, new StaticLanguageSetting(coreConfig.getLanguage(), SnomedCoreConfiguration.DEFAULT_LANGUAGE));
 		final Injector injector = new EclStandaloneSetup().createInjectorAndDoEMFRegistration();
 		env.services().registerService(EclParser.class, new DefaultEclParser(injector.getInstance(IParser.class), injector.getInstance(IResourceValidator.class)));

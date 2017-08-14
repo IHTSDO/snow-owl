@@ -17,8 +17,7 @@ auth:
 snomed:
   # Disable concrete domains, we are going to import the required concepts to an extension
   concreteDomainSupport: false
-  classification:
-    maxReasonerCount: 1
+  maxReasonerCount: 1
   ids:
     strategy : EMBEDDED
   
