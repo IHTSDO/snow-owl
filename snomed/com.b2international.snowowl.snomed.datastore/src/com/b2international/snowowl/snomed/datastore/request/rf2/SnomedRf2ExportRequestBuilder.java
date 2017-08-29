@@ -41,6 +41,7 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 	private boolean extensionOnly;
 	private String namespace;
 	private Collection<String> refSets = Collections.emptySet();
+	private boolean conceptsAndRelationshipsOnly;
 	
 	SnomedRf2ExportRequestBuilder() {}
 	
@@ -93,6 +94,11 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 		this.refSets = refSets;
 		return getSelf();
 	}
+	
+	public SnomedRf2ExportRequestBuilder setConceptsAndRelationshipOnly(boolean conceptsAndRelationshipsOnly) {
+		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
+		return getSelf();
+	}
 
 	@Override
 	protected Request<BranchContext, UUID> doBuild() {
@@ -107,6 +113,7 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 		req.setTransientEffectiveTime(transientEffectiveTime);
 		req.setNamespace(namespace);
 		req.setRefSets(refSets);
+		req.setConceptsAndRelationshipsOnly(conceptsAndRelationshipsOnly);
 		return req;
 	}
 

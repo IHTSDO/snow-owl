@@ -113,6 +113,7 @@ public class SnomedExportClientRequest extends RequestWithMonitoring<File> {
 		out.writeUTF(model.getNamespace());
 		out.writeUTF(model.getCodeSystemShortName());
 		out.writeBoolean(model.isExtensionOnly());
+		out.writeBoolean(model.isConceptsAndRelationshipsOnly());
 	}
 
 	private String convertToString(Date date) {

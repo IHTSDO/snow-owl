@@ -42,16 +42,21 @@ public class SnomedExportRestConfiguration {
 	private String namespaceId = "INT";
 	
 	private Collection<String> moduleIds;
+	
 	private Date startEffectiveTime;
 	private Date endEffectiveTime;
+	
 	private String transientEffectiveTime;
 	private boolean includeUnpublished;
 	
 	private String codeSystemShortName = SnomedTerminologyComponentConstants.SNOMED_SHORT_NAME;
 	private boolean extensionOnly = false;
+	
+	private boolean conceptsAndRelationshipsOnly = false;
 
 	/**
 	 * Returns with the RF2 release type of the current export configuration.
+	 * 
 	 * @return the desired RF2 release type.
 	 */
 	public Rf2ReleaseType getType() {
@@ -64,6 +69,7 @@ public class SnomedExportRestConfiguration {
 	
 	/** 
 	 * Returns the branch to run the export on.
+	 * 
 	 * @return the branch to export
 	 */
 	public String getBranchPath() {
@@ -76,6 +82,8 @@ public class SnomedExportRestConfiguration {
 	
 	/**
 	 * Returns with a restricting export start effective time. Can be {@code null}.
+	 * 
+	 * @return the start effective time
 	 */
 	@JsonFormat(shape=Shape.STRING, pattern="yyyyMMdd")
 	public Date getStartEffectiveTime() {
@@ -87,7 +95,9 @@ public class SnomedExportRestConfiguration {
 	}
 
 	/**
-	 * Returns with a restricting export end effective time.May return with {@code null}.
+	 * Returns with a restricting export end effective time. May return with {@code null}.
+	 * 
+	 * @return the end effective time
 	 */
 	@JsonFormat(shape=Shape.STRING, pattern="yyyyMMdd")
 	public Date getEndEffectiveTime() {
@@ -99,9 +109,8 @@ public class SnomedExportRestConfiguration {
 	}
 	
 	/**
-	 * Returns with the namespace ID.
-	 * <p>The namespace ID will be used when generating the folder structure 
-	 * for the RF2 release format export.
+	 * Returns with the namespace ID. The namespace ID will be used when generating the folder structure for the RF2 release format export.
+	 * 
 	 * @return the namespace ID.
 	 */
 	public String getNamespaceId() {
@@ -113,10 +122,9 @@ public class SnomedExportRestConfiguration {
 	}
 	
 	/**
-	 * Returns with a collection of SNOMED&nbsp;CT module concept IDs.
-	 * <p>This collection of module IDs will define which components will be included in the export.
-	 * Components having a module that is not included in the returning set will be excluded from 
-	 * the export result.
+	 * Returns with a collection of SNOMED CT module concept IDs. This collection of module IDs will define which components will be included in the
+	 * export. Components having a module that is not included in the returning set will be excluded from the export result.
+	 * 
 	 * @return a collection of module dependency IDs.
 	 */
 	public Collection<String> getModuleIds() {
@@ -130,8 +138,7 @@ public class SnomedExportRestConfiguration {
 	/**
 	 * Returns the transient effective time to use for unpublished components.
 	 * 
-	 * @return the transient effective time, or {@code null} if the default {@code UNPUBLISHED} value should be printed
-	 * for unpublished components
+	 * @return the transient effective time, or {@code null} if the default {@code UNPUBLISHED} value should be used for unpublished components
 	 */
 	public String getTransientEffectiveTime() {
 		return transientEffectiveTime;
@@ -143,6 +150,7 @@ public class SnomedExportRestConfiguration {
 	
 	/**
 	 * Sets whether unpublished components should be exported
+	 * 
 	 * @param includeUnpublished
 	 */
 	public void setIncludeUnpublished(boolean includeUnpublished) {
@@ -150,7 +158,8 @@ public class SnomedExportRestConfiguration {
 	}
 	
 	/**
-	 * Returns if unpublished components should be exported 
+	 * Returns if unpublished components should be exported
+	 * 
 	 * @return
 	 */
 	public boolean isIncludeUnpublished() {
@@ -193,5 +202,23 @@ public class SnomedExportRestConfiguration {
 	 */
 	public boolean isExtensionOnly() {
 		return extensionOnly;
+	}
+	
+	/**
+	 * Returns true if only concepts and relationships should be exported
+	 * 
+	 * @return the conceptsAndRelationshipsOnly
+	 */
+	public boolean isConceptsAndRelationshipsOnly() {
+		return conceptsAndRelationshipsOnly;
+	}
+	
+	/**
+	 * If set to true only concepts and relationships are exported
+	 * 
+	 * @param conceptsAndRelationshipsOnly the conceptsAndRelationshipsOnly to set
+	 */
+	public void setConceptsAndRelationshipsOnly(boolean conceptsAndRelationshipsOnly) {
+		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
 	}
 }

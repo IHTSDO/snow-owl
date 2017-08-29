@@ -75,6 +75,7 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 	private String unsetEffectiveTimeLabel;
 	private String codeSystemShortName;
 	private boolean extensionOnly;
+	private boolean conceptsAndRelationshipsOnly;
 
 	/**
 	 * Creates a new RF2 export model for exporting all core components and reference sets on a given branch 
@@ -263,6 +264,20 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 	 */
 	public void setExtensionOnly(boolean extensionOnly) {
 		this.extensionOnly = extensionOnly;
+	}
+	
+	/**
+	 * @return the conceptsAndRelationshipsOnly
+	 */
+	public boolean isConceptsAndRelationshipsOnly() {
+		return conceptsAndRelationshipsOnly;
+	}
+	
+	/**
+	 * @param conceptsAndRelationshipsOnly the conceptsAndRelationshipsOnly to set
+	 */
+	public void setConceptsAndRelationshipsOnly(boolean conceptsAndRelationshipsOnly) {
+		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
 	}
 	
 	private String initExportPath() {

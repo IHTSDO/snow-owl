@@ -100,6 +100,9 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 	@JsonProperty
 	private Collection<String> refSets;
 
+	@JsonProperty
+	private boolean conceptsAndRelationshipsOnly;
+	
 	SnomedRf2ExportRequest() {}
 	
 	void setCodeSystem(String codeSystem) {
@@ -140,6 +143,10 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 	
 	public void setRefSets(Collection<String> refSets) {
 		this.refSets = Collections3.toImmutableSet(refSets);
+	}
+	
+	public void setConceptsAndRelationshipsOnly(boolean conceptsAndRelationshipsOnly) {
+		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
 	}
 	
 	@Override
@@ -221,6 +228,7 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 		model.setCodeSystemShortName(codeSystem);
 		model.setExtensionOnly(extensionOnly);
 		model.getRefSetIds().addAll(refSets);
+		model.setConceptsAndRelationshipsOnly(conceptsAndRelationshipsOnly);
 
 		return model; 
 	}
