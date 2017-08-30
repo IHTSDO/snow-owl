@@ -1043,7 +1043,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		fileToLinesMap.put("sct2_Concept", Pair.of(true, conceptLine));
 		fileToLinesMap.put("sct2_StatedRelationship", Pair.of(true, statedLine));
 		fileToLinesMap.put("sct2_Relationship", Pair.of(true, inferredLine));
-		fileToLinesMap.put("sct2_Relationship", Pair.of(true, additionalLine));
+		fileToLinesMap.put("sct2_Relationship", Pair.of(false, additionalLine));
 		
 		assertArchiveContainsLines(exportArchive, fileToLinesMap);
 	}

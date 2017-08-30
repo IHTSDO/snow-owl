@@ -27,8 +27,11 @@ import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
  */
 public class SnomedInferredRelationshipExporter extends SnomedRf2RelationshipExporter {
 
-	public SnomedInferredRelationshipExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher) {
+	private boolean conceptsAndRelationshipsOnly;
+
+	public SnomedInferredRelationshipExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher, boolean conceptsAndRelationshipsOnly) {
 		super(exportContext, revisionSearcher);
+		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
 	}
 	
 	@Override
@@ -38,7 +41,11 @@ public class SnomedInferredRelationshipExporter extends SnomedRf2RelationshipExp
 	
 	@Override
 	protected void appendExpressionConstraint(ExpressionBuilder builder) {
-		builder.mustNot(SnomedRelationshipIndexEntry.Expressions.characteristicTypeId(Concepts.STATED_RELATIONSHIP));
+		if (conceptsAndRelationshipsOnly) {
+			builder.must(SnomedRelationshipIndexEntry.Expressions.characteristicTypeId(Concepts.INFERRED_RELATIONSHIP));
+		} else {
+			builder.mustNot(SnomedRelationshipIndexEntry.Expressions.characteristicTypeId(Concepts.STATED_RELATIONSHIP));
+		}
 	}
 
 }
