@@ -24,7 +24,7 @@ import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
 import com.b2international.snowowl.datastore.request.job.JobRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 
 /**
  * Represents an abstract operation which requires the classification of the SNOMED&nbsp;CT terminology on the active branch path.
@@ -98,8 +98,8 @@ public abstract class ClassifyOperation<T> {
 		return ApplicationContext.getServiceForClass(IEventBus.class);
 	}
 
-	protected SnomedReasonerService getReasonerService() {
-		return ApplicationContext.getServiceForClass(SnomedReasonerService.class);
+	protected SnomedInternalReasonerService getReasonerService() {
+		return ApplicationContext.getServiceForClass(SnomedInternalReasonerService.class);
 	}
 
 	/**

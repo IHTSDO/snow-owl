@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.reasoner.server.request;
 
 import java.util.List;
+
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ApiError;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJob;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 import com.b2international.snowowl.snomed.reasoner.model.ConceptDefinition;
 import com.b2international.snowowl.snomed.reasoner.server.classification.CollectingServiceReference;
 import com.b2international.snowowl.snomed.reasoner.server.classification.Reasoner;
@@ -63,7 +64,7 @@ public class ClassifyRequest implements Request<ServiceProvider, ApiError> {
 	public ApiError execute(ServiceProvider context) {
 		RemoteJob job = context.service(RemoteJob.class);
 		IProgressMonitor monitor = context.service(IProgressMonitor.class);
-		SnomedReasonerServerService serverService = (SnomedReasonerServerService) context.service(SnomedReasonerService.class);
+		SnomedReasonerServerService serverService = (SnomedReasonerServerService) context.service(SnomedInternalReasonerService.class);
 		String userId = job.getUser();
 		String classificationId = job.getId();
 

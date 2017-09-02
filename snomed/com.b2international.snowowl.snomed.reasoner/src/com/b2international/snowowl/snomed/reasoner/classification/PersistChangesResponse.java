@@ -19,7 +19,7 @@ import java.io.Serializable;
 import java.util.UUID;
 
 /**
- * The return type of {@link SnomedReasonerService#persistChanges(UUID, String)} requests.
+ * The return type of {@link SnomedInternalReasonerService#persistChanges(UUID, String)} requests.
  */
 public class PersistChangesResponse extends AbstractResponse implements Serializable {
 

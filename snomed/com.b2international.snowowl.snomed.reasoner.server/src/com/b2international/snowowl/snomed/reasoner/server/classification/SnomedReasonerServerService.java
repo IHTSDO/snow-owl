@@ -60,7 +60,7 @@ import com.b2international.snowowl.snomed.reasoner.classification.GetEquivalentC
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponseChanges;
 import com.b2international.snowowl.snomed.reasoner.classification.PersistChangesResponse;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 import com.b2international.snowowl.snomed.reasoner.classification.UnsatisfiableSet;
 import com.b2international.snowowl.snomed.reasoner.classification.entry.AbstractChangeEntry.Nature;
 import com.b2international.snowowl.snomed.reasoner.classification.entry.ChangeConcept;
@@ -83,7 +83,7 @@ import com.google.common.collect.ImmutableList;
 /**
  * Manages reasoners that operate on the OWL representation of a SNOMED&nbsp;CT repository branch path. 
  */
-public class SnomedReasonerServerService extends CollectingService<Reasoner, ClassificationSettings> implements SnomedReasonerService, IDisposableService {
+public class SnomedReasonerServerService extends CollectingService<Reasoner, ClassificationSettings> implements SnomedInternalReasonerService, IDisposableService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedReasonerServerService.class);
 	

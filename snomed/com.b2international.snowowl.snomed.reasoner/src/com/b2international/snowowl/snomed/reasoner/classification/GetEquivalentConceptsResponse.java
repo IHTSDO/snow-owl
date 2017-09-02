@@ -22,7 +22,7 @@ import java.util.UUID;
 import com.google.common.collect.ImmutableList;
 
 /**
- * The return type of {@link SnomedReasonerService#getEquivalentConcepts(UUID)} requests.
+ * The return type of {@link SnomedInternalReasonerService#getEquivalentConcepts(UUID)} requests.
  * 
  */
 public class GetEquivalentConceptsResponse extends AbstractResponse implements Serializable {

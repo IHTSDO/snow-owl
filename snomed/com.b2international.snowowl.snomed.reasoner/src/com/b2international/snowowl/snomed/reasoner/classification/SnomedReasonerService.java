@@ -16,15 +16,12 @@
 package com.b2international.snowowl.snomed.reasoner.classification;
 
 /**
- * Represents the RPC interface for the SNOMED&nbsp;CT reasoner service.
+ * Represents the RPC interface for the SNOMED CT reasoner service.
  * <p>
  * Supported operations are:
  * <ul>
  * <li>{@link #beginClassification(ClassificationSettings) starting classification of a branch}
  * <li>{@link #getResult(String) retrieving a classification result for review}
- * <li>{@link #getEquivalentConcepts(String) returning equivalence sets}
- * <li>{@link #persistChanges(String, String) persisting changes from a classification run}
- * <li>{@link #canStartImmediately() checking reasoner availability}
  * <li>{@link #removeResult(String) removing a classification result}
  * </ul>
  */
@@ -46,30 +43,6 @@ public interface SnomedReasonerService {
 	 * @return a {@link GetResultResponse} instance
 	 */
 	GetResultResponse getResult(String classificationId);
-
-	/**
-	 * Returns equivalent sets computed from the classification. This method blocks until a result becomes available.
-	 * 
-	 * @param classificationId the unique identifier of the classification run
-	 * @return a {@link GetEquivalentConceptsResponse} instance
-	 */
-	GetEquivalentConceptsResponse getEquivalentConcepts(String classificationId);
-
-	/**
-	 * Instructs the reasoner to persist the results of the classification with the given identifier.
-	 * 
-	 * @param classificationId the unique identifier of the classification run
-	 * @param userId the requesting user's identifier
-	 * @return a {@link PersistChangesResponse} instance
-	 */
-	PersistChangesResponse persistChanges(String classificationId, String userId);
-
-	/**
-	 * Checks if any free reasoner instances are available.
-	 * 
-	 * @return {@code true} if a request for classification is likely to start in a short time, {@code false} otherwise
-	 */
-	boolean canStartImmediately();
 
 	/**
 	 * Removes the result of the classification with the given identifier from memory, it it exists.

@@ -24,7 +24,7 @@ import com.b2international.snowowl.datastore.serviceconfig.ServiceConfigJob;
 import com.b2international.snowowl.rpc.RpcSession;
 import com.b2international.snowowl.rpc.RpcUtil;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 import com.b2international.snowowl.snomed.reasoner.preferences.IReasonerPreferencesService;
 import com.b2international.snowowl.snomed.reasoner.server.SnomedReasonerServerActivator;
 import com.b2international.snowowl.snomed.reasoner.server.classification.SnomedReasonerServerService;
@@ -57,11 +57,11 @@ public class SnomedReasonerServerConfigJob extends ServiceConfigJob {
 		final int maximumReasonerCount = snomedConfiguration.getClassificationConfig().getMaxReasonerCount();
 		final int maximumTaxonomiesToKeep = snomedConfiguration.getClassificationConfig().getMaxReasonerResults();
 		final SnomedReasonerServerService reasonerService = new SnomedReasonerServerService(maximumReasonerCount, maximumTaxonomiesToKeep);
-		ApplicationContext.getInstance().registerService(SnomedReasonerService.class, reasonerService);
+		ApplicationContext.getInstance().registerService(SnomedInternalReasonerService.class, reasonerService);
 		reasonerService.registerListeners();
 
 		final RpcSession session = RpcUtil.getInitialServerSession(IPluginContainer.INSTANCE);
-		session.registerClassLoader(SnomedReasonerService.class, reasonerService.getClass().getClassLoader());
+		session.registerClassLoader(SnomedInternalReasonerService.class, reasonerService.getClass().getClassLoader());
 		session.registerClassLoader(IReasonerPreferencesService.class, new ReasonerPreferencesService().getClass().getClassLoader());
 		return true;
 	}
