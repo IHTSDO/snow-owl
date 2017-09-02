@@ -22,6 +22,7 @@ import javax.validation.constraints.Min;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Strings;
 
 /**
  * @since 5.10.10
@@ -142,4 +143,11 @@ public class SnomedClassificationConfiguration {
 		this.externalService = externalService;
 	}
 	
+	public boolean isExternalClassificationServiceConfigured() {
+		if (externalService != null) {
+			return !Strings.isNullOrEmpty(externalService.getUrl()) && !Strings.isNullOrEmpty(externalService.getUserName())
+					&& !Strings.isNullOrEmpty(externalService.getPassword());
+		}
+		return false;
+	}
 }

@@ -52,9 +52,7 @@ import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRestInpu
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRunRestUpdate;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
-import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationServiceConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.google.common.base.Strings;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -127,11 +125,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 	
 	private boolean isExternalServiceConfigPresent() {
 		SnomedCoreConfiguration snomedConfig = ApplicationContext.getServiceForClass(SnomedCoreConfiguration.class);
-		if (snomedConfig.getClassificationConfig() != null && snomedConfig.getClassificationConfig().getExternalService() != null) {
-			SnomedClassificationServiceConfiguration externalService = snomedConfig.getClassificationConfig().getExternalService();
-			return !Strings.isNullOrEmpty(externalService.getUrl()) && !Strings.isNullOrEmpty(externalService.getUserName()) && !Strings.isNullOrEmpty(externalService.getPassword());
-		}
-		return false;
+		return snomedConfig.getClassificationConfig() != null && snomedConfig.getClassificationConfig().isExternalClassificationServiceConfigured();
 	}
 
 	@ApiOperation(

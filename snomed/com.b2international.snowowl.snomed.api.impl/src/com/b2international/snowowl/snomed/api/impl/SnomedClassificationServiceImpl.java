@@ -418,6 +418,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		String type = (String) remoteJob.getParameters().get("type");
 		
 		switch (type) {
+			case "ExternalClassifyRequest": // fall through
 			case "ClassifyRequest":
 				onClassifyJobChanged(remoteJob);
 				break;

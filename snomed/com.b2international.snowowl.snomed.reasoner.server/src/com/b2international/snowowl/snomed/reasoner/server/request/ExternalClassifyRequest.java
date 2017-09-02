@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.reasoner.server.request;
 
+import java.io.File;
+
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,7 @@ import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ApiError;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJob;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedExternalReasonerService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -54,23 +57,25 @@ public class ExternalClassifyRequest implements Request<ServiceProvider, ApiErro
 	
 	@Override
 	public ApiError execute(ServiceProvider context) {
+		
 		RemoteJob job = context.service(RemoteJob.class);
+		String internalClassificationId = job.getId();
+		
 		IProgressMonitor monitor = context.service(IProgressMonitor.class);
 
 		TimedProgressMonitorWrapper wrapper = new TimedProgressMonitorWrapper(monitor);
 		wrapper.beginTask(job.getName() + "...", IProgressMonitor.UNKNOWN);
 
 		try {
-
-//			IBranchPath snomedBranchPath = settings.getSnomedBranchPath();
-//			SnomedReasonerServerService serverService = (SnomedReasonerServerService) context.service(SnomedReasonerService.class);
-//			String classificationId = job.getId();
-//
-//			ReasonerTaxonomy reasonerTaxonomy = buildTaxonomy();
-//			serverService.registerResult(classificationId, reasonerTaxonomy);
+			
+			// TODO lock?
+			
+			SnomedExternalReasonerService reasonerService = context.service(SnomedExternalReasonerService.class);
+			String externalClassificationId = reasonerService.sendExternalRequest(settings.getSnomedBranchPath().getPath(), settings.getReasonerId());
+			File results = reasonerService.getExternalResults(externalClassificationId);
+			reasonerService.registerExternalResults(internalClassificationId, results);
 			
 			return new ApiError.Builder("OK").code(200).build();
-			
 		} catch (Exception e) {
 			return createApiError(e);
 		} finally {
@@ -79,7 +84,7 @@ public class ExternalClassifyRequest implements Request<ServiceProvider, ApiErro
 	}
 
 	private static ApiError createApiError(final Exception e) {
-		LOG.error("Caught exception while running classification.", e);
-		return new ApiError.Builder("Caught exception while running classification.").code(500).build();
+		LOG.error("Caught exception while waiting for external classification results.", e);
+		return new ApiError.Builder("Caught exception while waiting for external classification results.").code(500).build();
 	}
 }
