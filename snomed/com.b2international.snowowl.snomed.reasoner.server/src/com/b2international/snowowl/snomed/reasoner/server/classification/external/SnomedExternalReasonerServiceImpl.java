@@ -19,10 +19,17 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
+import java.util.UUID;
 
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.IDisposableService;
+import com.b2international.snowowl.datastore.file.FileRegistry;
+import com.b2international.snowowl.datastore.internal.file.InternalFileRegistry;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedExternalReasonerService;
@@ -31,10 +38,15 @@ import com.b2international.snowowl.snomed.reasoner.server.request.SnomedReasoner
 /**
  * @since 5.10.13
  */
-public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasonerService {
+public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasonerService, IDisposableService {
 
+	private boolean disposed = false;
+	private SnomedExternalClassificationServiceClient client;
+	private InternalFileRegistry fileRegistry;
+	
 	public SnomedExternalReasonerServiceImpl(SnomedClassificationConfiguration classificationConfig) {
-		
+		client = new SnomedExternalClassificationServiceClient(classificationConfig);
+		fileRegistry = (InternalFileRegistry) ApplicationContext.getServiceForClass(FileRegistry.class);
 	}
 
 	@Override
@@ -59,20 +71,50 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 	}
 
 	@Override
-	public String sendExternalRequest(String path, String reasonerId) {
-		return null;
+	public String sendExternalRequest(String branchPath, String reasonerId) {
+		
+		UUID fileId = SnomedRequests.rf2().prepareExport()
+			.setReleaseType(Rf2ReleaseType.DELTA)
+			.setIncludeUnpublished(true)
+			.setConceptsAndRelationshipOnly(true)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+			.execute(getEventBus())
+			.getSync();
+		
+		File rf2Delta = fileRegistry.getFile(fileId);
+		
+		// TODO get previous release from branch metadata
+		String externalClassificationId = client.sendExternalClassifyRequest(branchPath, "2017-01-31", reasonerId, rf2Delta);
+		
+		return externalClassificationId;
 	}
 
 	@Override
 	public File getExternalResults(String externalClassificationId) {
-		return null;
+		return client.getResult(externalClassificationId);
 	}
 
 	@Override
 	public void registerExternalResults(String internalClassificationId, File results) {
+		// TODO
 	}
 
 	private static IEventBus getEventBus() {
 		return ApplicationContext.getServiceForClass(IEventBus.class);
+	}
+
+	@Override
+	public void dispose() {
+		if (client != null) {
+			client.close();
+			client = null;
+		}
+		
+		disposed = true;
+	}
+
+	@Override
+	public boolean isDisposed() {
+		return disposed;
 	}
 }
