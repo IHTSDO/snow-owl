@@ -57,6 +57,8 @@
 		<module>com.b2international.snowowl.server.dependencies.feature</module>
 		<module>com.b2international.snowowl.server.product.feature</module>
 		
+		<module>com.b2international.snowowl.retrofit</module>
+		
 	</modules>
 	
 </project>
