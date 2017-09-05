@@ -18,11 +18,13 @@ package com.b2international.snowowl.retrofit;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.Optional;
 
 import com.b2international.snowowl.core.events.util.Promise;
-import com.b2international.snowowl.retrofit.PromiseCallAdapter.Error;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import okhttp3.ResponseBody;
 import retrofit2.CallAdapter;
 import retrofit2.Retrofit;
 
@@ -34,7 +36,7 @@ public final class PromiseCallAdapterFactory extends CallAdapter.Factory {
 	private final ObjectMapper mapper;
 	private final Class<? extends Error> errorType;
 
-	public PromiseCallAdapterFactory(final ObjectMapper mapper, final Class<? extends PromiseCallAdapter.Error> errorType) {
+	public PromiseCallAdapterFactory(final ObjectMapper mapper, final Class<? extends Error> errorType) {
 		this.mapper = mapper;
 		this.errorType = errorType;
 	}
@@ -44,9 +46,19 @@ public final class PromiseCallAdapterFactory extends CallAdapter.Factory {
 		if (getRawType(returnType) != Promise.class) {
 			return null;
 		}
+		
 		if (!(returnType instanceof ParameterizedType)) {
 			throw new IllegalStateException("Promise must have generic type (e.g., Promise<ResponseBody>)");
 		}
+		
+		Optional<Annotation> headerAnnotation = Arrays.asList(annotations).stream().filter(annotation -> annotation instanceof ExtractHeaderProperty)
+				.findFirst();
+
+		if (headerAnnotation.isPresent()) {
+			String property = ((ExtractHeaderProperty) headerAnnotation.get()).value();
+			return new PromiseCallAdapter<ResponseBody, String>(ResponseBody.class, mapper, errorType, property);
+		}
+		
 		Type responseType = getParameterUpperBound(0, (ParameterizedType) returnType);
 		return new PromiseCallAdapter<>(responseType, mapper, errorType);
 	}

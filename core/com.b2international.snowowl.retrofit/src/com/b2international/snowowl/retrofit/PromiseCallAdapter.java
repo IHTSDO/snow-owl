@@ -19,8 +19,8 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 
 import com.b2international.snowowl.core.events.util.Promise;
-import com.b2international.snowowl.core.exceptions.ApiException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 
 import retrofit2.Call;
 import retrofit2.CallAdapter;
@@ -28,27 +28,25 @@ import retrofit2.Callback;
 
 /**
  * @since 5.10.13
- * @param <R>
+ * @param <R> from
+ * @param <T> to
  */
-public final class PromiseCallAdapter<R> implements CallAdapter<R, Promise<R>> {
+public final class PromiseCallAdapter<R, T> implements CallAdapter<R, Promise<T>> {
 
-	/**
-	 * @since 5.10.13
-	 */
-	public static interface Error {
-
-		ApiException toApiException(int status);
-		
-	}
-	
 	private final Type responseType;
 	private final ObjectMapper mapper;
-	private final Class<? extends PromiseCallAdapter.Error> errorType;
+	private final Class<? extends Error> errorType;
+	private String headerProperty;
 
-	public PromiseCallAdapter(Type responseType, final ObjectMapper mapper, Class<? extends PromiseCallAdapter.Error> errorType) {
+	public PromiseCallAdapter(Type responseType, final ObjectMapper mapper, Class<? extends Error> errorType) {
+		this(responseType, mapper, errorType, null);
+	}
+	
+	public PromiseCallAdapter(Type responseType, final ObjectMapper mapper, Class<? extends Error> errorType, String headerProperty) {
 		this.responseType = responseType;
 		this.mapper = mapper;
 		this.errorType = errorType;
+		this.headerProperty = headerProperty;
 	}
 
 	@Override
@@ -57,15 +55,20 @@ public final class PromiseCallAdapter<R> implements CallAdapter<R, Promise<R>> {
 	}
 
 	@Override
-	public Promise<R> adapt(Call<R> call) {
-		final Promise<R> promise = new Promise<>();
+	@SuppressWarnings("unchecked")
+	public Promise<T> adapt(Call<R> call) {
+		final Promise<T> promise = new Promise<>();
 		call.enqueue(new Callback<R>() {
 			@Override
 			public void onResponse(Call<R> call, retrofit2.Response<R> response) {
 				try {
 					int status = response.code();
 					if (response.isSuccessful()) {
-						promise.resolve(response.body());
+						if (!Strings.isNullOrEmpty(headerProperty)) {
+							promise.resolve((T) response.headers().get(headerProperty));
+						} else {
+							promise.resolve((T) response.body());
+						}
 					} else {
 						promise.reject(mapper.readValue(response.errorBody().string(), errorType).toApiException(status));
 					}
@@ -79,7 +82,7 @@ public final class PromiseCallAdapter<R> implements CallAdapter<R, Promise<R>> {
 				promise.reject(t);
 			}
 		});
+		
 		return promise;
 	}
-
 }

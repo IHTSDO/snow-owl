@@ -11,3 +11,8 @@ Bundle-ClassPath: lib/converter-jackson-2.3.0.jar,
  lib/okio-1.13.0.jar,
  lib/retrofit-2.3.0.jar,
  .
+Export-Package: com.b2international.snowowl.retrofit,
+ okhttp3,
+ retrofit2,
+ retrofit2.converter.jackson,
+ retrofit2.http
