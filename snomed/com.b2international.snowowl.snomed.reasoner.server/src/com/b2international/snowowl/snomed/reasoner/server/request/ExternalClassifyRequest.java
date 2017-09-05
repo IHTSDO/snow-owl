@@ -71,6 +71,9 @@ public class ExternalClassifyRequest implements Request<ServiceProvider, ApiErro
 			// TODO lock?
 			
 			SnomedExternalReasonerService reasonerService = context.service(SnomedExternalReasonerService.class);
+			
+			LOG.info("Initiating external classification request for {}", settings.getSnomedBranchPath().getPath());
+			
 			String externalClassificationId = reasonerService.sendExternalRequest(settings.getSnomedBranchPath().getPath(), settings.getReasonerId());
 			File results = reasonerService.getExternalResults(externalClassificationId);
 			reasonerService.registerExternalResults(internalClassificationId, results);

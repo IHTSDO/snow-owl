@@ -26,10 +26,14 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.b2international.commons.time.TimeUtil;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.IDisposableService;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.branch.Branch;
-import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.file.FileRegistry;
 import com.b2international.snowowl.datastore.internal.file.InternalFileRegistry;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
@@ -49,6 +53,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
+import com.google.common.base.Throwables;
 import com.google.common.collect.Iterables;
 
 import okhttp3.MediaType;
@@ -62,6 +67,8 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
  */
 public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasonerService, IDisposableService {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedExternalReasonerService.class);
+	
 	private boolean disposed = false;
 	private SnomedExternalClassificationServiceClient client;
 	private InternalFileRegistry fileRegistry;
@@ -80,6 +87,8 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 				.addConverterFactory(JacksonConverterFactory.create())
 				.build()
 				.create(SnomedExternalClassificationServiceClient.class);
+		
+		// TODO authentication
 		
 		fileRegistry = (InternalFileRegistry) ApplicationContext.getServiceForClass(FileRegistry.class);
 		
@@ -110,31 +119,45 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 
 	@Override
 	public String sendExternalRequest(String branchPath, String reasonerId) {
-		
-		UUID fileId = SnomedRequests.rf2().prepareExport()
-			.setReleaseType(Rf2ReleaseType.DELTA)
-			.setIncludeUnpublished(true)
-			.setConceptsAndRelationshipOnly(true)
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-			.execute(getEventBus())
-			.getSync();
-		
-		File rf2Delta = fileRegistry.getFile(fileId);
-		
-		Branch branch = RepositoryRequests.branching()
-				.prepareGet(branchPath)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-				.execute(getEventBus())
-				.getSync();
-		
-		String previousRelease = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "previousRelease");
-		
-		RequestBody requestFile = RequestBody.create(MediaType.parse("multipart/form-data"), rf2Delta);
-        MultipartBody.Part rf2DeltaBody = MultipartBody.Part.createFormData("rf2Delta", rf2Delta.getName(), requestFile);
-		
-		String location = client.sendResults(previousRelease, rf2DeltaBody, branchPath, reasonerId).getSync();
-
-		return Iterables.getLast(Splitter.on('/').splitToList(location));
+        
+		try {
+        	
+        	UUID fileId = SnomedRequests.rf2().prepareExport()
+        			.setReleaseType(Rf2ReleaseType.DELTA)
+        			.setIncludeUnpublished(true)
+        			.setConceptsAndRelationshipOnly(true)
+        			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+        			.execute(getEventBus())
+        			.getSync();
+        	
+        	File rf2Delta = fileRegistry.getFile(fileId);
+        	
+        	Branch branch = RepositoryRequests.branching()
+        			.prepareGet(branchPath)
+        			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+        			.execute(getEventBus())
+        			.getSync();
+        	
+        	String previousRelease = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "previousRelease");
+        	
+        	RequestBody requestFile = RequestBody.create(MediaType.parse("multipart/form-data"), rf2Delta);
+        	MultipartBody.Part rf2DeltaBody = MultipartBody.Part.createFormData("rf2Delta", rf2Delta.getName(), requestFile);
+        	
+        	LOGGER.info("Sending export results for external classification, branch path: {}, previous release: {}, reasoner: {}", branchPath, previousRelease, reasonerId);
+        	
+        	String location = client.sendResults(previousRelease, rf2DeltaBody, branchPath, reasonerId)
+        			.fail(fail -> {
+        				throw Throwables.propagate(fail);
+        			})
+        			.getSync();
+        	
+        	fileRegistry.delete(fileId);
+			
+        	return Iterables.getLast(Splitter.on('/').splitToList(location));
+        	
+		} catch (Exception e) {
+			throw new SnowowlRuntimeException("Exception while preparing data for external classification", e);
+		}
 	}
 
 	@Override
@@ -144,38 +167,58 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 		
 		try {
 			
-			for (long pollTry = numberOfPollTries; pollTry > 0; pollTry--) {
+			for (long pollTry = 1; pollTry <= numberOfPollTries; pollTry++) {
 				
-				externalClassificationStatus = client.getClassification(externalClassificationId).getSync().getStatus();
+				LOGGER.info("Polling external classification results with external id: {} ({})", externalClassificationId, pollTry);
+				
+				ExternalClassificationStatus classificationStatus = client.getClassification(externalClassificationId)
+						.fail(fail -> {
+							throw Throwables.propagate(fail);
+						})
+						.getSync();
+				externalClassificationStatus = classificationStatus.getStatus();
 				
 				if (externalClassificationStatus == ClassificationStatus.COMPLETED) {
+					LOGGER.info("External classification request completed with external id: {}", externalClassificationId);
 					break;
+				} else if (externalClassificationStatus == ClassificationStatus.FAILED) {
+					throw new ExternalClassificationServiceException(
+							"External classification request (external id: %s) returned with FAILED status. Reason: %s", externalClassificationId,
+							classificationStatus.getErrorMessage());
 				}
 			
 				Thread.sleep(timeBetweenPollTries);
 				
 			}
 			
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
+			throw new SnowowlRuntimeException("Exception while polling external classification result", e);
 		}
 		
 		if (externalClassificationStatus != ClassificationStatus.COMPLETED) {
-			throw new BadRequestException("");
+			throw new SnowowlRuntimeException(
+					String.format("External classification request did not finish with expected status in the allocated time frame (%s)",
+							TimeUtil.milliToReadableString(numberOfPollTries * timeBetweenPollTries)));
 		}
 		
 		Path classificationResult = null;
 		
 		try {
-			classificationResult = Files.createTempFile("", "");
+			
+			LOGGER.info("Downloading results for external classification request with external id: {}", externalClassificationId);
+			
 			InputStream inputStream = client.getResult(externalClassificationId).getSync().byteStream();
+			
+			classificationResult = Files.createTempFile("", "");
 			Files.copy(inputStream, classificationResult, StandardCopyOption.REPLACE_EXISTING);
+			
 		} catch (Exception e) {
 			try {
 				Files.deleteIfExists(classificationResult);
-			} catch (IOException ignore) {}
-			
-			throw new RuntimeException(e);
+			} catch (IOException ignore) {
+				// ignore
+			}
+			throw new SnowowlRuntimeException("Exception while processing external classification results", e);
 		}
 		
 		return classificationResult.toFile();

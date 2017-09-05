@@ -16,29 +16,16 @@
 package com.b2international.snowowl.snomed.reasoner.server.classification.external;
 
 import com.b2international.snowowl.core.exceptions.ApiException;
-import com.b2international.snowowl.retrofit.Error;
 
 /**
  * @since 5.10.13
  */
-public class ExternalClassificationServiceError implements Error {
+public class ExternalClassificationServiceException extends ApiException {
 
-	@Override
-	public ApiException toApiException(int status) {
-		return new ExternalClassificationServiceException(String.format("External classification service returned code: %s", getMessage(status)));
+	private static final long serialVersionUID = 3659761907306808816L;
+
+	public ExternalClassificationServiceException(final String template, final Object...args) {
+		super(template, args);
 	}
-
-	private String getMessage(int status) {
-		
-		if (status == 401) {
-			return String.format("%s - %s", status, "Unauthorized");
-		} else if (status == 404) {
-			return String.format("%s - %s", status, "Not found");
-		} else if (status == 403) {
-			return String.format("%s - %s", status, "Forbidden");
-		}
-		
-		return String.valueOf(status);
-	}
-
+	
 }
