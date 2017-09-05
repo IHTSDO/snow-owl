@@ -15,7 +15,7 @@
  */
 package com.b2international.snowowl.snomed.reasoner.classification;
 
-import java.io.File;
+import java.nio.file.Path;
 
 /**
  * @since 5.10.13 
@@ -24,8 +24,8 @@ public interface SnomedExternalReasonerService extends SnomedReasonerService {
 
 	String sendExternalRequest(String path, String reasonerId);
 
-	File getExternalResults(String externalClassificationId);
+	Path getExternalResults(String externalClassificationId);
 
-	void registerExternalResults(String internalClassificationId, File results);		
+	void registerExternalResults(String internalClassificationId, Path results);		
 
 }

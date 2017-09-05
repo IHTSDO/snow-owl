@@ -17,18 +17,29 @@ package com.b2international.snowowl.snomed.reasoner.server.classification.extern
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map.Entry;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.commons.BooleanUtils;
 import com.b2international.commons.time.TimeUtil;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.IDisposableService;
@@ -45,15 +56,28 @@ import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
+import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
+import com.b2international.snowowl.snomed.reasoner.classification.EquivalenceSet;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
+import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponseChanges;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedExternalReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.entry.AbstractChangeEntry.Nature;
+import com.b2international.snowowl.snomed.reasoner.classification.entry.ChangeConcept;
+import com.b2international.snowowl.snomed.reasoner.classification.entry.RelationshipChangeEntry;
 import com.b2international.snowowl.snomed.reasoner.server.request.SnomedReasonerRequests;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 
 import okhttp3.MediaType;
@@ -68,12 +92,14 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasonerService, IDisposableService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedExternalReasonerService.class);
+	private static final Splitter TAB_SPLITTER = Splitter.on('\t');
 	
 	private boolean disposed = false;
 	private SnomedExternalClassificationServiceClient client;
 	private InternalFileRegistry fileRegistry;
 	private long numberOfPollTries;
 	private long timeBetweenPollTries;
+	private final Cache<String, GetResultResponseChanges> classificationResultRegistry;
 	
 	public SnomedExternalReasonerServiceImpl(SnomedClassificationConfiguration classificationConfig) {
 		
@@ -94,6 +120,8 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 		
 		numberOfPollTries = classificationConfig.getExternalService().getNumberOfPollTries();
 		timeBetweenPollTries = classificationConfig.getExternalService().getTimeBetweenPollTries();
+		
+		classificationResultRegistry = CacheBuilder.newBuilder().maximumSize(classificationConfig.getMaxReasonerResults()).build();
 	}
 
 	@Override
@@ -110,11 +138,19 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 
 	@Override
 	public GetResultResponse getResult(String classificationId) {
-		return null;
+		
+		GetResultResponseChanges changes = classificationResultRegistry.getIfPresent(classificationId);
+		
+		if (null == changes) {
+			return new GetResultResponse(GetResultResponse.Type.NOT_AVAILABLE);
+		}
+
+		return new GetResultResponse(Type.SUCCESS, changes); // FIXME?
 	}
 
 	@Override
 	public void removeResult(String classificationId) {
+		classificationResultRegistry.asMap().remove(classificationId);
 	}
 
 	@Override
@@ -161,7 +197,7 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 	}
 
 	@Override
-	public File getExternalResults(String externalClassificationId) {
+	public Path getExternalResults(String externalClassificationId) {
 		
 		ClassificationStatus externalClassificationStatus = ClassificationStatus.SCHEDULED;
 		
@@ -221,12 +257,103 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 			throw new SnowowlRuntimeException("Exception while processing external classification results", e);
 		}
 		
-		return classificationResult.toFile();
+		return checkNotNull(classificationResult);
 	}
 
 	@Override
-	public void registerExternalResults(String internalClassificationId, File results) {
-		// TODO
+	public void registerExternalResults(String internalClassificationId, Path results) {
+		
+		LOGGER.info("Processing external classification results for internal id {}", internalClassificationId);
+		
+		ImmutableList.Builder<RelationshipChangeEntry> relationshipBuilder = ImmutableList.builder();
+		ImmutableList.Builder<AbstractEquivalenceSet> equivalentConceptsBuilder = ImmutableList.builder();
+		
+		try (FileSystem zipfs = FileSystems.newFileSystem(results, null)) {
+			for (final Path path : zipfs.getRootDirectories()) {
+				Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+					@Override 
+					public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs) throws IOException {
+						
+						String fileName = path.getFileName().toString();
+						if (fileName.startsWith("sct2_Relationship")) {
+							processRelationships(path, relationshipBuilder);
+						} else if (fileName.startsWith("der2_sRefset_EquivalentConceptSimpleMap")) {
+							processEquivalentConcepts(path, equivalentConceptsBuilder);
+						}
+						
+						return FileVisitResult.CONTINUE;
+					}
+
+				});
+			}
+	
+		} catch (final IOException e) {
+			throw new SnowowlRuntimeException(e);
+		}
+		
+		List<RelationshipChangeEntry> relationshipChanges = relationshipBuilder.build();
+		List<AbstractEquivalenceSet> equivalentConcepts = equivalentConceptsBuilder.build();
+		
+		GetResultResponseChanges changes = new GetResultResponseChanges(0, equivalentConcepts, relationshipChanges, Collections.emptyList());
+		classificationResultRegistry.put(internalClassificationId, changes);
+	}
+	
+	protected void processEquivalentConcepts(Path path, Builder<AbstractEquivalenceSet> equivalentConceptsBuilder) throws IOException, IllegalStateException {
+		
+		ArrayListMultimap<String, String> equivalentConceptSets = ArrayListMultimap.create();
+		
+		Files.lines(path)
+			.skip(1) // header
+			.forEach( line -> {
+				List<String> elements = TAB_SPLITTER.splitToList(line);
+				
+				String referencedComponent = elements.get(5); // equivalent concept
+				String mapTarget = elements.get(6); // id of equivalent set
+				
+				equivalentConceptSets.put(mapTarget, referencedComponent);
+			});
+		
+		for (Entry<String, Collection<String>> entry : equivalentConceptSets.asMap().entrySet()) {
+			
+			if (entry.getValue().size() > 1) {
+				String suggestedConceptId = entry.getValue().stream().findFirst().get();
+				List<String> equivalentIds = entry.getValue().stream().skip(1).collect(toList());
+				
+				equivalentConceptsBuilder.add(new EquivalenceSet(suggestedConceptId, equivalentIds));
+			} else {
+				throw new IllegalStateException("Equivalent concept sets must have at least two elements");
+			}
+			
+		}
+	}
+
+	private void processRelationships(final Path path, Builder<RelationshipChangeEntry> builder) throws IOException {
+		Files.lines(path)
+			.skip(1) // header
+			.forEach(line -> {
+				List<String> elements = TAB_SPLITTER.splitToList(line);
+				
+				String id = elements.get(0);
+				boolean active = BooleanUtils.valueOf(elements.get(2));
+				long sourceId = Long.valueOf(elements.get(4));
+				long destinationId = Long.valueOf(elements.get(5));
+				int groupId = Integer.valueOf(elements.get(6));
+				long typeId = Long.valueOf(elements.get(7));
+				long modifierId = Long.valueOf(elements.get(9));
+				
+				RelationshipChangeEntry entry = new RelationshipChangeEntry(
+						active ? Nature.INFERRED : Nature.REDUNDANT, 
+						Strings.isNullOrEmpty(id) ? null : id,
+						new ChangeConcept(sourceId, sourceId), 
+						new ChangeConcept(typeId, typeId), 
+						new ChangeConcept(destinationId, destinationId), 
+						groupId, 
+						0, // FIXME? 
+						new ChangeConcept(modifierId, modifierId), 
+						false); // FIXME?
+				
+				builder.add(entry);
+			});
 	}
 
 	private static IEventBus getEventBus() {

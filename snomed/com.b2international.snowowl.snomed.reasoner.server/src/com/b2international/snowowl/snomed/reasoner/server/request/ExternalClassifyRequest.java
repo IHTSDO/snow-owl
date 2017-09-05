@@ -15,7 +15,7 @@
  */
 package com.b2international.snowowl.snomed.reasoner.server.request;
 
-import java.io.File;
+import java.nio.file.Path;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.slf4j.Logger;
@@ -75,7 +75,7 @@ public class ExternalClassifyRequest implements Request<ServiceProvider, ApiErro
 			LOG.info("Initiating external classification request for {}", settings.getSnomedBranchPath().getPath());
 			
 			String externalClassificationId = reasonerService.sendExternalRequest(settings.getSnomedBranchPath().getPath(), settings.getReasonerId());
-			File results = reasonerService.getExternalResults(externalClassificationId);
+			Path results = reasonerService.getExternalResults(externalClassificationId);
 			reasonerService.registerExternalResults(internalClassificationId, results);
 			
 			return new ApiError.Builder("OK").code(200).build();
