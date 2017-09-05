@@ -75,4 +75,14 @@ public class SnomedExternalClassificationServiceConfigTests {
 	public void testExternalServicePassword() {
 		assertEquals("extServicePassword", config.getExternalService().getPassword());
 	}
+	
+	@Test
+	public void testExternalServiceNumberOfPollTries() {
+		assertEquals(1L, config.getExternalService().getNumberOfPollTries());
+	}
+	
+	@Test
+	public void testExternalServiceTimeBetweenPollTries() {
+		assertEquals(10L, config.getExternalService().getTimeBetweenPollTries());
+	}
 }

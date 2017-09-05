@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.datastore.config;
 
+import javax.validation.constraints.Min;
+
 import org.hibernate.validator.constraints.NotEmpty;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -36,6 +38,14 @@ public class SnomedClassificationServiceConfiguration {
 	@JsonProperty(value = "password", required = false)
 	private String password;
 
+	@Min(1)
+	@JsonProperty(value = "numberOfPollTries", required = false)
+	private long numberOfPollTries = 10;
+	
+	@Min(1)
+	@JsonProperty(value = "timeBetweenPollTries", required = false)
+	private long timeBetweenPollTries = 1000;
+	
 	/**
 	 * @return the url
 	 */
@@ -76,6 +86,34 @@ public class SnomedClassificationServiceConfiguration {
 	 */
 	public void setPassword(String password) {
 		this.password = password;
+	}
+
+	/**
+	 * @return the numberOfPollTries
+	 */
+	public long getNumberOfPollTries() {
+		return numberOfPollTries;
+	}
+
+	/**
+	 * @param numberOfPollTries the numberOfPollTries to set
+	 */
+	public void setNumberOfPollTries(long numberOfPollTries) {
+		this.numberOfPollTries = numberOfPollTries;
+	}
+
+	/**
+	 * @return the timeBetweenPollTries
+	 */
+	public long getTimeBetweenPollTries() {
+		return timeBetweenPollTries;
+	}
+
+	/**
+	 * @param timeBetweenPollTries the timeBetweenPollTries to set
+	 */
+	public void setTimeBetweenPollTries(long timeBetweenPollTries) {
+		this.timeBetweenPollTries = timeBetweenPollTries;
 	}
 	
 }

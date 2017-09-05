@@ -30,6 +30,8 @@ snomed:
       url: extServiceUrl
       userName: extServiceUserName
       password: extServicePassword
+      numberOfPollTries: 1
+      timeBetweenPollTries: 10
   
 metrics:
   enabled: true

@@ -83,8 +83,8 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 		
 		fileRegistry = (InternalFileRegistry) ApplicationContext.getServiceForClass(FileRegistry.class);
 		
-		numberOfPollTries = 10;
-		timeBetweenPollTries = 1000;
+		numberOfPollTries = classificationConfig.getExternalService().getNumberOfPollTries();
+		timeBetweenPollTries = classificationConfig.getExternalService().getTimeBetweenPollTries();
 	}
 
 	@Override
