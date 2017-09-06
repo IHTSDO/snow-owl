@@ -27,7 +27,7 @@ snomed:
     maxReasonerResults: 20
     maxReasonerRuns: 10000
     externalService:
-      url: extServiceUrl
+      url: http://localhost:8089
       userName: extServiceUserName
       password: extServicePassword
       numberOfPollTries: 1

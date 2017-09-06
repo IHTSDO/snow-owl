@@ -63,7 +63,7 @@ public class SnomedExternalClassificationServiceConfigTests {
 	
 	@Test
 	public void testExternalServiceUrl() {
-		assertEquals("extServiceUrl", config.getExternalService().getUrl());
+		assertEquals("http://localhost:8089", config.getExternalService().getUrl());
 	}
 	
 	@Test
