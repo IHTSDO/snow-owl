@@ -287,8 +287,8 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 				});
 			}
 	
-		} catch (final IOException e) {
-			throw new SnowowlRuntimeException(e);
+		} catch (final Exception e) {
+			throw new SnowowlRuntimeException("An exception happened while processing external classification results", e);
 		}
 		
 		List<RelationshipChangeEntry> relationshipChanges = relationshipBuilder.build();
@@ -296,6 +296,13 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 		
 		GetResultResponseChanges changes = new GetResultResponseChanges(0, equivalentConcepts, relationshipChanges, Collections.emptyList());
 		classificationResultRegistry.put(internalClassificationId, changes);
+		
+		try {
+			Files.deleteIfExists(results);
+		} catch (IOException e) {
+			// ignore
+		}
+		
 	}
 	
 	protected void processEquivalentConcepts(Path path, Builder<AbstractEquivalenceSet> equivalentConceptsBuilder) throws IOException, IllegalStateException {
