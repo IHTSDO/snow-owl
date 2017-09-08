@@ -84,7 +84,7 @@ public class JobRequestsTest {
 		final String jobId = schedule("scheduleAndWaitDone", context -> RESULT);
 		final RemoteJobEntry entry = waitDone(jobId);
 		assertEquals(RemoteJobState.FINISHED, entry.getState());
-		assertEquals(RESULT, entry.getResult());
+		assertEquals(RESULT, entry.getResult().get("value"));
 		// verify job events
 		// 1 added
 		// 1 changed - RUNNING
