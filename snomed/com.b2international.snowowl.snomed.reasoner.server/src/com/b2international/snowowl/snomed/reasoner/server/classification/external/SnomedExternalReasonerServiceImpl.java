@@ -355,9 +355,9 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 						new ChangeConcept(typeId, typeId), 
 						new ChangeConcept(destinationId, destinationId), 
 						groupId, 
-						0, // FIXME? 
+						0, 
 						new ChangeConcept(modifierId, modifierId), 
-						false); // FIXME?
+						false);
 				
 				builder.add(entry);
 			});

@@ -68,8 +68,6 @@ public class ExternalClassifyRequest implements Request<ServiceProvider, ApiErro
 
 		try {
 			
-			// TODO lock?
-			
 			SnomedExternalReasonerService reasonerService = context.service(SnomedExternalReasonerService.class);
 			
 			LOG.info("Initiating external classification request for {}", settings.getSnomedBranchPath().getPath());
