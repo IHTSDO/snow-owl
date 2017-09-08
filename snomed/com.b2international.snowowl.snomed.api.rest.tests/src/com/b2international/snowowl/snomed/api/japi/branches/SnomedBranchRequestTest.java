@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import org.eclipse.emf.cdo.common.branch.CDOBranchManager;
@@ -86,6 +87,8 @@ public class SnomedBranchRequestTest {
 		final String branchName = UUID.randomUUID().toString();
 		final Promise<Branch> first = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchName).build(REPOSITORY_ID).execute(bus);
 		final Promise<Branch> second = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchName).build(REPOSITORY_ID).execute(bus);
+		AtomicBoolean failed = new AtomicBoolean(false);
+		
 		final String error = Promise.all(first, second)
 			.then(new Function<List<Object>, String>() {
 				@Override
@@ -98,12 +101,18 @@ public class SnomedBranchRequestTest {
 			.fail(new Function<Throwable, String>() {
 				@Override
 				public String apply(Throwable input) {
+					failed.set(true);
 					return input.getMessage() != null ? input.getMessage() : Throwables.getRootCause(input).getClass().getSimpleName();
 				}
 			})
 			.getSync();
 		
-		assertNull(error, error);
+		if (failed.get()) {
+			assertEquals(String.format("%s with '%s/%s' identifier already exists.", Branch.class.getSimpleName(), Branch.MAIN_PATH, branchName), error);
+		} else {
+			assertNull(error, error);
+		}
+		
 		assertEquals(1, getCdoBranches(branchName).size());
 	}
 	
