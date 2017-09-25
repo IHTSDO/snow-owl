@@ -91,6 +91,9 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
  */
 public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasonerService, IDisposableService {
 
+	// private static final String PREVIOUS_RELEASE_METADATA_KEY = "previousRelease";
+	private static final String PREVIOUS_RELEASE_METADATA_KEY = "classification.previousPackage";
+	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedExternalReasonerService.class);
 	private static final Splitter TAB_SPLITTER = Splitter.on('\t');
 	
@@ -174,7 +177,7 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
         			.execute(getEventBus())
         			.getSync();
         	
-        	String previousRelease = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "previousRelease");
+        	String previousRelease = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, PREVIOUS_RELEASE_METADATA_KEY);
         	
         	RequestBody previousReleaseRequestBody = RequestBody.create(MediaType.parse("text/plain"), previousRelease);
         	
