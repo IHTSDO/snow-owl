@@ -19,6 +19,7 @@ import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.retrofit.ExtractHeaderProperty;
 
 import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
@@ -36,10 +37,10 @@ public interface SnomedExternalClassificationServiceClient {
 	@POST("classification-service/classifications")
 	@ExtractHeaderProperty("location")
 	Promise<String> sendResults(
-			@Part("previousRelease") String previousRelease,
+			@Part("previousRelease") RequestBody previousRelease,
 			@Part MultipartBody.Part rf2Delta,
-			@Part("branch") String branch,
-			@Part("reasonerId") String reasonerId);
+			@Part("branch") RequestBody branch,
+			@Part("reasonerId") RequestBody reasonerId);
 	
 	@GET("classification-service/classifications/{id}")
 	Promise<ExternalClassificationStatus> getClassification(@Path("id") String id);

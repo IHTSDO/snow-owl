@@ -176,12 +176,17 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
         	
         	String previousRelease = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "previousRelease");
         	
-        	RequestBody requestFile = RequestBody.create(MediaType.parse("multipart/form-data"), rf2Delta);
-        	MultipartBody.Part rf2DeltaBody = MultipartBody.Part.createFormData("rf2Delta", rf2Delta.getName(), requestFile);
+        	RequestBody previousReleaseRequestBody = RequestBody.create(MediaType.parse("text/plain"), previousRelease);
+        	
+        	RequestBody fileRequestBody = RequestBody.create(MediaType.parse("multipart/form-data"), rf2Delta);
+        	MultipartBody.Part rf2DeltaBody = MultipartBody.Part.createFormData("rf2Delta", rf2Delta.getName(), fileRequestBody);
+        	
+        	RequestBody branchPathRequestBody = RequestBody.create(MediaType.parse("text/plain"), branchPath);
+        	RequestBody reasonerIdRequestBody = RequestBody.create(MediaType.parse("text/plain"), reasonerId);
         	
         	LOGGER.info("Sending export results for external classification, branch path: {}, previous release: {}, reasoner: {}", branchPath, previousRelease, reasonerId);
         	
-        	String location = client.sendResults(previousRelease, rf2DeltaBody, branchPath, reasonerId)
+        	String location = client.sendResults(previousReleaseRequestBody, rf2DeltaBody, branchPathRequestBody, reasonerIdRequestBody)
         			.fail(fail -> {
         				throw Throwables.propagate(fail);
         			})
