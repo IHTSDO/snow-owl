@@ -49,6 +49,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetUtil;
 import com.b2international.snowowl.snomed.snomedrefset.DataType;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedAnnotationRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAssociationRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAttributeValueRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedComplexMapRefSetMember;
@@ -106,6 +107,7 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		public static final String TARGET_EFFECTIVE_TIME = SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME;
 		private static final String DATA_VALUE = SnomedRf2Headers.FIELD_VALUE;
 		public static final String ATTRIBUTE_NAME = SnomedRf2Headers.FIELD_ATTRIBUTE_NAME;
+		public static final String OWL_EXPRESSION = SnomedRf2Headers.FIELD_OWL_EXPRESSION;
 		// extra index fields to store datatype and map target type
 		public static final String DATA_TYPE = "dataType";
 		public static final String REFSET_TYPE = "referenceSetType";
@@ -251,6 +253,11 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 						.field(Fields.SOURCE_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(member.getSourceEffectiveTime()))
 						.field(Fields.TARGET_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(member.getTargetEffectiveTime()));
 			}
+			
+			public Builder caseSnomedAnnotationRefSetMember(SnomedAnnotationRefSetMember member) {
+				return builder
+						.field(Fields.OWL_EXPRESSION, member.getAnnotation());
+			};
 			
 			@Override
 			public Builder caseSnomedRefSetMember(SnomedRefSetMember object) {
@@ -441,6 +448,8 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		private Integer mapPriority;
 		// QUERY
 		private String query;
+		// OWL Axiom
+		private String owlExpression;
 
 		@JsonCreator
 		private Builder() {
@@ -478,6 +487,7 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 			case Fields.TARGET_EFFECTIVE_TIME: this.targetEffectiveTime = (Long) value; break;
 			case Fields.UNIT_ID: this.unitId = (String) value; break;
 			case Fields.VALUE_ID: this.valueId = (String) value; break;
+			case Fields.OWL_EXPRESSION: this.owlExpression = (String) value; break;
 			default: throw new UnsupportedOperationException("Unknown RF2 member field: " + fieldName);
 			}
 			return this;
@@ -641,6 +651,11 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 			return getSelf();
 		}
 		
+		Builder owlExpression(String owlExpression) {
+			this.owlExpression = owlExpression;
+			return getSelf();
+		}
+		
 		public SnomedRefSetMemberIndexEntry build() {
 			final SnomedRefSetMemberIndexEntry doc = new SnomedRefSetMemberIndexEntry(id,
 					label,
@@ -711,6 +726,8 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 			doc.mapRule = mapRule;
 			// query
 			doc.query = query;
+			// OWL Axiom
+			doc.owlExpression = owlExpression;
 			
 			doc.setScore(score);
 			// metadata
@@ -766,6 +783,8 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 	private Integer mapPriority;
 	// QUERY
 	private String query;
+	// OWL Axiom
+	private String owlExpression;
 	
 
 	private SnomedRefSetMemberIndexEntry(final String id,
@@ -954,6 +973,10 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		return referencedComponentType;
 	}
 	
+	public String getOwlExpression() {
+		return owlExpression;
+	}
+	
 	// model helper methods
 	
 	@JsonIgnore
@@ -1027,6 +1050,8 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		putIfPresent(builder, Fields.MAP_PRIORITY, getMapPriority());
 		// QUERY
 		putIfPresent(builder, Fields.QUERY, getQuery());
+		// OWL Axiom
+		putIfPresent(builder, Fields.OWL_EXPRESSION, getOwlExpression());
 		return builder.build();
 	}
 	
@@ -1064,6 +1089,7 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 				.add("mapRule", mapRule)
 				.add("mapGroup", mapGroup)
 				.add("mapPriority", mapPriority)
-				.add("query", query);
+				.add("query", query)
+				.add("owlExpression", owlExpression);
 	}
 }
