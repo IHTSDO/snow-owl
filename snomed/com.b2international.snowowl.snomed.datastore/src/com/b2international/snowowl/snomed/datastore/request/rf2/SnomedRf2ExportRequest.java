@@ -193,6 +193,11 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 				
 		final SnomedRf2ExportModel model = SnomedRf2ExportModel.createExportModelWithAllRefSets(contentSubType, branch, namespace);
 
+		if (conceptsAndRelationshipsOnly) {
+			model.getRefSetIds().clear();
+			model.getRefSetIds().add(Concepts.REFSET_OWL_AXIOM);
+		}
+		
 		if (CompareUtils.isEmpty(modules)) {
 			final SnomedConcepts allModules = SnomedRequests.prepareSearchConcept()
 					.all()
