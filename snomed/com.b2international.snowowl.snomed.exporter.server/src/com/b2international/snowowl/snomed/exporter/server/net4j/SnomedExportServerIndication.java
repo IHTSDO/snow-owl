@@ -481,7 +481,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 					executeCoreExport(revisionSearcher, monitor);
 				}
 				
-				if (!referenceSetsToExport.isEmpty() && !conceptsAndRelationshipsOnly) {
+				if (!referenceSetsToExport.isEmpty()) {
 					
 					logActivity(String.format("Starting export of %sreference sets from branch path '%s'", 
 							unpublishedExport ? "unpublished " : "", versionBranchPath));
@@ -563,7 +563,6 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 			}
 			
 		}
-		
 		
 		logActivity(String.format("Exporting non-stated %sSNOMED CT relationships into RF2 format", exportContext.isUnpublishedExport() ? "unpublished " : ""));
 		new SnomedInferredRelationshipExporter(exportContext, revisionSearcher, conceptsAndRelationshipsOnly).execute();
