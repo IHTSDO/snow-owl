@@ -31,12 +31,18 @@ import org.eclipse.emf.cdo.CDOObject;
 
 import com.b2international.commons.CompareUtils;
 import com.b2international.commons.StringUtils;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
+import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.utils.ComponentUtils2;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAssociationRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAttributeValueRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
@@ -44,6 +50,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedStructuralRefSet;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 
 /**
@@ -225,7 +232,13 @@ public class SnomedInactivationPlan {
 	public SnomedInactivationPlan(final SnomedEditingContext context) {
 		this.context = Preconditions.checkNotNull(context, "SNOMED CT editing context argument cannot be null.");
 		inactivatedComponents = Sets.newTreeSet(ComponentUtils2.CDO_OBJECT_COMPARATOR);
-		moduleId = Preconditions.checkNotNull(this.context.getDefaultModuleConcept(), "SNOMED CT module concept cannot be null.").getId();
+		Branch branch = RepositoryRequests.branching()
+			.prepareGet(context.getBranch())
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+			.getSync();
+		String defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
+		moduleId = Strings.isNullOrEmpty(defaultModuleId) ? context.getDefaultModuleConcept().getId() : defaultModuleId;
 	}
 	
 	/**

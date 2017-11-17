@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.emf.ecore.EObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -307,9 +306,9 @@ public final class SnomedConceptUpdateRequest extends SnomedComponentUpdateReque
 			throw new ComponentStatusConflictException(concept.getId(), concept.isActive());
 		}
 		
-		// Run the basic inactivation plan without settings the inactivation reason or a historical association target; those will be handled separately
+		// Run the basic inactivation plan without setting the inactivation reason or a historical association target; those will be handled separately
 		final SnomedEditingContext editingContext = context.service(SnomedEditingContext.class);
-		final SnomedInactivationPlan inactivationPlan = editingContext.inactivateConcept(new NullProgressMonitor(), concept.getId());
+		final SnomedInactivationPlan inactivationPlan = editingContext.inactivateConcept(concept);
 		inactivationPlan.performInactivation(InactivationReason.RETIRED, null);
 		
 		// The inactivation plan places new inactivation reason members on descriptions, even if one is already present. Fix this by running the update on the descriptions again.
