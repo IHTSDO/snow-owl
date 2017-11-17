@@ -42,6 +42,7 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.emf.cdo.CDOObject;
 import org.eclipse.emf.cdo.common.commit.CDOCommitInfo;
 import org.eclipse.emf.cdo.common.id.CDOID;
@@ -70,6 +71,7 @@ import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Concepts;
 import com.b2international.snowowl.snomed.Description;
+import com.b2international.snowowl.snomed.Inactivatable;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.SnomedFactory;
@@ -801,6 +803,10 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		return internalInactivateConcept(createDefaultPlan(), true, monitor, findConceptById(conceptId[0]).cdoID());
 	}
 	
+	public SnomedInactivationPlan inactivateConcept(Inactivatable inactivatable) {
+		return internalInactivateConcept(createDefaultPlan(), true, new NullProgressMonitor(), inactivatable.cdoID());
+	}
+	
 	private SnomedInactivationPlan createDefaultPlan() {
 		return new SnomedInactivationPlan(this);
 	}
@@ -849,7 +855,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				return SnomedInactivationPlan.NULL_IMPL;
 			}
 			
-			//source descriptions
+			// outbound relationships
 			plan.markForInactivation(Iterables.toArray(concept.getOutboundRelationships(), Relationship.class));
 			
 			if (monitor.isCanceled()) {
