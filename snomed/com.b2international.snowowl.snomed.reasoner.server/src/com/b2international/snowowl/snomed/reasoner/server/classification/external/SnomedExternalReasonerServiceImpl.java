@@ -49,6 +49,7 @@ import com.b2international.snowowl.datastore.file.FileRegistry;
 import com.b2international.snowowl.datastore.internal.file.InternalFileRegistry;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.retrofit.AuthenticationInterceptor;
 import com.b2international.snowowl.retrofit.PromiseCallAdapterFactory;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
@@ -70,6 +71,7 @@ import com.b2international.snowowl.snomed.reasoner.server.request.SnomedReasoner
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
@@ -80,8 +82,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 
+import okhttp3.Credentials;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
@@ -91,7 +95,6 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
  */
 public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasonerService, IDisposableService {
 
-	// private static final String PREVIOUS_RELEASE_METADATA_KEY = "previousRelease";
 	private static final String PREVIOUS_RELEASE_METADATA_KEY = "classification.previousPackage";
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedExternalReasonerService.class);
@@ -110,14 +113,18 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
 				.setSerializationInclusion(Include.NON_NULL);
 		
+		String extServiceUser = classificationConfig.getExternalService().getUserName();
+		String extServicePassword = classificationConfig.getExternalService().getPassword();
+		
 		client = new Retrofit.Builder()
 				.baseUrl(classificationConfig.getExternalService().getUrl())
+				.client(new OkHttpClient.Builder()
+						.addInterceptor(new AuthenticationInterceptor(Credentials.basic(extServiceUser, extServicePassword, Charsets.UTF_8)))
+						.build())
 				.addCallAdapterFactory(new PromiseCallAdapterFactory(mapper, ExternalClassificationServiceError.class))
 				.addConverterFactory(JacksonConverterFactory.create())
 				.build()
 				.create(SnomedExternalClassificationServiceClient.class);
-		
-		// TODO authentication
 		
 		fileRegistry = (InternalFileRegistry) ApplicationContext.getServiceForClass(FileRegistry.class);
 		
