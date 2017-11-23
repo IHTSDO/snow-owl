@@ -18,7 +18,9 @@ package com.b2international.snowowl.snomed.core.ecl;
 import static com.b2international.snowowl.datastore.index.RevisionDocument.Expressions.id;
 import static com.b2international.snowowl.datastore.index.RevisionDocument.Expressions.ids;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.referringMappingRefSet;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.referringMappingRefSets;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.referringRefSet;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.referringRefSets;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Fields.REFERRING_MAPPING_REFSETS;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Fields.REFERRING_REFSETS;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.ancestors;
@@ -197,6 +199,20 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		final Expression expected = Expressions.builder()
 				.should(Expressions.exists(REFERRING_REFSETS))
 				.should(Expressions.exists(REFERRING_MAPPING_REFSETS))
+				.build();
+		assertEquals(expected, actual);
+	}
+	
+	@Test
+	public void memberOfNested() throws Exception {
+		indexRevision(MAIN, nextStorageKey(), concept(Concepts.SYNONYM)
+				.parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.REFSET_DESCRIPTION_TYPE)))
+				.ancestors(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
+				.build());
+		final Expression actual = eval("^(<" + Concepts.REFSET_DESCRIPTION_TYPE + ")");
+		final Expression expected = Expressions.builder()
+				.should(referringRefSets(Collections.singleton(Concepts.SYNONYM)))
+				.should(referringMappingRefSets(Collections.singleton(Concepts.SYNONYM)))
 				.build();
 		assertEquals(expected, actual);
 	}
