@@ -20,16 +20,10 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.updateComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests.createMerge;
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests.waitForMergeJob;
-import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.equalTo;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -37,8 +31,6 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.core.date.DateFormats;
-import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
@@ -58,9 +50,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.ValidatableResponse;
 
 /**
@@ -259,6 +249,21 @@ public abstract class SnomedRestFixtures {
 		return createNewRefSet(refSetPath, SnomedRefSetType.SIMPLE);
 	}
 
+	public static String createNewRefSet(IBranchPath refSetPath, SnomedRefSetType type, String identifierConceptId) {
+		
+		Map<?, ?> refSetRequestBody = ImmutableMap.<String, Object>builder()
+				.put("id", identifierConceptId)
+				.put("type", type)
+				.put("referencedComponentType", getFirstAllowedReferencedComponentType(type))
+				.put("commitComment", "Created new reference set")
+				.build();
+		
+		return lastPathSegment(createComponent(refSetPath, SnomedComponentType.REFSET, refSetRequestBody)
+				.statusCode(201)
+				.body(equalTo(""))
+				.extract().header("Location"));
+	}
+	
 	public static String createNewRefSet(IBranchPath refSetPath, SnomedRefSetType type) {
 		String parentConceptId = SnomedRefSetUtil.getConceptId(type);
 		String referencedComponentType = getFirstAllowedReferencedComponentType(type);
