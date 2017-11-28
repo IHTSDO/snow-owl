@@ -208,13 +208,6 @@
 		<QueuePrefix>${orchestration.name}</QueuePrefix>
 	</appender>
 
-	<appender name="TRACEABILITY_MIRROR_JMS" class="com.b2international.snowowl.logging.amq.ActiveMQAppender">
-		<ProviderURL>${orchestration.jms.url}</ProviderURL>
-		<UserName>${orchestration.jms.username}</UserName>
-		<Password>${orchestration.jms.password}</Password>
-		<QueuePrefix>${orchestration.name}.mirror</QueuePrefix>
-	</appender>
-
 	<appender name="EVENT_LOG_STDOUT" class="org.eclipse.virgo.medic.log.logback.ReroutingAwareConsoleAppender">
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
 			<Pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}] %-28.28thread &lt;%X{medic.eventCode}&gt; %msg %ex%n</Pattern>
@@ -258,7 +251,6 @@
 	<logger level="INFO" additivity="false" name="traceability">
 		<appender-ref ref="TRACEABILITY_LOG_FILE" />
 		<appender-ref ref="TRACEABILITY_JMS" />
-		<appender-ref ref="TRACEABILITY_MIRROR_JMS" />
 	</logger>
 
 	<root level="INFO">
