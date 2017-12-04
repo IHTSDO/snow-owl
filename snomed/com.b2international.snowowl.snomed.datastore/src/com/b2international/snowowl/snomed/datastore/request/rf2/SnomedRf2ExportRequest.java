@@ -196,6 +196,7 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 		if (conceptsAndRelationshipsOnly) {
 			model.getRefSetIds().clear();
 			model.getRefSetIds().add(Concepts.REFSET_OWL_AXIOM);
+			model.getRefSetIds().add(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL);
 		}
 		
 		if (CompareUtils.isEmpty(modules)) {
