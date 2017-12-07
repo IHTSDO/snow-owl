@@ -61,12 +61,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.Test;
 
 import com.b2international.commons.Pair;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.datastore.file.FileRegistry;
+import com.b2international.snowowl.datastore.internal.file.InternalFileRegistry;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
@@ -79,7 +85,10 @@ import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -285,6 +294,68 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		assertArchiveContainsLines(exportArchive, fileToLinesMap);
 	}
 
+	@Test
+	public void executeMultipleExportsAtTheSameTime() throws Exception {
+		
+		Promise<UUID> first = SnomedRequests.rf2().prepareExport()
+			.setUserId("System")
+			.setCodeSystem("SNOMEDCT")
+			.setReleaseType(Rf2ReleaseType.FULL)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.execute(ApplicationContext.getServiceForClass(IEventBus.class));
+		
+		Promise<UUID> second = SnomedRequests.rf2().prepareExport()
+			.setUserId("System")
+			.setCodeSystem("SNOMEDCT")
+			.setReleaseType(Rf2ReleaseType.SNAPSHOT)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.execute(ApplicationContext.getServiceForClass(IEventBus.class));
+		
+		String message = Promise.all(first, second)
+			.then(new Function<List<Object>, String>() {
+				@Override
+				public String apply(List<Object> input) {
+					
+					UUID firstId = (UUID) input.get(0);
+					UUID secondId = (UUID) input.get(1);
+					
+					InternalFileRegistry fileRegistry = (InternalFileRegistry) ApplicationContext.getServiceForClass(FileRegistry.class);
+					
+					File firstArchive = fileRegistry.getFile(firstId);
+					File secondArchive = fileRegistry.getFile(secondId);
+					
+					final Map<String, Boolean> firstArchiveMap = ImmutableMap.<String, Boolean>builder()
+							.put("sct2_Concept_Full", true)
+							.build();
+							
+					final Map<String, Boolean> secondArchiveMap = ImmutableMap.<String, Boolean>builder()
+							.put("sct2_Concept_Snapshot", true)
+							.build();
+					
+					try {
+						assertArchiveContainsFiles(firstArchive, firstArchiveMap);
+						assertArchiveContainsFiles(secondArchive, secondArchiveMap);
+					} catch (Exception e) {
+						return e.getMessage();
+					}
+					
+					fileRegistry.delete(firstId);
+					fileRegistry.delete(secondId);
+					
+					return null;
+				}
+			})
+			.fail(new Function<Throwable, String>() {
+				@Override
+				public String apply(Throwable input) {
+					return input.getMessage();
+				}
+			})
+			.getSync();
+		
+		assertNull(message, message);
+	}
+	
 	@Test
 	public void exportDeltaInDateRangeFromVersion() throws Exception {
 		createCodeSystem(branchPath, "SNOMEDCT-DELTA").statusCode(201);
