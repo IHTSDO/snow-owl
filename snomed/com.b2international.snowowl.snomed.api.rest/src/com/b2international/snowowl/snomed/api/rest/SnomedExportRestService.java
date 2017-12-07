@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import static java.util.stream.Collectors.toSet;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
 
@@ -24,6 +25,7 @@ import java.net.URI;
 import java.security.Principal;
 import java.text.ParseException;
 import java.util.Date;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 
@@ -48,6 +50,7 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.file.FileRegistry;
@@ -234,6 +237,13 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 
 		final SnomedExportRestRun export = getExport(exportId);
 		
+		Set<String> allRefsetIds = SnomedRequests.prepareSearchRefSet()
+			.all()
+			.build(this.repositoryId, export.getBranchPath())
+			.execute(bus)
+			.then(refsets -> refsets.getItems().stream().map(IComponent::getId).collect(toSet()))
+			.getSync();
+		
 		final UUID exportedFile = SnomedRequests.rf2().prepareExport()
 			.setUserId(principal.getName())
 			.setReleaseType(export.getType())
@@ -246,6 +256,7 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 			.setStartEffectiveTime(EffectiveTimes.format(export.getStartEffectiveTime(), DateFormats.SHORT))
 			.setEndEffectiveTime(EffectiveTimes.format(export.getEndEffectiveTime(), DateFormats.SHORT))
 			.setConceptsAndRelationshipOnly(export.isConceptsAndRelationshipsOnly())
+			.setRefSets(allRefsetIds)
 			.build(this.repositoryId, export.getBranchPath())
 			.execute(bus)
 			.getSync();
