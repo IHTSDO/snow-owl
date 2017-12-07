@@ -751,6 +751,78 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 	}
 	
 	@Test
+	public void exportDescriptionsTextDefinitionsAndLanguageRefsetMembersWithOutLanguageCode() throws Exception {
+		final String codeSystemShortName = "SNOMEDCT-EXPORT-WITHOUT-LANGUAGE";
+		createCodeSystem(branchPath, codeSystemShortName).statusCode(201);
+		
+		// create new concept
+		final String conceptId = createNewConcept(branchPath);
+		final String englishTextDefinitionId = createNewDescription(branchPath, conceptId, Concepts.TEXT_DEFINITION, UK_ACCEPTABLE_MAP, "en");
+		final String danishTextDefinitionId = createNewDescription(branchPath, conceptId, Concepts.TEXT_DEFINITION, UK_ACCEPTABLE_MAP, "da");
+		final String englishDescriptionId = createNewDescription(branchPath, conceptId, Concepts.SYNONYM, UK_ACCEPTABLE_MAP, "en");
+		final String danishDescriptionId = createNewDescription(branchPath, conceptId, Concepts.SYNONYM, UK_ACCEPTABLE_MAP, "da");
+		
+		// version new concept
+		final String versionEffectiveTime = "20170301";
+		createVersion(codeSystemShortName, "v1", versionEffectiveTime).statusCode(201);
+
+		final Map<Object, Object> config = ImmutableMap.builder()
+				.put("codeSystemShortName", codeSystemShortName)
+				.put("type", Rf2ReleaseType.DELTA.name())
+				.put("branchPath", branchPath.getPath())
+				.put("startEffectiveTime", versionEffectiveTime)
+				.put("endEffectiveTime", versionEffectiveTime)
+				.put("languageAware", false)
+				.build();
+			
+		final String exportId = getExportId(createExport(config));
+		final File exportArchive = getExportFile(exportId);
+
+		final Map<String, Boolean> files = ImmutableMap.<String, Boolean>builder()
+				.put("sct2_Description_Delta_", true)
+				.put("sct2_Description_Delta-en", false)
+				.put("sct2_Description_Delta-da", false)
+				.put("sct2_TextDefinition_Delta_", true)
+				.put("sct2_TextDefinition_Delta-en", false)
+				.put("sct2_TextDefinition_Delta-da", false)
+				.put("der2_cRefset_LanguageDelta_", true)
+				.put("der2_cRefset_LanguageDelta-en", false)
+				.put("der2_cRefset_LanguageDelta-da", false)
+				.build();
+				
+		assertArchiveContainsFiles(exportArchive, files);
+		
+		String englishTextDefinitionLine = createDescriptionLine(englishTextDefinitionId, versionEffectiveTime, conceptId, "en", Concepts.TEXT_DEFINITION, DEFAULT_TERM);
+		String danishTextDefinitionLine = createDescriptionLine(danishTextDefinitionId, versionEffectiveTime, conceptId, "da", Concepts.TEXT_DEFINITION, DEFAULT_TERM);
+		String englishDescriptionLine = createDescriptionLine(englishDescriptionId, versionEffectiveTime, conceptId, "en", Concepts.SYNONYM, DEFAULT_TERM);
+		String danishDescriptionLine = createDescriptionLine(danishDescriptionId, versionEffectiveTime, conceptId, "da", Concepts.SYNONYM, DEFAULT_TERM);
+		
+		String englishTextDefinitionMemberLine = createAcceptableUKLanguageRefsetMemberLine(branchPath, englishTextDefinitionId, versionEffectiveTime);
+		String danishTextDefinitionMemberLine = createAcceptableUKLanguageRefsetMemberLine(branchPath, danishTextDefinitionId, versionEffectiveTime);
+		String englishDescriptionMemberLine = createAcceptableUKLanguageRefsetMemberLine(branchPath, englishDescriptionId, versionEffectiveTime);
+		String danishDescriptionMemberLine = createAcceptableUKLanguageRefsetMemberLine(branchPath, danishDescriptionId, versionEffectiveTime);
+		
+		final Multimap<String, Pair<Boolean, String>> fileToLinesMap = ArrayListMultimap.<String, Pair<Boolean, String>>create();
+				
+		fileToLinesMap.put("sct2_Description_Delta_", Pair.of(false, englishTextDefinitionLine));
+		fileToLinesMap.put("sct2_Description_Delta_", Pair.of(false, danishTextDefinitionLine));
+		fileToLinesMap.put("sct2_Description_Delta_", Pair.of(true, englishDescriptionLine));
+		fileToLinesMap.put("sct2_Description_Delta_", Pair.of(true, danishDescriptionLine));
+		
+		fileToLinesMap.put("sct2_TextDefinition_Delta_", Pair.of(true, englishTextDefinitionLine));
+		fileToLinesMap.put("sct2_TextDefinition_Delta_", Pair.of(true, danishTextDefinitionLine));
+		fileToLinesMap.put("sct2_TextDefinition_Delta_", Pair.of(false, englishDescriptionLine));
+		fileToLinesMap.put("sct2_TextDefinition_Delta_", Pair.of(false, danishDescriptionLine));
+
+		fileToLinesMap.put("der2_cRefset_LanguageDelta_", Pair.of(true, englishTextDefinitionMemberLine));
+		fileToLinesMap.put("der2_cRefset_LanguageDelta_", Pair.of(true, danishTextDefinitionMemberLine));
+		fileToLinesMap.put("der2_cRefset_LanguageDelta_", Pair.of(true, englishDescriptionMemberLine));
+		fileToLinesMap.put("der2_cRefset_LanguageDelta_", Pair.of(true, danishDescriptionMemberLine));
+		
+		assertArchiveContainsLines(exportArchive, fileToLinesMap);
+	}
+	
+	@Test
 	public void exportTextDef_DescAndLangRefSetsPerLanguageCode() throws Exception {
 		final String codeSystemShortName = "SNOMEDCT-EXPORT-PER-LANGUAGE";
 		createCodeSystem(branchPath, codeSystemShortName).statusCode(201);
@@ -780,6 +852,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("startEffectiveTime", versionEffectiveTime)
 				.put("endEffectiveTime", versionEffectiveTime)
 				.put("includeUnpublished", true)
+				.put("languageAware", true)
 				.build();
 			
 		final String exportId = getExportId(createExport(config));
@@ -936,6 +1009,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("type", Rf2ReleaseType.DELTA.name())
 				.put("branchPath", branchPath.getPath())
 				.put("includeUnpublished", true)
+				.put("languageAware", true)
 				.build();
 			
 		final String exportId = getExportId(createExport(config));
@@ -1011,6 +1085,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("startEffectiveTime", versionEffectiveTime)
 				.put("endEffectiveTime", versionEffectiveTime)
 				.put("includeUnpublished", true)
+				.put("languageAware", true)
 				.build();
 		
 		final String exportId = getExportId(createExport(config));
