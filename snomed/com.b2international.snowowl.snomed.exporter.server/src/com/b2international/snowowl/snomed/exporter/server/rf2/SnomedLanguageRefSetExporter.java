@@ -35,6 +35,7 @@ import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
 import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
 import com.b2international.snowowl.snomed.exporter.server.SnomedRfFileNameBuilder;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.google.common.base.Strings;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
@@ -47,7 +48,7 @@ public class SnomedLanguageRefSetExporter extends AbstractFilteredSnomedCoreExpo
 
 	public SnomedLanguageRefSetExporter(SnomedExportContext exportContext, RevisionSearcher revisionSearcher, String languageCode) {
 		super(exportContext, SnomedRefSetMemberIndexEntry.class, revisionSearcher);
-		this.languageCode = checkNotNull(languageCode, "languageCode");
+		this.languageCode = languageCode;
 	}
 
 	@Override
@@ -91,21 +92,25 @@ public class SnomedLanguageRefSetExporter extends AbstractFilteredSnomedCoreExpo
 
 	@Override
 	public String getFileName() {
-		return new StringBuilder("der2")
-				.append('_')
-				.append(SnomedRfFileNameBuilder.getPrefix(SnomedRefSetType.LANGUAGE, false))
-				.append("Refset")
-				.append('_')
-				.append("Language")
-				.append(String.valueOf(getExportContext().getContentSubType()))
-				.append('-')
-				.append(getLanguageCode())
-				.append('_')
-				.append(getExportContext().getNamespaceId())
-				.append('_')
-				.append(SnomedRfFileNameBuilder.getReleaseDate(getExportContext()))
-				.append(".txt")
-				.toString();
+		StringBuilder builder = new StringBuilder("der2");
+		builder.append('_');
+		builder.append(SnomedRfFileNameBuilder.getPrefix(SnomedRefSetType.LANGUAGE, false));
+		builder.append("Refset");
+		builder.append('_');
+		builder.append("Language");
+		builder.append(String.valueOf(getExportContext().getContentSubType()));
+
+		if (!Strings.isNullOrEmpty(getLanguageCode())) {
+			builder.append('-');
+			builder.append(getLanguageCode());
+		}
+		
+		builder.append('_');
+		builder.append(getExportContext().getNamespaceId());
+		builder.append('_');
+		builder.append(SnomedRfFileNameBuilder.getReleaseDate(getExportContext()));
+		builder.append(".txt");
+		return builder.toString();
 	}
 	
 	protected String getLanguageCode() {
@@ -121,7 +126,7 @@ public class SnomedLanguageRefSetExporter extends AbstractFilteredSnomedCoreExpo
 		Query<String> query = Query.selectPartial(String.class, SnomedDescriptionIndexEntry.class, singleton(SnomedDescriptionIndexEntry.Fields.ID))
 			.where(Expressions.builder()
 				.must(SnomedDescriptionIndexEntry.Expressions.ids(referencedComponentToMemberMap.keySet()))
-				.filter(SnomedDescriptionIndexEntry.Expressions.languageCode(languageCode))
+				.filter(SnomedDescriptionIndexEntry.Expressions.languageCode(checkNotNull(getLanguageCode())))
 				.build())
 			.limit(referencedComponentToMemberMap.keySet().size())
 			.build();

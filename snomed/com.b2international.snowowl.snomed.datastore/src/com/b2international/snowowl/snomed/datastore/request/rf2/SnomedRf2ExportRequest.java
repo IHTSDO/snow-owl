@@ -112,6 +112,9 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 	@JsonProperty
 	private boolean conceptsAndRelationshipsOnly;
 	
+	@JsonProperty
+	private boolean languageAware;
+	
 	SnomedRf2ExportRequest() {}
 	
 	void setUserId(String userId) {
@@ -164,6 +167,10 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 	
 	void setComponentTypes(Collection<String> componentTypes) {
 		this.componentTypes = componentTypes;
+	}
+	
+	void setLanguageAware(boolean languageAware) {
+		this.languageAware = languageAware;
 	}
 	
 	@Override
@@ -251,7 +258,8 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 		model.setCodeSystemShortName(codeSystem);
 		model.setExtensionOnly(extensionOnly);
 		model.setConceptsAndRelationshipsOnly(conceptsAndRelationshipsOnly);
-
+		model.setLanguageAware(languageAware);
+		
 		return model; 
 	}
 	

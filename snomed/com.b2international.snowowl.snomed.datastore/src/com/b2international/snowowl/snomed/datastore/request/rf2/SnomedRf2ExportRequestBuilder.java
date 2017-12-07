@@ -46,6 +46,7 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 	private Collection<String> refSets = Collections.emptySet();
 	private boolean conceptsAndRelationshipsOnly = false;
 	private Collection<String> componentTypes = Collections.emptySet();
+	private boolean languageAware = false;
 	
 	SnomedRf2ExportRequestBuilder() {}
 	
@@ -113,6 +114,11 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 		this.componentTypes = componentTypes;
 		return getSelf();
 	}
+	
+	public SnomedRf2ExportRequestBuilder setLanguageAware(boolean languageAware) {
+		this.languageAware = languageAware;
+		return getSelf();
+	}
 
 	@Override
 	protected Request<BranchContext, UUID> doBuild() {
@@ -130,6 +136,7 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 		req.setRefSets(refSets);
 		req.setConceptsAndRelationshipsOnly(conceptsAndRelationshipsOnly);
 		req.setComponentTypes(componentTypes);
+		req.setLanguageAware(languageAware);
 		return req;
 	}
 

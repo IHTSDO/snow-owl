@@ -21,12 +21,17 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
 import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
+import com.google.common.base.Strings;
 
 /**
  *
  */
 public class SnomedTextDefinitionExporter extends SnomedRf2DescriptionExporter {
 
+	public SnomedTextDefinitionExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher) {
+		this(exportContext, revisionSearcher, null);
+	}
+	
 	public SnomedTextDefinitionExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher, final String languageCode) {
 		super(exportContext, revisionSearcher, languageCode);
 	}
@@ -38,8 +43,9 @@ public class SnomedTextDefinitionExporter extends SnomedRf2DescriptionExporter {
 	
 	@Override
 	protected void appendExpressionConstraint(final ExpressionBuilder builder) {
-		builder
-			.filter(SnomedDescriptionIndexEntry.Expressions.type(Concepts.TEXT_DEFINITION))
-			.filter(SnomedDescriptionIndexEntry.Expressions.languageCode(getLanguageCode()));
+		builder.filter(SnomedDescriptionIndexEntry.Expressions.type(Concepts.TEXT_DEFINITION));
+		if (!Strings.isNullOrEmpty(getLanguageCode())) {
+			builder.filter(SnomedDescriptionIndexEntry.Expressions.languageCode(getLanguageCode()));
+		}
 	}
 }

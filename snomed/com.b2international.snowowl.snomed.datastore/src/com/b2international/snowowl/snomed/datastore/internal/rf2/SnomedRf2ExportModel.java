@@ -74,6 +74,7 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 	private String codeSystemShortName;
 	private boolean extensionOnly;
 	private boolean conceptsAndRelationshipsOnly;
+	private boolean languageAware;
 
 	public SnomedRf2ExportModel(final String userId, 
 			final Branch branch, 
@@ -232,6 +233,20 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 	 */
 	public void setConceptsAndRelationshipsOnly(boolean conceptsAndRelationshipsOnly) {
 		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
+	}
+	
+	/**
+	 * @return the languageAware
+	 */
+	public boolean isLanguageAware() {
+		return languageAware;
+	}
+	
+	/**
+	 * @param languageAware the languageAware to set
+	 */
+	public void setLanguageAware(boolean languageAware) {
+		this.languageAware = languageAware;
 	}
 	
 	private String initExportPath() {

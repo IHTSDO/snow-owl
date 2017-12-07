@@ -139,6 +139,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 	private String codeSystemShortName;
 	private boolean extensionOnly;
 	private boolean conceptsAndRelationshipsOnly;
+	private boolean languageAware;
 
 	public SnomedExportServerIndication(SignalProtocol<?> protocol) {
 		super(protocol, Net4jProtocolConstants.SNOMED_EXPORT_SIGNAL);
@@ -200,6 +201,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		codeSystemShortName = in.readUTF();
 		extensionOnly = in.readBoolean();
 		conceptsAndRelationshipsOnly = in.readBoolean();
+		languageAware = in.readBoolean();
 		
 		tempDir = Files.createTempDirectory("export");
 		
@@ -485,49 +487,86 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		
 		if (!conceptsAndRelationshipsOnly) {
 			
-			Set<String> languageCodesInUse = getLanguageCodesInUse(revisionSearcher);
-			
-			for (String languageCode : languageCodesInUse) {
-				logActivity(String.format("Exporting %sSNOMED CT descriptions with language code '%s' into RF2 format",
-						exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
-				new SnomedRf2DescriptionExporter(exportContext, revisionSearcher, languageCode).execute();
-			}
-			
-			if (monitor.isCanceled()) {
-				return;
-			} else {
-				monitor.worked(2);
-			}
-			
-			for (String languageCode : languageCodesInUse) {
-				logActivity(String.format("Exporting %sSNOMED CT text definitions with language code '%s' into RF2 format",
-						exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
-				new SnomedTextDefinitionExporter(exportContext, revisionSearcher, languageCode).execute();
-			}
-			
-			if (monitor.isCanceled()) {
-				return;
-			} else {
-				monitor.worked(2);
-			}
-			
-			if (languageCodesInUse.size() == 1) {
-				String languageCode = Iterables.getOnlyElement(languageCodesInUse);
-				logActivity(String.format("Exporting %sSNOMED CT language reference set members with language code '%s' into RF2 format",
-						exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
-				new SimpleSnomedLanguageRefsetExporter(exportContext, revisionSearcher, languageCode).execute();
-			} else {
+			if (languageAware) {
+				
+				Set<String> languageCodesInUse = getLanguageCodesInUse(revisionSearcher);
+				
 				for (String languageCode : languageCodesInUse) {
+					logActivity(String.format("Exporting %sSNOMED CT descriptions with language code '%s' into RF2 format",
+							exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
+					new SnomedRf2DescriptionExporter(exportContext, revisionSearcher, languageCode).execute();
+				}
+				
+				if (monitor.isCanceled()) {
+					return;
+				} else {
+					monitor.worked(2);
+				}
+				
+				for (String languageCode : languageCodesInUse) {
+					logActivity(String.format("Exporting %sSNOMED CT text definitions with language code '%s' into RF2 format",
+							exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
+					new SnomedTextDefinitionExporter(exportContext, revisionSearcher, languageCode).execute();
+				}
+				
+				if (monitor.isCanceled()) {
+					return;
+				} else {
+					monitor.worked(2);
+				}
+				
+				if (languageCodesInUse.size() == 1) {
+					String languageCode = Iterables.getOnlyElement(languageCodesInUse);
 					logActivity(String.format("Exporting %sSNOMED CT language reference set members with language code '%s' into RF2 format",
 							exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
-					new SnomedLanguageRefSetExporter(exportContext, revisionSearcher, languageCode).execute();
+					new SimpleSnomedLanguageRefsetExporter(exportContext, revisionSearcher, languageCode).execute();
+				} else {
+					for (String languageCode : languageCodesInUse) {
+						logActivity(String.format("Exporting %sSNOMED CT language reference set members with language code '%s' into RF2 format",
+								exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
+						new SnomedLanguageRefSetExporter(exportContext, revisionSearcher, languageCode).execute();
+					}
 				}
-			}
-			
-			if (monitor.isCanceled()) {
-				return;
+				
+				if (monitor.isCanceled()) {
+					return;
+				} else {
+					monitor.worked(2);
+				}
+				
 			} else {
-				monitor.worked(2);
+				
+				logActivity(String.format("Exporting %sSNOMED CT descriptions into RF2 format",
+						exportContext.isUnpublishedExport() ? "unpublished " : ""));
+				
+				new SnomedRf2DescriptionExporter(exportContext, revisionSearcher).execute();
+				
+				if (monitor.isCanceled()) {
+					return;
+				} else {
+					monitor.worked(2);
+				}
+				
+				logActivity(String.format("Exporting %sSNOMED CT text definitions into RF2 format",
+						exportContext.isUnpublishedExport() ? "unpublished " : ""));
+				new SnomedTextDefinitionExporter(exportContext, revisionSearcher).execute();
+				
+				if (monitor.isCanceled()) {
+					return;
+				} else {
+					monitor.worked(2);
+				}
+				
+				logActivity(String.format("Exporting %sSNOMED CT language reference set members into RF2 format",
+						exportContext.isUnpublishedExport() ? "unpublished " : ""));
+				new SimpleSnomedLanguageRefsetExporter(exportContext, revisionSearcher).execute();
+
+				if (monitor.isCanceled()) {
+					return;
+				} else {
+					monitor.worked(2);
+				}
+				
 			}
 			
 		}

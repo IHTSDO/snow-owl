@@ -23,6 +23,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptio
 import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
 import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
 import com.b2international.snowowl.snomed.exporter.server.SnomedRfFileNameBuilder;
+import com.google.common.base.Strings;
 
 /**
  * RF2 export implementation for SNOMED&nbsp;CT description.
@@ -32,6 +33,10 @@ public class SnomedRf2DescriptionExporter extends AbstractSnomedRf2CoreExporter<
 
 	private String languageCode;
 
+	public SnomedRf2DescriptionExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher) {
+		this(exportContext, revisionSearcher, null);
+	}
+	
 	public SnomedRf2DescriptionExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher, final String languageCode) {
 		super(exportContext, SnomedDescriptionIndexEntry.class, revisionSearcher);
 		this.languageCode = languageCode;
@@ -72,26 +77,29 @@ public class SnomedRf2DescriptionExporter extends AbstractSnomedRf2CoreExporter<
 	
 	@Override
 	public String getFileName() {
-		return new StringBuilder("sct2")
-			.append('_')
-			.append(String.valueOf(getType()))
-			.append('_')
-			.append(String.valueOf(getExportContext().getContentSubType()))
-			.append('-')
-			.append(getLanguageCode())
-			.append('_')
-			.append(getExportContext().getNamespaceId())
-			.append('_')
-			.append(SnomedRfFileNameBuilder.getReleaseDate(getExportContext()))
-			.append(".txt")
-			.toString();
+		StringBuilder builder = new StringBuilder("sct2");
+		builder.append('_');
+		builder.append(String.valueOf(getType()));
+		builder.append('_');
+		builder.append(String.valueOf(getExportContext().getContentSubType()));
+		if (!Strings.isNullOrEmpty(getLanguageCode())) {
+			builder.append('-');
+			builder.append(getLanguageCode());
+		}
+		builder.append('_');
+		builder.append(getExportContext().getNamespaceId());
+		builder.append('_');
+		builder.append(SnomedRfFileNameBuilder.getReleaseDate(getExportContext()));
+		builder.append(".txt");
+		return builder.toString();
 	}
 	
 	@Override
 	protected void appendExpressionConstraint(ExpressionBuilder builder) {
-		builder
-			.mustNot(SnomedDescriptionIndexEntry.Expressions.type(Concepts.TEXT_DEFINITION))
-			.filter(SnomedDescriptionIndexEntry.Expressions.languageCode(getLanguageCode()));
+		builder.mustNot(SnomedDescriptionIndexEntry.Expressions.type(Concepts.TEXT_DEFINITION));
+		if (!Strings.isNullOrEmpty(getLanguageCode())) {
+			builder.filter(SnomedDescriptionIndexEntry.Expressions.languageCode(getLanguageCode()));
+		}
 	}
 	
 	protected String getLanguageCode() {

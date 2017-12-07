@@ -257,6 +257,7 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 			.setEndEffectiveTime(EffectiveTimes.format(export.getEndEffectiveTime(), DateFormats.SHORT))
 			.setConceptsAndRelationshipOnly(export.isConceptsAndRelationshipsOnly())
 			.setRefSets(allRefsetIds)
+			.setLanguageAware(export.isLanguageAware())
 			.build(this.repositoryId, export.getBranchPath())
 			.execute(bus)
 			.getSync();

@@ -53,6 +53,7 @@ public class SnomedExportRestConfiguration {
 	private boolean extensionOnly = false;
 	
 	private boolean conceptsAndRelationshipsOnly = false;
+	private boolean languageAware = false;
 
 	/**
 	 * Returns with the RF2 release type of the current export configuration.
@@ -220,5 +221,23 @@ public class SnomedExportRestConfiguration {
 	 */
 	public void setConceptsAndRelationshipsOnly(boolean conceptsAndRelationshipsOnly) {
 		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
+	}
+	
+	/**
+	 * Returns true if descriptions and language refset members are exported to separate files based on the language code
+	 * 
+	 * @return the languageAware
+	 */
+	public boolean isLanguageAware() {
+		return languageAware;
+	}
+	
+	/**
+	 * If set to true descriptions and language refset members are exported to separate files based on the language code
+	 * 
+	 * @param languageAware the languageAware to set
+	 */
+	public void setLanguageAware(boolean languageAware) {
+		this.languageAware = languageAware;
 	}
 }
