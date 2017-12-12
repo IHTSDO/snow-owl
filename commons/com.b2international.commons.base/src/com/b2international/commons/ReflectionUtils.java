@@ -15,9 +15,18 @@
  */
 package com.b2international.commons;
 
+import static com.google.common.collect.Maps.newHashMap;
+
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.ImmutableSet;
 
 public class ReflectionUtils {
 
@@ -97,6 +106,22 @@ public class ReflectionUtils {
 			handleException(e);
 		}
 		return null;
+	}
+	
+	public static Map<String, Object> getBeanMap(Object object, String...fieldsToExclude) {
+		try {
+			Map<String, Object> results = newHashMap();
+			Set<String> excludedFields = ImmutableSet.copyOf(fieldsToExclude);
+			for (PropertyDescriptor descriptor : Introspector.getBeanInfo(object.getClass()).getPropertyDescriptors()) {
+				Method readMethod = descriptor.getReadMethod();
+				if (readMethod != null && !excludedFields.contains(descriptor.getName())) {
+					results.put(descriptor.getName(), readMethod.invoke(object));
+				}
+			}
+			return results;
+		} catch (IntrospectionException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			throw new RuntimeException(e); 
+		}
 	}
 	
 	protected static void handleException(Throwable e) {
