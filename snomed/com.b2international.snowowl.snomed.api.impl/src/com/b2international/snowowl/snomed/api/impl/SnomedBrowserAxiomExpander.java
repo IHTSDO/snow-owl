@@ -132,6 +132,41 @@ public class SnomedBrowserAxiomExpander {
 			// Build id to concept map for easy access
 			Map<String, SnomedConcept> conceptsFromStoreMap = 
 					conceptsFromStore.getItems().stream().collect(Collectors.toMap(SnomedConcept::getId, concept -> concept));
+
+			// Fill in type information in each relationship generated from axioms
+			typesToFetch.values().forEach(type -> {
+				SnomedConcept conceptFromStore = conceptsFromStoreMap.get(type.getConceptId());
+				if (conceptFromStore != null) {
+					if (conceptFromStore.getFsn() != null) {
+						type.setFsn(conceptFromStore.getFsn().getTerm());
+					} else {
+						type.setFsn(conceptFromStore.getId());
+					}
+				} else {
+					LOGGER.warn("Concept {} used in axiom attribute type but does not exist on this branch {}.", type.getConceptId(), branchPath);
+				}
+			});
+			
+			// Fill in target information in each relationship generated from axioms
+			targetsToFetch.values().forEach(target -> {
+				SnomedConcept conceptFromStore = conceptsFromStoreMap.get(target.getConceptId());
+				if (conceptFromStore != null) {
+					target.setActive(conceptFromStore.isActive());
+					target.setDefinitionStatus(conceptFromStore.getDefinitionStatus());
+					target.setEffectiveTime(conceptFromStore.getEffectiveTime());
+					
+					if (conceptFromStore.getFsn() != null) {
+						target.setFsn(conceptFromStore.getFsn().getTerm());
+					} else {
+						target.setFsn(conceptFromStore.getId());
+					}
+					
+					target.setModuleId(conceptFromStore.getModuleId());
+					target.setReleased(conceptFromStore.isReleased());
+				} else {
+					LOGGER.warn("Concept {} used in axiom attribute target but does not exist on this branch {}.", target.getConceptId(), branchPath);
+				}
+			});
 		}
 	}
 
