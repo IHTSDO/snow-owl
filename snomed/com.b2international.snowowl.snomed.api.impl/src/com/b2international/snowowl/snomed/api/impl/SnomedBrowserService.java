@@ -20,7 +20,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,14 +113,12 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Ints;
 
 public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserService.class);
-	private static final Set<SnomedBrowserDescriptionType> SUPPORTED_DESCRIPTION_TYPES = ImmutableSet.of(SnomedBrowserDescriptionType.FSN, SnomedBrowserDescriptionType.SYNONYM); 
 	private static final List<ConceptEnum> CONCEPT_ENUMS;
 
 	static {
@@ -166,6 +166,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	private final Cache<String, SnomedBrowserBulkChangeRun> bulkChangeRuns = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.DAYS).build();
 	
 	private final ExecutorService executorService = Executors.newCachedThreadPool();
+	
+	private final SnomedBrowserAxiomExpander axiomExpander = new SnomedBrowserAxiomExpander();
 
 	@Resource
 	private IEventBus bus;
@@ -198,6 +200,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final SnomedRelationships relationships = concept.getRelationships();
 
 		final SnomedBrowserConcept result = convertConcept(concept);
+		
+		long start = new Date().getTime();
+		axiomExpander.expandAxioms(Collections.singleton(result), locales, branchPath.getPath(), bus());
+		LOGGER.info("Expanding axioms took {}ms", new Date().getTime() - start);
 		
 		// inactivation fields
 		result.setInactivationIndicator(concept.getInactivationIndicator());

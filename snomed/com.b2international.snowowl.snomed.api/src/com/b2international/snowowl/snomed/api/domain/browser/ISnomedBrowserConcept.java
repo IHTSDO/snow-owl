@@ -36,6 +36,10 @@ public interface ISnomedBrowserConcept extends ISnomedBrowserComponentWithId, IC
 	/** @return the list of relationships associated with this concept */
 	List<ISnomedBrowserRelationship> getRelationships();
 	
+	List<ISnomedBrowserAxiom> getAdditionalAxioms();
+	
+	List<ISnomedBrowserAxiom> getGciAxioms();
+	
 	/** @return the inactivation indicator value; not set if the concept is still active, or no reason was given */
 	InactivationIndicator getInactivationIndicator();
 

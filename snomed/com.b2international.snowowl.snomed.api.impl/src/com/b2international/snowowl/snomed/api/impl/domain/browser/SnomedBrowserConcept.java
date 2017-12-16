@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.api.impl.domain.browser;
 
 import java.util.List;
 
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserAxiom;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
@@ -43,6 +44,12 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 
 	@JsonDeserialize(contentAs=SnomedBrowserRelationship.class)
 	private List<ISnomedBrowserRelationship> relationships = ImmutableList.of();
+
+	@JsonDeserialize(contentAs=SnomedBrowserAxiom.class)
+	private List<ISnomedBrowserAxiom> additionalAxioms = ImmutableList.of();
+
+	@JsonDeserialize(contentAs=SnomedBrowserAxiom.class)
+	private List<ISnomedBrowserAxiom> gciAxioms = ImmutableList.of();
 
 	@Override
 	public String getId() {
@@ -88,6 +95,16 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 	public List<ISnomedBrowserRelationship> getRelationships() {
 		return relationships;
 	}
+	
+	@Override
+	public List<ISnomedBrowserAxiom> getAdditionalAxioms() {
+		return additionalAxioms;
+	}
+	
+	@Override
+	public List<ISnomedBrowserAxiom> getGciAxioms() {
+		return gciAxioms;
+	}
 
 	public void setConceptId(final String conceptId) {
 		this.conceptId = conceptId;
@@ -121,6 +138,14 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 
 	public void setRelationships(final List<ISnomedBrowserRelationship> relationships) {
 		this.relationships = relationships;
+	}
+	
+	public void setAdditionalAxioms(List<ISnomedBrowserAxiom> additionalAxioms) {
+		this.additionalAxioms = additionalAxioms;
+	}
+	
+	public void setGciAxioms(List<ISnomedBrowserAxiom> gciAxioms) {
+		this.gciAxioms = gciAxioms;
 	}
 	
 	@Override
@@ -160,6 +185,10 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 		builder.append(descriptions);
 		builder.append(", relationships=");
 		builder.append(relationships);
+		builder.append(", additionalAxioms=");
+		builder.append(additionalAxioms);
+		builder.append(", gciAxioms=");
+		builder.append(gciAxioms);
 		builder.append(", inactivationIndicator=");
 		builder.append(inactivationIndicator);
 		builder.append(", associationTargets=");

@@ -26,7 +26,8 @@ Require-Bundle: org.eclipse.core.runtime,
  org.ihtsdo.drools.snomed-drools,
  com.b2international.snowowl.snomed.scg,
  org.apache.commons.collections;bundle-version="3.2.0",
- com.b2international.org.apache.lucene
+ com.b2international.org.apache.lucene,
+ org.snomed.otf.snomed-owl-toolkit
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-Vendor: B2i Healthcare
 Bundle-ActivationPolicy: lazy
