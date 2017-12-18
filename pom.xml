@@ -587,6 +587,7 @@
 					<groupId>org.snomed.otf</groupId>
 					<artifactId>snomed-owl-toolkit</artifactId>
 					<version>${snomed-owl-toolkit.version}</version>
+					<classifier>bundle</classifier>
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
