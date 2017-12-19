@@ -109,8 +109,6 @@ public interface ISnomedBrowserService {
 
 	ISnomedBrowserConcept create(String branch, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> extendedLocales);
 
-	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> extendedLocales, BulkRequestBuilder<TransactionContext> bulkRequest);
-	
 	void update(String branch, List<? extends ISnomedBrowserConcept> concept, String userId, List<ExtendedLocale> extendedLocales);
 	
 	ISnomedBrowserBulkChangeRun beginBulkChange(String branch, List<? extends ISnomedBrowserConcept> newVersionConcepts, String userId, List<ExtendedLocale> locales);

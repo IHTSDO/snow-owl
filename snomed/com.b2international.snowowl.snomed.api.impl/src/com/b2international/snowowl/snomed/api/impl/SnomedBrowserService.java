@@ -297,6 +297,17 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return RepositoryRequests.branching().prepareGet(branchPath).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus()).getSync();
 	}
 	
+	@Override
+	public void update(String branch, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales) {
+		final String commitComment = userId + " Bulk update.";
+		createBulkCommit(branch, updatedConcepts, userId, locales, commitComment)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
+			.execute(bus())
+			.getSync();
+		
+		LOGGER.info("Committed bulk concept changes on {}", branch);
+	}
+	
 	private RepositoryCommitRequestBuilder createBulkCommit(String branch, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales, final String commitComment) {
 		final Stopwatch watch = Stopwatch.createStarted();
 		
@@ -363,19 +374,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return bulkChangeRuns.getIfPresent(bulkChangeId);
 	}
 	
-	@Override
-	public void update(String branch, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales) {
-		final String commitComment = userId + " Bulk update.";
-		createBulkCommit(branch, updatedConcepts, userId, locales, commitComment)
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-			.execute(bus())
-			.getSync();
-		
-		LOGGER.info("Committed bulk concept changes on {}", branch);
-	}
-	
-	@Override
-	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConcept newVersionConcept, String userId, List<ExtendedLocale> locales, BulkRequestBuilder<TransactionContext> bulkRequest) {
+	private ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConcept newVersionConcept, String userId, List<ExtendedLocale> locales, BulkRequestBuilder<TransactionContext> bulkRequest) {
 		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
 		final IComponentRef componentRef = SnomedServiceHelper.createComponentRef(branchPath, newVersionConcept.getConceptId());
 
