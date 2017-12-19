@@ -3,7 +3,6 @@ package com.b2international.snowowl.snomed.api.impl;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +41,7 @@ public class SnomedBrowserAxiomExpander {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserAxiomExpander.class);
 	
-	void expandAxioms(Set<SnomedBrowserConcept> concepts, final List<ExtendedLocale> locales, final String branchPath, IEventBus eventBus) {
+	void expandAxioms(Set<SnomedBrowserConcept> concepts, ConversionService conversionService, final List<ExtendedLocale> locales, final String branchPath, IEventBus eventBus) {
 		final Set<String> conceptIds = concepts.stream().map(SnomedBrowserConcept::getConceptId).collect(Collectors.toSet());
 		
 		// Load relevant members from OWL Axiom Reference Set
@@ -57,21 +56,6 @@ public class SnomedBrowserAxiomExpander {
 		if (axiomMembers.getItems().isEmpty()) {
 			return;
 		}
-
-		final SnomedReferenceSetMembers mrcmMembers = SnomedRequests.prepareSearchMember()
-				.all()
-				.filterByRefSet(Sets.newHashSet(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL))
-				.filterByReferencedComponent(conceptIds)
-				.filterByActive(true)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-				.execute(eventBus)
-				.getSync();
-		
-		Set<Long> ungroupedAttributes = mrcmMembers.getItems().stream().filter(member -> {
-			Object object = member.getProperties().get("grouped");
-			Boolean grouped = (Boolean) object;
-			return !grouped;
-		}).map(member -> Long.parseLong(member.getId())).collect(Collectors.toSet());
 		
 		final Multimap<String, SnomedReferenceSetMember> membersByReferencedComponentId = Multimaps.index(axiomMembers, new Function<SnomedReferenceSetMember, String>() {
 			@Override
@@ -81,7 +65,6 @@ public class SnomedBrowserAxiomExpander {
 		});
 
 		// Use Open Source Project 'Snomed OWL Toolkit' to deserialise axioms
-		ConversionService conversionService = new org.snomed.otf.owltoolkit.conversion.ConversionService(ungroupedAttributes);
 		Map<String, SnomedBrowserRelationshipType> typesToFetch = new HashMap<>();
 		Map<String, SnomedBrowserRelationshipTarget> targetsToFetch = new HashMap<>();
 		for (SnomedBrowserConcept concept : concepts) {

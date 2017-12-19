@@ -123,6 +123,7 @@ public abstract class SnomedConstants {
 		public static final String ENTIRE_TERM_CASE_SENSITIVE = "900000000000017005";
 		public static final String FOUNDATION_METADATA_CONCEPTS = "900000000000454005";
 		public static final String CASE_SIGNIFICANCE_ROOT_CONCEPT = "900000000000447004";
+		public static final String TEMPORARY_AXIOM_CONCEPT_PLACEHOLDER = "999009";
 		
 		//TODO: These are substitutes for concrete domain operational concepts that WILL be 
 		//under the metadata hierarchy.  These need to be replaced once available.  bbanfai - 2012.09.11

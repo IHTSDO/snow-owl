@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,11 +33,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.snomed.otf.owltoolkit.conversion.ConversionService;
 
 import com.b2international.commons.ClassUtils;
 import com.b2international.commons.collections.Procedure;
@@ -60,6 +63,7 @@ import com.b2international.snowowl.datastore.server.domain.InternalStorageRef;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserAxiom;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
@@ -72,6 +76,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserBulkCh
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.domain.browser.TaxonomyNode;
 import com.b2international.snowowl.snomed.api.impl.domain.InputFactory;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserAxiom;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
@@ -94,6 +99,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
@@ -114,8 +120,11 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.collect.Sets.SetView;
 import com.google.common.primitives.Ints;
 
+@SuppressWarnings("deprecation")
 public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserService.class);
@@ -202,7 +211,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final SnomedBrowserConcept result = convertConcept(concept);
 		
 		long start = new Date().getTime();
-		axiomExpander.expandAxioms(Collections.singleton(result), locales, branchPath.getPath(), bus());
+		
+		ConversionService conversionService = getAxiomConversionService(branchPath.getPath(), bus);
+		axiomExpander.expandAxioms(Collections.singleton(result), conversionService, locales, branchPath.getPath(), bus());
 		LOGGER.info("Expanding axioms took {}ms", new Date().getTime() - start);
 		
 		// inactivation fields
@@ -226,6 +237,23 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		
 		return result;
 	}
+	
+	private ConversionService getAxiomConversionService(final String branchPath, IEventBus eventBus) {
+		final SnomedReferenceSetMembers mrcmMembers = SnomedRequests.prepareSearchMember()
+				.all()
+				.filterByRefSet(Sets.newHashSet(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL))
+				.filterByActive(true)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(eventBus)
+				.getSync();
+		
+		Set<Long> ungroupedAttributes = mrcmMembers.getItems().stream().filter(member -> {
+			Object object = member.getProperties().get("grouped");
+			Boolean grouped = (Boolean) object;
+			return !grouped;
+		}).map(member -> Long.parseLong(member.getReferencedComponent().getId())).collect(Collectors.toSet());
+		return new org.snomed.otf.owltoolkit.conversion.ConversionService(ungroupedAttributes);
+	}
 
 	private SnomedBrowserConcept convertConcept(SnomedConcept concept) {
 		final SnomedBrowserConcept result = new SnomedBrowserConcept();
@@ -246,7 +274,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		if (bus == null) {
 			bus = com.b2international.snowowl.core.ApplicationContext.getInstance().getServiceChecked(IEventBus.class);
 		}
-		InputFactory inputFactory = new InputFactory(getBranch(branchPath));
+		ConversionService axiomConversionService = getAxiomConversionService(branchPath, bus);
+		InputFactory inputFactory = new InputFactory(getBranch(branchPath), axiomConversionService);
 		final SnomedConceptCreateRequest req = inputFactory.createComponentInput(branchPath, newConcept, SnomedConceptCreateRequest.class);
 		final String commitComment = getCommitComment(userId, newConcept, "creating");
 		
@@ -352,7 +381,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		final ISnomedBrowserConcept existingVersionConcept = getConceptDetails(componentRef, locales);
 
-		InputFactory inputFactory = new InputFactory(getBranch(branchPath));
+		ConversionService axiomConversionService = getAxiomConversionService(branchPath, bus);
+		InputFactory inputFactory = new InputFactory(getBranch(branchPath), axiomConversionService);
 		// Concept update
 		final SnomedConceptUpdateRequest conceptUpdate = inputFactory.createComponentUpdate(existingVersionConcept, newVersionConcept, SnomedConceptUpdateRequest.class);
 		
@@ -371,7 +401,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		Map<String, SnomedRelationshipUpdateRequest> relationshipUpdates = inputFactory.createComponentUpdates(existingVersionRelationships, newVersionRelationships, SnomedRelationshipUpdateRequest.class);
 		List<SnomedRelationshipCreateRequest> relationshipInputs = inputFactory.createComponentInputs(branchPath, newVersionRelationships, SnomedRelationshipCreateRequest.class);
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
-
+				
 		// In the case of inactivation, other updates seem to go more smoothly if this is done later
 		
 		boolean conceptInactivation = conceptUpdate != null && conceptUpdate.isActive() != null && Boolean.FALSE.equals(conceptUpdate.isActive());

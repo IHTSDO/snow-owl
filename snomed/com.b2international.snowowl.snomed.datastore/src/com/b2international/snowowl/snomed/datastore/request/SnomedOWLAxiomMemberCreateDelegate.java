@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.store.SnomedComponents;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAnnotationRefSetMember;
@@ -40,13 +41,19 @@ public class SnomedOWLAxiomMemberCreateDelegate extends SnomedRefSetMemberCreate
 		checkComponentExists(refSet, context, SnomedRf2Headers.FIELD_MODULE_ID, getModuleId());
 		checkComponentExists(refSet, context, SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID, getReferencedComponentId());
 
+		// The OWL Expression will have been generated using the temporary concept SCTID.
+		// Now we have the real concept SCTID let's use it to replace the temporary one.
+		String owlExpression = getProperty(SnomedRf2Headers.FIELD_OWL_EXPRESSION);
+		// Use a regular expression to make sure we only match the identifier when surrounded by non decimal characters.
+		owlExpression = owlExpression.replaceAll("([^\\d])" + Concepts.TEMPORARY_AXIOM_CONCEPT_PLACEHOLDER+ "([^\\d])", "$1" + getReferencedComponentId() + "$2");
+		
 		final SnomedAnnotationRefSetMember member = SnomedComponents.newOWLAxiomReferenceSetMember()
 				.withId(getId())
 				.withActive(isActive())
 				.withReferencedComponent(getReferencedComponentId())
 				.withModule(getModuleId())
 				.withRefSet(getReferenceSetId())
-				.withOWLExpression(getProperty(SnomedRf2Headers.FIELD_OWL_EXPRESSION))
+				.withOWLExpression(owlExpression)
 				.addTo(context);
 
 		return member.getUuid();
