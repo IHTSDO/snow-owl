@@ -157,6 +157,7 @@ public class SnomedBrowserAxiomExpander {
 			Map<String, SnomedBrowserRelationshipType> typesToFetch, Map<String, SnomedBrowserRelationshipTarget> targetsToFetch) {
 		
 		SnomedBrowserAxiom axiom = new SnomedBrowserAxiom();
+		axiom.setAxiomId(axiomMember.getId());
 		axiom.setActive(axiomMember.isActive());
 		axiom.setEffectiveTime(axiomMember.getEffectiveTime());
 		axiom.setModuleId(axiomMember.getModuleId());

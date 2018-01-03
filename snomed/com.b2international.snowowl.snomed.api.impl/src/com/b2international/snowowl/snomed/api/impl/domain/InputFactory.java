@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.snomed.otf.owltoolkit.conversion.ConversionService;
-
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponentWithId;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
@@ -20,9 +18,9 @@ public class InputFactory {
 
 	private final List<ComponentInputCreator<?, ?, ?>> creators;
 
-	public InputFactory(final Branch branch, ConversionService axiomConversionService) {
+	public InputFactory(final Branch branch, SnomedBrowserAxiomUpdateHelper axiomUpdateHelper) {
 		creators = ImmutableList.<ComponentInputCreator<?, ?, ?>>of(
-				new ConceptInputCreator(branch, axiomConversionService), 
+				new ConceptInputCreator(branch, axiomUpdateHelper), 
 				new DescriptionInputCreator(branch), 
 				new RelationshipInputCreator(branch));
 	}

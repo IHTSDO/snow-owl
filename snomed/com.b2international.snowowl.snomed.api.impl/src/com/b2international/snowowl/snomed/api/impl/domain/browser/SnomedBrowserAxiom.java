@@ -25,6 +25,10 @@ public class SnomedBrowserAxiom extends SnomedBrowserComponent implements ISnome
 	public String getAxiomId() {
 		return axiomId;
 	}
+	
+	public void setAxiomId(String axiomId) {
+		this.axiomId = axiomId;
+	}
 
 	@Override
 	public DefinitionStatus getDefinitionStatus() {
