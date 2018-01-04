@@ -41,7 +41,7 @@ public class SnomedBrowserAxiomExpander {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserAxiomExpander.class);
 	
-	void expandAxioms(Set<SnomedBrowserConcept> concepts, ConversionService conversionService, final List<ExtendedLocale> locales, final String branchPath, IEventBus eventBus) {
+	public void expandAxioms(Collection<SnomedBrowserConcept> concepts, ConversionService conversionService, final List<ExtendedLocale> locales, final String branchPath, IEventBus eventBus) {
 		final Set<String> conceptIds = concepts.stream().map(SnomedBrowserConcept::getConceptId).collect(Collectors.toSet());
 		
 		// Load relevant members from OWL Axiom Reference Set

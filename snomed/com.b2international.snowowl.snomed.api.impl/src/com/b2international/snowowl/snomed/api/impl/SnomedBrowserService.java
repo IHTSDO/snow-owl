@@ -233,7 +233,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return result;
 	}
 	
-	private ConversionService getAxiomConversionService(final String branchPath, IEventBus eventBus) {
+	public static ConversionService getAxiomConversionService(final String branchPath, IEventBus eventBus) {
 		final SnomedReferenceSetMembers mrcmMembers = SnomedRequests.prepareSearchMember()
 				.all()
 				.filterByRefSet(Sets.newHashSet(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL))

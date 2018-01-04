@@ -27,11 +27,15 @@ class TraceabilityChange {
 	private final String componentType;
 	private final String componentId;
 	private final ChangeType type;
-	
-	public TraceabilityChange(final EClass eClass, final String componentId, final ChangeType type) {
-		this.componentType = eClass.getName();
+
+	public TraceabilityChange(final String componentType, final String componentId, final ChangeType type) {
+		this.componentType = componentType;
 		this.componentId = componentId;
 		this.type = type;
+	}
+
+	public TraceabilityChange(final EClass eClass, final String componentId, final ChangeType type) {
+		this(eClass.getName(), componentId, type);
 	}
 
 	public String getComponentType() {

@@ -18,6 +18,7 @@ package com.b2international.snowowl.snomed.api.impl.traceability;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +32,9 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.snomed.otf.owltoolkit.conversion.ConversionService;
 
+import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.index.revision.RevisionIndex;
 import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
@@ -60,11 +63,14 @@ import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.Relationship;
+import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
+import com.b2international.snowowl.snomed.api.impl.SnomedBrowserAxiomExpander;
+import com.b2international.snowowl.snomed.api.impl.SnomedBrowserService;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
@@ -76,12 +82,15 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedDescriptionLookupService;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedAnnotationRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
@@ -112,6 +121,8 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 			Concepts.REFSET_SAME_AS_ASSOCIATION,
 			Concepts.REFSET_SIMILAR_TO_ASSOCIATION,
 			Concepts.REFSET_WAS_A_ASSOCIATION);
+	
+	private static final String OWL_AXIOM = "OwlAxiom";
 
 	private static final ObjectWriter WRITER;
 
@@ -168,6 +179,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 			final Set<Long> detachedConceptStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.CONCEPT)));
 			final Set<Long> detachedDescriptionStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.DESCRIPTION)));
 			final Set<Long> detachedRelationshipStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.RELATIONSHIP)));
+			final Set<Long> detachedAnnotationMemberStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER)));
 			
 			index.read(branchPath.getPath(), new RevisionIndexRead<Void>() {
 				@Override
@@ -183,6 +195,13 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					
 					for (SnomedRelationshipIndexEntry detachedRelationship : searcher.get(SnomedRelationshipIndexEntry.class, detachedRelationshipStorageKeys)) {
 						entry.registerChange(detachedRelationship.getSourceId(), new TraceabilityChange(SnomedPackage.Literals.RELATIONSHIP, detachedRelationship.getId(), ChangeType.DELETE));
+					}
+					
+					for (SnomedRefSetMemberIndexEntry detachedAnnotationMember : searcher.get(SnomedRefSetMemberIndexEntry.class, detachedAnnotationMemberStorageKeys)) {					
+						if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(detachedAnnotationMember.getReferenceSetId())) {
+							entry.registerChange(detachedAnnotationMember.getReferencedComponentId(), 
+									new TraceabilityChange(OWL_AXIOM, detachedAnnotationMember.getId(), ChangeType.DELETE));
+						}
 					}
 					
 					return null;
@@ -209,9 +228,14 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		} else if (SnomedPackage.Literals.RELATIONSHIP.equals(eClass)) {
 			final Relationship newRelationship = (Relationship) newComponent;
 			entry.registerChange(newRelationship.getSource().getId(), new TraceabilityChange(eClass, newRelationship.getId(), ChangeType.CREATE));
+		} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
+			final SnomedAnnotationRefSetMember member = (SnomedAnnotationRefSetMember) newComponent;
+			if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(member.getRefSetIdentifierId())) {
+				entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.CREATE));
+			}
 		}
 		
-		// Reference set members are logged through their container core component change
+		// Other reference set members are logged through their container core component change
 	}
 	
 	private void processUpdate(CDOObject dirtyComponent) {
@@ -249,6 +273,11 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 						
 				entry.registerChange(conceptId, new TraceabilityChange(referencedComponent.eClass(), referencedComponent.getId(), ChangeType.UPDATE));
 			}
+		} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
+			final SnomedAnnotationRefSetMember member = (SnomedAnnotationRefSetMember) dirtyComponent;
+			if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(member.getRefSetIdentifierId())) {
+				entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.UPDATE));
+			}
 		}
 	}
 
@@ -284,9 +313,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 						.execute(bus)
 						.getSync();
 				
-				final Set<String> hasChildrenStated = collectNonLeafs(conceptIds, branch, bus, Concepts.STATED_RELATIONSHIP);
-				final Set<String> hasChildrenInferred = collectNonLeafs(conceptIds, branch, bus, Concepts.INFERRED_RELATIONSHIP);
-				
+				final Set<SnomedBrowserConcept> convertedConcepts = new HashSet<>();
 				for (SnomedConcept concept : concepts) {
 					SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
 					
@@ -297,15 +324,18 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					convertedConcept.setEffectiveTime(concept.getEffectiveTime());
 					convertedConcept.setModuleId(concept.getModuleId());
 					convertedConcept.setRelationships(convertRelationships(concept.getRelationships()));
-					convertedConcept.setIsLeafStated(!hasChildrenStated.contains(concept.getId()));
-					convertedConcept.setIsLeafInferred(!hasChildrenInferred.contains(concept.getId()));
 					convertedConcept.setFsn(concept.getId());
 					convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
 					convertedConcept.setAssociationTargets(concept.getAssociationTargets());
+					convertedConcepts.add(convertedConcept);
 						
 					// PT and SYN labels are not populated
 					entry.setConcept(convertedConcept.getId(), convertedConcept);
 				}
+				
+				// Lookup and expand axioms
+				ConversionService axiomConversionService = SnomedBrowserService.getAxiomConversionService(branch, bus);
+				new SnomedBrowserAxiomExpander().expandAxioms(convertedConcepts, axiomConversionService, getLocales(), branch, bus);
 			}
 		
 			LOGGER.info(WRITER.writeValueAsString(entry));
@@ -314,6 +344,10 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		} finally {
 			traceabilityTimer.stop();
 		}
+	}
+	
+	private List<ExtendedLocale> getLocales() {
+		return ApplicationContext.getInstance().getService(LanguageSetting.class).getLanguagePreference();
 	}
 
 	private Set<String> collectNonLeafs(final ImmutableSet<String> conceptIds, final String branch, final IEventBus bus, String characteristicTypeId) {
