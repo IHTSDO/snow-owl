@@ -1230,7 +1230,9 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 					if (refSet instanceof SnomedStructuralRefSet) {
 						EcoreUtil.remove(member);
 					} else if (refSet instanceof SnomedRegularRefSet) {
-						((SnomedRegularRefSet) refSet).getMembers().remove(index);
+						EList<SnomedRefSetMember> members = ((SnomedRegularRefSet) refSet).getMembers();
+						int latestIndex = members.indexOf(member);
+						members.remove(latestIndex);
 					} else {
 						throw new IllegalStateException("Don't know how to remove member from reference set class '" + refSet.eClass().getName() + "'.");
 					}
