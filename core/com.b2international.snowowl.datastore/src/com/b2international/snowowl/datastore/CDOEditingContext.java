@@ -157,7 +157,6 @@ public abstract class CDOEditingContext implements AutoCloseable {
 			
 			containerVersion = visibleContainerRevision.getVersion();
 			
-			// XXX: This method is not reliable if another member of the same refset has been removed within the same transaction.
 			final CDOQuery query = transaction.createQuery("sql", sqlGetIndexFormatted);
 			query.setParameter(CDOQueryUtils.CDO_OBJECT_QUERY, false);
 			query.setParameter("cdoId", cdoId);
