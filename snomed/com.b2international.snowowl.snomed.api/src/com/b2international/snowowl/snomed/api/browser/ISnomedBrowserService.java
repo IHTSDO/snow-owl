@@ -17,14 +17,13 @@ package com.b2international.snowowl.snomed.api.browser;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.domain.IStorageRef;
-import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.domain.exceptions.CodeSystemNotFoundException;
 import com.b2international.snowowl.core.domain.exceptions.CodeSystemVersionNotFoundException;
-import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
@@ -42,14 +41,28 @@ public interface ISnomedBrowserService {
 	/**
 	 * Retrieves information strongly connected to a concept in a single request.
 	 * 
-	 * @param conceptRef the component reference pointing to the concept to retrieve (may not be {@code null})
+	 * @param branchPath
+	 * @param conceptId
 	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN and preferred synonym, in decreasing order of preference
 	 * @return the aggregated content for the requested concept
 	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
 	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
-	ISnomedBrowserConcept getConceptDetails(final IComponentRef conceptRef, List<ExtendedLocale> extendedLocales);
+	ISnomedBrowserConcept getConceptDetails(final String branchPath, final String conceptId, List<ExtendedLocale> extendedLocales);
+
+	/**
+	 * Retrieves information strongly connected to a concept in bulk.
+	 * 
+	 * @param branchPath
+	 * @param conceptIds
+	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN and preferred synonym, in decreasing order of preference
+	 * @return the aggregated content for the requested concept
+	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
+	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
+	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
+	 */
+	Set<ISnomedBrowserConcept> getConceptDetailsInBulk(final String branchPath, final Set<String> conceptIds, List<ExtendedLocale> extendedLocales);
 
 	/**
 	 * Retrieves a list of parent concepts for a single identifier.

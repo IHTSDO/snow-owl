@@ -21,6 +21,7 @@ import java.net.URISyntaxException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -49,7 +50,6 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConst
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
-import com.b2international.snowowl.snomed.api.impl.SnomedServiceHelper;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
@@ -106,7 +106,32 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final String acceptLanguage) {
 
 		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
-		return browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, conceptId), extendedLocales);
+		return browserService.getConceptDetails(branchPath, conceptId, extendedLocales);
+	}
+
+	@ApiOperation(
+			value="Retrieve concept properties in bulk",
+			notes="Retrieves many concept and related information on a branch.")
+	@ApiResponses({
+		@ApiResponse(code = 200, message = "OK", response = Void.class),
+		@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
+	})
+	@RequestMapping(value="/{path:**}/concepts/bulk-load", method=RequestMethod.POST)
+	public @ResponseBody Set<ISnomedBrowserConcept> bulkGetConceptDetails(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="A set of concept identifiers")
+			@RequestParam(value="conceptIds", required=false) 
+			final Set<String> conceptIds,
+
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage) {
+
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
+		return browserService.getConceptDetailsInBulk(branchPath, conceptIds, extendedLocales);
 	}
 
 	@ApiOperation(
@@ -215,7 +240,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		
 		
 		browserService.update(branchPath, ImmutableList.of(concept), userId, extendedLocales);
-		return browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, concept.getConceptId()), extendedLocales);
+		return browserService.getConceptDetails(branchPath, concept.getConceptId(), extendedLocales);
 	}
 
 	@ApiOperation(

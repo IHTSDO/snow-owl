@@ -41,7 +41,6 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
-import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Notifications;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
@@ -673,8 +672,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> locales) {
-		final IComponentRef componentRef = SnomedServiceHelper.createComponentRef(branchPath, conceptId);
-		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) getBrowserService().getConceptDetails(componentRef, locales);
+		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) getBrowserService().getConceptDetails(branchPath, conceptId, locales);
 
 		final List<ISnomedBrowserRelationship> relationships = Lists.newArrayList(conceptDetails.getRelationships());
 		final IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, 0, 10000);

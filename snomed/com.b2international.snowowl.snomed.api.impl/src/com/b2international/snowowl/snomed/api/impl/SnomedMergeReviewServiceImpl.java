@@ -682,10 +682,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		
 		@Override
 		protected ISnomedBrowserMergeReviewDetail onSuccess() throws IOException {
-			final ISnomedBrowserConcept sourceConcept = getBrowserService().getConceptDetails(
-					SnomedServiceHelper.createComponentRef(parameters.getSourcePath(), conceptId), parameters.getExtendedLocales());
-			final ISnomedBrowserConcept targetConcept = getBrowserService().getConceptDetails(
-					SnomedServiceHelper.createComponentRef(parameters.getTargetPath(), conceptId), parameters.getExtendedLocales());
+			final ISnomedBrowserConcept sourceConcept = getBrowserService().getConceptDetails(parameters.getSourcePath(), conceptId, parameters.getExtendedLocales());
+			final ISnomedBrowserConcept targetConcept = getBrowserService().getConceptDetails(parameters.getTargetPath(), conceptId, parameters.getExtendedLocales());
 
 			final ISnomedBrowserConcept autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, parameters.getExtendedLocales());
 			final ISnomedBrowserConcept manuallyMergedConcept = getManualConceptMergeService().exists(parameters.getTargetPath(),
