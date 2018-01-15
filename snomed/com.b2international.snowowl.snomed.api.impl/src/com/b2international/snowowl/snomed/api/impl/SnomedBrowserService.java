@@ -204,11 +204,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		ConversionService conversionService = getAxiomConversionService(branchPath, bus);
 
-		Set<ISnomedBrowserConcept> results = new HashSet<>();
+		Set<SnomedBrowserConcept> results = new HashSet<>();
 		for (SnomedConcept concept : concepts.getItems()) {
 			final SnomedBrowserConcept result = convertConcept(concept);
-			
-			axiomExpander.expandAxioms(Collections.singleton(result), conversionService, extendedLocales, branchPath, bus());
 			
 			// inactivation fields
 			result.setInactivationIndicator(concept.getInactivationIndicator());
@@ -234,8 +232,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			result.setRelationships(convertRelationships(concept.getRelationships()));
 			results.add(result);
 		}
+		axiomExpander.expandAxioms(results, conversionService, extendedLocales, branchPath, bus());
 		
-		return results;
+		return results.stream().collect(Collectors.toSet());
 	}
 	
 	public static ConversionService getAxiomConversionService(final String branchPath, IEventBus eventBus) {
