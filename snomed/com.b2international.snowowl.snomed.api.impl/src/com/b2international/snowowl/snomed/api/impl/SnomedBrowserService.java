@@ -212,8 +212,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			result.setInactivationIndicator(concept.getInactivationIndicator());
 			result.setAssociationTargets(concept.getAssociationTargets());
 			
-			populateLeafFields(branchPath, concept.getId(), result);
-			
 			final SnomedDescription fullySpecifiedName = concept.getFsn();
 			if (fullySpecifiedName != null) {
 				result.setFsn(fullySpecifiedName.getTerm());
