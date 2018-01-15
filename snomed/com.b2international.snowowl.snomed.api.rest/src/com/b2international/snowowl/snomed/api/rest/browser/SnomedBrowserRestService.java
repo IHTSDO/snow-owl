@@ -53,6 +53,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescri
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptBulkLoadRequest;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
@@ -111,7 +112,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 	@ApiOperation(
 			value="Retrieve concept properties in bulk",
-			notes="Retrieves many concept and related information on a branch.")
+			notes="Retrieves many concept and related information on a branch. Maximum 1000 concepts at a time.")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = Void.class),
 		@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
@@ -122,16 +123,18 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@PathVariable(value="path")
 			final String branchPath,
 
-			@ApiParam(value="A set of concept identifiers")
-			@RequestParam(value="conceptIds", required=false) 
-			final Set<String> conceptIds,
+			@RequestBody 
+			final SnomedConceptBulkLoadRequest body,
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
 		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
-		return browserService.getConceptDetailsInBulk(branchPath, conceptIds, extendedLocales);
+		if (body.getConceptIds().size() > 1000) {
+			throw new BadRequestException("A maximum of 1000 concepts can be loaded at once.");
+		}
+		return browserService.getConceptDetailsInBulk(branchPath, body.getConceptIds(), extendedLocales);
 	}
 
 	@ApiOperation(
