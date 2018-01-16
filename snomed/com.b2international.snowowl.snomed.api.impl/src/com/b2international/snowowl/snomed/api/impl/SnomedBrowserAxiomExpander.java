@@ -105,6 +105,7 @@ public class SnomedBrowserAxiomExpander {
 
 			// Load all required concepts including FSNs in one hit
 			SnomedConcepts conceptsFromStore = SnomedRequests.prepareSearchConcept()
+				.all()
 				.setLocales(locales)
 				.setExpand("fsn()")
 				.filterByIds(conceptIdsToFetch)

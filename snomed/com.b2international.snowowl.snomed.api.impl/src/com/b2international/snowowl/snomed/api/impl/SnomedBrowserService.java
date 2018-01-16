@@ -195,6 +195,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	@Override
 	public Set<ISnomedBrowserConcept> getConceptDetailsInBulk(final String branchPath, final Set<String> conceptIds, final List<ExtendedLocale> extendedLocales) {
 		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
+			.all()
 			.filterByIds(conceptIds)
 			.setLocales(extendedLocales)
 			.setExpand("fsn(),pt(),inactivationProperties(),descriptions(limit:"+Integer.MAX_VALUE+",expand(inactivationProperties())),relationships(limit:"+Integer.MAX_VALUE+",expand(type(expand(fsn())),destination(expand(fsn()))))")
