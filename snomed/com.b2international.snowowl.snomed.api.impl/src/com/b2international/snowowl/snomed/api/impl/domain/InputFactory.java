@@ -17,8 +17,10 @@ import com.google.common.collect.Sets;
 public class InputFactory {
 
 	private final List<ComponentInputCreator<?, ?, ?>> creators;
+	private final SnomedBrowserAxiomUpdateHelper axiomUpdateHelper;
 
 	public InputFactory(final Branch branch, SnomedBrowserAxiomUpdateHelper axiomUpdateHelper) {
+		this.axiomUpdateHelper = axiomUpdateHelper;
 		creators = ImmutableList.<ComponentInputCreator<?, ?, ?>>of(
 				new ConceptInputCreator(branch, axiomUpdateHelper), 
 				new DescriptionInputCreator(branch), 
@@ -93,5 +95,9 @@ public class InputFactory {
 			}
 		}
 		throw new RuntimeException("No ComponentInputCreator found for update type " + updateType);
+	}
+	
+	public SnomedBrowserAxiomUpdateHelper getAxiomUpdateHelper() {
+		return axiomUpdateHelper;
 	}
 }

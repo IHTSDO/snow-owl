@@ -304,15 +304,31 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		LOGGER.info("Committed bulk concept changes on {}", branch);
 	}
 	
-	private RepositoryCommitRequestBuilder createBulkCommit(String branch, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales, final String commitComment) {
+	private RepositoryCommitRequestBuilder createBulkCommit(String branchPath, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales, final String commitComment) {
 		final Stopwatch watch = Stopwatch.createStarted();
 		
 		final BulkRequestBuilder<TransactionContext> bulkRequest = BulkRequest.create();
 		
+		// Load existing versions in bulk
+		Set<String> conceptIds = updatedConcepts.stream().map(ISnomedBrowserConcept::getConceptId).collect(Collectors.toSet());
+		Set<ISnomedBrowserConcept> existingConcepts = getConceptDetailsInBulk(branchPath, conceptIds, locales);
+		Map<String, ISnomedBrowserConcept> existingConceptsMap = existingConcepts.stream().collect(Collectors.toMap(ISnomedBrowserConcept::getConceptId, concept -> concept));
+		
+		// Create services once and reuse
+		SnomedBrowserAxiomUpdateHelper axiomUpdateHelper = new SnomedBrowserAxiomUpdateHelper(getAxiomConversionService(branchPath, bus));		
+		InputFactory inputFactory = new InputFactory(getBranch(branchPath), axiomUpdateHelper);
+
+		// For each concept add component updates to the bulk request
 		for (ISnomedBrowserConcept concept : updatedConcepts) {
-			update(branch, concept, userId, locales, bulkRequest);
+			ISnomedBrowserConcept existingConcept = existingConceptsMap.get(concept.getConceptId());
+			if (existingConcept == null) {
+				// If one existing concept is not found fail the whole commit 
+				throw new NotFoundException("Snomed Concept", concept.getConceptId());
+			}
+			update(branchPath, concept, existingConcept, userId, locales, bulkRequest, inputFactory);
 		}
 		
+		// Commit everything at once
 		final RepositoryCommitRequestBuilder commit = SnomedRequests
 			.prepareCommit()
 			.setUserId(userId)
@@ -370,15 +386,11 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return bulkChangeRuns.getIfPresent(bulkChangeId);
 	}
 	
-	private ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConcept newVersionConcept, String userId, List<ExtendedLocale> locales, BulkRequestBuilder<TransactionContext> bulkRequest) {
-		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
-		String conceptId = newVersionConcept.getConceptId();
-
-		final ISnomedBrowserConcept existingVersionConcept = getConceptDetails(branchPath, conceptId, locales);
-
-		SnomedBrowserAxiomUpdateHelper axiomUpdateHelper = new SnomedBrowserAxiomUpdateHelper(getAxiomConversionService(branchPath, bus));
+	private void update(String branchPath, ISnomedBrowserConcept newVersionConcept, ISnomedBrowserConcept existingVersionConcept, String userId, List<ExtendedLocale> locales, 
+			BulkRequestBuilder<TransactionContext> bulkRequest, InputFactory inputFactory) {
 		
-		InputFactory inputFactory = new InputFactory(getBranch(branchPath), axiomUpdateHelper);
+		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
+
 		// Concept update
 		final SnomedConceptUpdateRequest conceptUpdate = inputFactory.createComponentUpdate(existingVersionConcept, newVersionConcept, SnomedConceptUpdateRequest.class);
 		
@@ -397,6 +409,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		Map<String, SnomedRelationshipUpdateRequest> relationshipUpdates = inputFactory.createComponentUpdates(existingVersionRelationships, newVersionRelationships, SnomedRelationshipUpdateRequest.class);
 		List<SnomedRelationshipCreateRequest> relationshipInputs = inputFactory.createComponentInputs(branchPath, newVersionRelationships, SnomedRelationshipCreateRequest.class);
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
+		
+		SnomedBrowserAxiomUpdateHelper axiomUpdateHelper = inputFactory.getAxiomUpdateHelper();
 		
 		// Additional Axiom persistence requests
 		List<Request<TransactionContext, ?>> additionalAxiomRequests = axiomUpdateHelper.getAxiomPersistenceRequests(
@@ -446,9 +460,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		if (conceptUpdate != null && conceptInactivation) {
 			bulkRequest.add(conceptUpdate);
 		}
-
-		// TODO - Add MRCM checks here
-		return getConceptDetails(branchPath, conceptId, locales);
 	}
 
 	private String getCommitComment(String userId, ISnomedBrowserConcept snomedConceptInput, String action) {
