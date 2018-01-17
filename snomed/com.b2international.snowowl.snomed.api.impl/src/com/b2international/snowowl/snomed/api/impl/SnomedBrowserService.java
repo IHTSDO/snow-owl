@@ -194,6 +194,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 	@Override
 	public Set<ISnomedBrowserConcept> getConceptDetailsInBulk(final String branchPath, final Set<String> conceptIds, final List<ExtendedLocale> extendedLocales) {
+		if (conceptIds.isEmpty()) {
+			return Collections.emptySet();
+		}
+		
 		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
 			.all()
 			.filterByIds(conceptIds)
