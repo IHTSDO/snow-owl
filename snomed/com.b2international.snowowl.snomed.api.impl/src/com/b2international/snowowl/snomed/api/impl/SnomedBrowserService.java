@@ -118,6 +118,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
@@ -312,24 +313,27 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final Stopwatch watch = Stopwatch.createStarted();
 		
 		final BulkRequestBuilder<TransactionContext> bulkRequest = BulkRequest.create();
-		
-		// Load existing versions in bulk
-		Set<String> conceptIds = updatedConcepts.stream().map(ISnomedBrowserConcept::getConceptId).collect(Collectors.toSet());
-		Set<ISnomedBrowserConcept> existingConcepts = getConceptDetailsInBulk(branchPath, conceptIds, locales);
-		Map<String, ISnomedBrowserConcept> existingConceptsMap = existingConcepts.stream().collect(Collectors.toMap(ISnomedBrowserConcept::getConceptId, concept -> concept));
-		
+
 		// Create services once and reuse
 		SnomedBrowserAxiomUpdateHelper axiomUpdateHelper = new SnomedBrowserAxiomUpdateHelper(getAxiomConversionService(branchPath, bus));		
 		InputFactory inputFactory = new InputFactory(getBranch(branchPath), axiomUpdateHelper);
 
-		// For each concept add component updates to the bulk request
-		for (ISnomedBrowserConcept concept : updatedConcepts) {
-			ISnomedBrowserConcept existingConcept = existingConceptsMap.get(concept.getConceptId());
-			if (existingConcept == null) {
-				// If one existing concept is not found fail the whole commit 
-				throw new NotFoundException("Snomed Concept", concept.getConceptId());
+		// Process concepts in batches of 1000
+		for (List<? extends ISnomedBrowserConcept> updatedConceptsBatch : Lists.partition(updatedConcepts, 1000)) {
+			// Load existing versions in bulk
+			Set<String> conceptIds = updatedConceptsBatch.stream().map(ISnomedBrowserConcept::getConceptId).collect(Collectors.toSet());
+			Set<ISnomedBrowserConcept> existingConcepts = getConceptDetailsInBulk(branchPath, conceptIds, locales);
+			Map<String, ISnomedBrowserConcept> existingConceptsMap = existingConcepts.stream().collect(Collectors.toMap(ISnomedBrowserConcept::getConceptId, concept -> concept));
+			
+			// For each concept add component updates to the bulk request
+			for (ISnomedBrowserConcept concept : updatedConceptsBatch) {
+				ISnomedBrowserConcept existingConcept = existingConceptsMap.get(concept.getConceptId());
+				if (existingConcept == null) {
+					// If one existing concept is not found fail the whole commit 
+					throw new NotFoundException("Snomed Concept", concept.getConceptId());
+				}
+				update(branchPath, concept, existingConcept, userId, locales, bulkRequest, inputFactory);
 			}
-			update(branchPath, concept, existingConcept, userId, locales, bulkRequest, inputFactory);
 		}
 		
 		// Commit everything at once
