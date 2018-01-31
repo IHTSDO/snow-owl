@@ -83,27 +83,11 @@ public final class SnomedReferenceSetMember extends SnomedComponent {
 	}
 
 	/**
-	 * Extra getter to make REST API compatible with another terminology server.
-	 * @return
-	 */
-	public String getReferencedComponentId() {
-		return referencedComponent.getId();
-	}
-
-	/**
 	 * Returns the identifier of the SNOMED CT Reference Set this SNOMED CT Reference Set Member belongs to.
 	 * 
 	 * @return
 	 */
 	public String getReferenceSetId() {
-		return referenceSetId;
-	}
-
-	/**
-	 * Extra getter to make REST API compatible with another terminology server.
-	 * @return
-	 */
-	public String getRefsetId() {
 		return referenceSetId;
 	}
 
@@ -114,14 +98,6 @@ public final class SnomedReferenceSetMember extends SnomedComponent {
 	 */
 	@JsonAnyGetter
 	public Map<String, Object> getProperties() {
-		return properties;
-	}
-	
-	/**
-	 * Extra getter to make REST API compatible with another terminology server.
-	 * @return
-	 */
-	public Map<String, Object> getAdditionalFields() {
 		return properties;
 	}
 	
