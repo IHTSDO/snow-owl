@@ -299,45 +299,6 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		final Timer traceabilityTimer = MetricsThreadLocal.get().timer("traceability");
 		try {
 			traceabilityTimer.start();
-			if (commitChangeSet != null) {
-				final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
-				final String branch = commitChangeSet.getView().getBranch().getPathName();
-				final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
-			
-				final SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
-					.filterByIds(conceptIds)
-						.setOffset(0)
-						.setLimit(entry.getChanges().size())
-						.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
-						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-						.execute(bus)
-						.getSync();
-				
-				final Set<SnomedBrowserConcept> convertedConcepts = new HashSet<>();
-				for (SnomedConcept concept : concepts) {
-					SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
-					
-					convertedConcept.setActive(concept.isActive());
-					convertedConcept.setConceptId(concept.getId());
-					convertedConcept.setDefinitionStatus(concept.getDefinitionStatus());
-					convertedConcept.setDescriptions(convertDescriptions(concept.getDescriptions()));
-					convertedConcept.setEffectiveTime(concept.getEffectiveTime());
-					convertedConcept.setModuleId(concept.getModuleId());
-					convertedConcept.setRelationships(convertRelationships(concept.getRelationships()));
-					convertedConcept.setFsn(concept.getId());
-					convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
-					convertedConcept.setAssociationTargets(concept.getAssociationTargets());
-					convertedConcepts.add(convertedConcept);
-						
-					// PT and SYN labels are not populated
-					entry.setConcept(convertedConcept.getId(), convertedConcept);
-				}
-				
-				// Lookup and expand axioms
-				ConversionService axiomConversionService = SnomedBrowserService.getAxiomConversionService(branch, bus);
-				new SnomedBrowserAxiomExpander().expandAxioms(convertedConcepts, axiomConversionService, getLocales(), branch, bus);
-			}
-		
 			LOGGER.info(WRITER.writeValueAsString(entry));
 		} catch (IOException e) {
 			throw SnowowlRuntimeException.wrap(e);
