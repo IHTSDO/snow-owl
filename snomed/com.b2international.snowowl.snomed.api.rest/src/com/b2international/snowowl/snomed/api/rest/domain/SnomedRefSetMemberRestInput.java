@@ -21,28 +21,26 @@ import java.util.Map;
 
 import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 
 /**
  * @since 4.5
  */
 public class SnomedRefSetMemberRestInput {
 
+	public static final String ADDITIONAL_FIELDS = "additionalFields";
+	
 	private Boolean active = Boolean.TRUE;
 	private String moduleId;
 	private String referencedComponentId;
-	private String referenceSetId;
-	private Map<String, Object> properties = newHashMap();
+	private String refsetId;
+	private Map<String, Object> additionalFields = newHashMap();
 
-	@JsonAnyGetter
-	public Map<String, Object> getProperties() {
-		return properties;
+	public Map<String, Object> getAdditionalFields() {
+		return additionalFields;
 	}
 	
-	@JsonAnySetter
-	public void setProperties(String key, Object value) {
-		this.properties.put(key, value);
+	public void setAdditionalFields(Map<String, Object> additionalFields) {
+		this.additionalFields = additionalFields;
 	}
 	
 	public void setActive(Boolean active) {
@@ -58,7 +56,7 @@ public class SnomedRefSetMemberRestInput {
 	}
 	
 	public void setReferenceSetId(String referenceSetId) {
-		this.referenceSetId = referenceSetId;
+		this.refsetId = referenceSetId;
 	}
 	
 	public Boolean isActive() {
@@ -74,7 +72,7 @@ public class SnomedRefSetMemberRestInput {
 	}
 	
 	public String getReferenceSetId() {
-		return referenceSetId;
+		return refsetId;
 	}
 
 	public SnomedRefSetMemberCreateRequestBuilder toRequestBuilder() {
@@ -83,7 +81,7 @@ public class SnomedRefSetMemberRestInput {
 		req.setReferenceSetId(getReferenceSetId());
 		req.setReferencedComponentId(getReferencedComponentId());
 		req.setModuleId(getModuleId());
-		req.setProperties(getProperties());
+		req.setProperties(getAdditionalFields());
 		return req;
 	}
 	

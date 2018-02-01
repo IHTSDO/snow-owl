@@ -122,3 +122,4 @@ Bundle-ClassPath: .,
  WEB-INF/lib/jackson-module-jaxb-annotations-2.6.6.jar,
  WEB-INF/lib/jackson-module-jsonSchema-2.6.6.jar,
  WEB-INF/lib/jackson-module-scala_2.10-2.6.6.jar
+Export-Package: com.b2international.snowowl.snomed.api.rest.domain

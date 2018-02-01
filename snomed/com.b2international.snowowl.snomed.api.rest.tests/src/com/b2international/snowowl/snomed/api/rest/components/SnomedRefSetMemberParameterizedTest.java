@@ -56,6 +56,7 @@ import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
@@ -105,7 +106,9 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 		String componentId = createReferencedComponent(branchPath, refSetType);
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(refSetId, componentId)
-				.putAll(getValidProperties())
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getValidProperties())
+						.build())
 				.put("commitComment", "Created new reference set member with non-existent refSetId")
 				.build();
 
@@ -118,7 +121,9 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 		String componentId = reserveComponentId(null, getFirstAllowedReferencedComponentCategory(refSetType));
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(refSetId, componentId)
-				.putAll(getValidProperties())
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getValidProperties())
+						.build())
 				.put("commitComment", "Created new reference set member with non-existent referencedComponentId")
 				.build();
 
@@ -135,7 +140,9 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 				String componentId = createNewComponent(branchPath, disallowedComponentType);
 
 				Map<?, ?> requestBody = createRefSetMemberRequestBody(refSetId, componentId)
-						.putAll(getValidProperties())
+						.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+								.putAll(getValidProperties())
+								.build())
 						.put("commitComment", "Created new reference set member with mismatched referencedComponentId")
 						.build();
 
@@ -174,7 +181,7 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 
 		ValidatableResponse response = getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200);
 		for (Entry<String, Object> validProperty : getValidProperties().entrySet()) {
-			response.body(validProperty.getKey(), equalTo(validProperty.getValue()));
+			response.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + validProperty.getKey(), equalTo(validProperty.getValue()));
 		}
 	}
 
@@ -287,7 +294,9 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 		String componentId = createNewComponent(branchPath, getFirstAllowedReferencedComponentType(refSetType));
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(refSetId, componentId)
-				.putAll(getValidProperties())
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getValidProperties())
+						.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
