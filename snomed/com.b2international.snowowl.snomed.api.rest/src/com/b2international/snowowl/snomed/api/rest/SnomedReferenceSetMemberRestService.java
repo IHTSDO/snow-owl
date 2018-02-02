@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -308,10 +310,18 @@ public class SnomedReferenceSetMemberRestService extends AbstractSnomedRestServi
 		
 		final String userId = principal.getName();
 		final SnomedMemberRestUpdate update = body.getChange();
+		
+		// Move additional fields up to first level
+		Map<String, Object> memberProperties = update.getSource();
+		if (memberProperties.containsKey(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS)) {
+			memberProperties.putAll((Map<? extends String, ? extends Object>) memberProperties.get(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS));
+			memberProperties.remove(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS);			
+		}
+
 		SnomedRequests
 			.prepareUpdateMember()
 			.setMemberId(memberId)
-			.setSource(update.getSource())
+			.setSource(memberProperties)
 			.force(force)
 			.build(repositoryId, branchPath, userId, body.getCommitComment())
 			.execute(bus)

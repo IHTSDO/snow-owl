@@ -139,15 +139,18 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 
 		@SuppressWarnings("unchecked")
 		Map<String, Object> member = getComponent(branchPath, SnomedComponentType.MEMBER, memberId)
-		.statusCode(200)
-		.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, equalTo("pi"))
-		.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, equalTo(Concepts.STATED_RELATIONSHIP))
-		.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_VALUE, equalTo("3.1415927"))
-		.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_OPERATOR_ID, equalTo(Concepts.REFSET_ATTRIBUTE))
-		.extract().as(Map.class);
+				.statusCode(200)
+				.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, equalTo("pi"))
+				.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, equalTo(Concepts.STATED_RELATIONSHIP))
+				.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_VALUE, equalTo("3.1415927"))
+				.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_OPERATOR_ID, equalTo(Concepts.REFSET_ATTRIBUTE))
+				.extract().as(Map.class);
 
-		member.put(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, "e");
-		member.put(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_VALUE, "2.7182818");
+		@SuppressWarnings("unchecked")
+		Map<Object, Object> additionalFields = (Map<Object, Object>) member.get(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS);
+		additionalFields.put(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, "e");
+		additionalFields.put(SnomedRf2Headers.FIELD_VALUE, "2.7182818");
+		member.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, additionalFields);// Required for instance proxy?
 		member.put("commitComment", "Updated existing concrete domain reference set member");
 
 		updateRefSetComponent(branchPath, SnomedComponentType.MEMBER, memberId, member, false).statusCode(204);
@@ -166,13 +169,15 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		createNewRefSet(branchPath, SnomedRefSetType.MRCM_DOMAIN, newIdentifierConceptId);
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "parentDomain")
-				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "proximalPrimitiveRefinement")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
-				.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "editorialGuideReference")
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "parentDomain")
+					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "proximalPrimitiveRefinement")
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
+					.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "editorialGuideReference")
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
@@ -197,10 +202,12 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		createNewRefSet(branchPath, SnomedRefSetType.MRCM_DOMAIN, newIdentifierConceptId);
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
@@ -381,7 +388,9 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 				.put(SnomedRf2Headers.FIELD_MODULE_ID, Concepts.MODULE_SCT_CORE)
 				.put("referenceSetId", queryRefSetId)
 				.put(SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID, simpleRefSetId)
-				.put(SnomedRf2Headers.FIELD_QUERY, "<" + Concepts.REFSET_ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_QUERY, "<" + Concepts.REFSET_ROOT_CONCEPT)
+					.build())
 				.put("commitComment", "Created new query reference set member")
 				.build();
 
@@ -418,7 +427,9 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 				.put(SnomedRf2Headers.FIELD_MODULE_ID, Concepts.MODULE_SCT_CORE)
 				.put("referenceSetId", queryRefSetId)
 				.put(SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID, simpleRefSetId)
-				.put(SnomedRf2Headers.FIELD_QUERY, "<" + parentId)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_QUERY, "<" + parentId)
+					.build())
 				.put("commitComment", "Created new query reference set member")
 				.build();
 

@@ -193,7 +193,9 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 		String memberId = createRefSetMember();		
 
 		Map<?, ?> updateRequest = ImmutableMap.builder()
-				.putAll(getUpdateProperties())
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getUpdateProperties())
+						.build())
 				.put("commitComment", "Updated reference set member")
 				.build();
 
@@ -201,7 +203,7 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 
 		ValidatableResponse response = getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200);
 		for (Entry<String, Object> validProperty : getUpdateProperties().entrySet()) {
-			response.body(validProperty.getKey(), equalTo(validProperty.getValue()));
+			response.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + validProperty.getKey(), equalTo(validProperty.getValue()));
 		}
 	}
 

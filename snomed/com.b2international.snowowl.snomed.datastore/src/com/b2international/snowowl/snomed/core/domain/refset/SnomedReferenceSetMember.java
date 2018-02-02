@@ -28,6 +28,8 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
 
 /**
@@ -54,6 +56,7 @@ import com.google.common.base.Function;
  * 
  * @since 4.5
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class SnomedReferenceSetMember extends SnomedComponent {
 
 	private static final long serialVersionUID = -7471488952871955209L;
@@ -87,7 +90,7 @@ public final class SnomedReferenceSetMember extends SnomedComponent {
 	 * @return
 	 */
 	public String getReferencedComponentId() {
-		return referencedComponent.getId();
+		return referencedComponent != null ? referencedComponent.getId() : null;
 	}
 
 	/**
@@ -112,16 +115,8 @@ public final class SnomedReferenceSetMember extends SnomedComponent {
 	 * 
 	 * @return
 	 */
-	@JsonAnyGetter
+	@JsonProperty("additionalFields")
 	public Map<String, Object> getProperties() {
-		return properties;
-	}
-	
-	/**
-	 * Extra getter to make REST API compatible with another terminology server.
-	 * @return
-	 */
-	public Map<String, Object> getAdditionalFields() {
 		return properties;
 	}
 	
