@@ -131,7 +131,8 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	private static final long BRANCH_READ_TIMEOUT = 5000L;
 	private static final long BRANCH_LOCK_TIMEOUT = 500L;
-
+	
+	public static String CLASSIFIED_ONTOLOGY = "Classified ontology.";
 	
 	private final class PersistChangesRunnable implements Runnable {
 		private final String branchPath;
@@ -302,7 +303,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			
 			return SnomedRequests.prepareCommit()
 					.setUserId(userId)
-					.setCommitComment("Classified ontology.") // Same message in PersistChangesRemoteJob
+					.setCommitComment(CLASSIFIED_ONTOLOGY) // Same message in PersistChangesRemoteJob
 					.setPreparationTime(persistStopwatch.elapsed(TimeUnit.MILLISECONDS))
 					.setParentContextDescription(DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW)
 					.setBody(builder)

@@ -19,7 +19,6 @@ import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
@@ -43,11 +42,6 @@ import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
-import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.core.events.RequestBuilder;
-import com.b2international.snowowl.core.events.bulk.BulkRequest;
-import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
-import com.b2international.snowowl.core.events.bulk.BulkResponse;
 import com.b2international.snowowl.core.events.metrics.MetricsThreadLocal;
 import com.b2international.snowowl.core.events.metrics.Timer;
 import com.b2international.snowowl.core.users.SpecialUserStore;
@@ -57,7 +51,6 @@ import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.b2international.snowowl.datastore.index.DelegatingIndexCommitChangeSet;
 import com.b2international.snowowl.datastore.index.ImmutableIndexCommitChangeSet;
 import com.b2international.snowowl.datastore.index.IndexCommitChangeSet;
-import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
@@ -102,6 +95,8 @@ import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
+
+import static com.b2international.snowowl.snomed.api.impl.SnomedClassificationServiceImpl.CLASSIFIED_ONTOLOGY;
 
 /**
  * Change processor implementation that produces a log entry for committed transactions.
@@ -300,44 +295,49 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		try {
 			traceabilityTimer.start();
 			if (commitChangeSet != null) {
-				final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
 				final String branch = commitChangeSet.getView().getBranch().getPathName();
-				final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
-			
-				final SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
-					.filterByIds(conceptIds)
-						.setOffset(0)
-						.setLimit(entry.getChanges().size())
-						.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
-						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-						.execute(bus)
-						.getSync();
 				
-				final Set<SnomedBrowserConcept> convertedConcepts = new HashSet<>();
-				for (SnomedConcept concept : concepts) {
-					SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
+				//APDS-547 We don't need to audit the object state when saving a classification
+				if (commitChangeSet.getCommitComment().equals(CLASSIFIED_ONTOLOGY)) {
+					LOGGER.info("Lightweight audit of classification save on {}", branch);
+				} else {
+					final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
+					final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
+				
+					final SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
+						.filterByIds(conceptIds)
+							.setOffset(0)
+							.setLimit(entry.getChanges().size())
+							.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
+							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
+							.execute(bus)
+							.getSync();
 					
-					convertedConcept.setActive(concept.isActive());
-					convertedConcept.setConceptId(concept.getId());
-					convertedConcept.setDefinitionStatus(concept.getDefinitionStatus());
-					convertedConcept.setDescriptions(convertDescriptions(concept.getDescriptions()));
-					convertedConcept.setEffectiveTime(concept.getEffectiveTime());
-					convertedConcept.setModuleId(concept.getModuleId());
-					convertedConcept.setRelationships(convertRelationships(concept.getRelationships()));
-					convertedConcept.setFsn(concept.getId());
-					convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
-					convertedConcept.setAssociationTargets(concept.getAssociationTargets());
-					convertedConcepts.add(convertedConcept);
+					final Set<SnomedBrowserConcept> convertedConcepts = new HashSet<>();
+					for (SnomedConcept concept : concepts) {
+						SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
 						
-					// PT and SYN labels are not populated
-					entry.setConcept(convertedConcept.getId(), convertedConcept);
+						convertedConcept.setActive(concept.isActive());
+						convertedConcept.setConceptId(concept.getId());
+						convertedConcept.setDefinitionStatus(concept.getDefinitionStatus());
+						convertedConcept.setDescriptions(convertDescriptions(concept.getDescriptions()));
+						convertedConcept.setEffectiveTime(concept.getEffectiveTime());
+						convertedConcept.setModuleId(concept.getModuleId());
+						convertedConcept.setRelationships(convertRelationships(concept.getRelationships()));
+						convertedConcept.setFsn(concept.getId());
+						convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
+						convertedConcept.setAssociationTargets(concept.getAssociationTargets());
+						convertedConcepts.add(convertedConcept);
+							
+						// PT and SYN labels are not populated
+						entry.setConcept(convertedConcept.getId(), convertedConcept);
+					}
+					
+					// Lookup and expand axioms
+					ConversionService axiomConversionService = SnomedBrowserService.getAxiomConversionService(branch, bus);
+					new SnomedBrowserAxiomExpander().expandAxioms(convertedConcepts, axiomConversionService, getLocales(), branch, bus);
 				}
-				
-				// Lookup and expand axioms
-				ConversionService axiomConversionService = SnomedBrowserService.getAxiomConversionService(branch, bus);
-				new SnomedBrowserAxiomExpander().expandAxioms(convertedConcepts, axiomConversionService, getLocales(), branch, bus);
 			}
-		
 			LOGGER.info(WRITER.writeValueAsString(entry));
 		} catch (IOException e) {
 			throw SnowowlRuntimeException.wrap(e);
@@ -350,40 +350,6 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		return ApplicationContext.getInstance().getService(LanguageSetting.class).getLanguagePreference();
 	}
 
-	private Set<String> collectNonLeafs(final ImmutableSet<String> conceptIds, final String branch, final IEventBus bus, String characteristicTypeId) {
-		final Set<String> hasChildren = newHashSet();
-		final BulkRequestBuilder<BranchContext> hasChildrenBulkRequest = BulkRequest.create();
-		
-		for (String conceptId : conceptIds) {
-			
-			final RequestBuilder<BranchContext, SnomedRelationships> hasChildrenSearchRequest = SnomedRequests.prepareSearchRelationship()
-					.filterByDestination(conceptId)
-					.filterByActive(true)
-					.filterByCharacteristicType(characteristicTypeId)
-					.filterByType(Concepts.IS_A)
-					.setLimit(0);
-			
-			hasChildrenBulkRequest.add(hasChildrenSearchRequest);
-		}
-		
-		final BulkResponse relationshipResponses = RepositoryRequests.prepareBulkRead()
-			.setBody(hasChildrenBulkRequest)
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-			.execute(bus)
-			.getSync();
-
-		final Iterator<SnomedRelationships> responseIterator = relationshipResponses.getResponses(SnomedRelationships.class).iterator();
-		
-		for (String conceptId : conceptIds) {
-			final SnomedRelationships relationships = responseIterator.next();
-			if (relationships.getTotal() > 0) {
-				hasChildren.add(conceptId);
-			}
-		}
-		
-		return hasChildren;
-	}
-	
 	private List<ISnomedBrowserDescription> convertDescriptions(SnomedDescriptions descriptions) {
 		return FluentIterable.from(descriptions).transform(new Function<SnomedDescription, ISnomedBrowserDescription>() {
 			@Override
