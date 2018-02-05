@@ -103,8 +103,12 @@ import static com.b2international.snowowl.snomed.api.impl.SnomedClassificationSe
  */
 public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger("traceability");
+	private static final Logger TRACE_LOGGER = LoggerFactory.getLogger("traceability");
+	private static final Logger SYS_LOGGER = LoggerFactory.getLogger(SnomedTraceabilityChangeProcessor.class);
 
+	//APDS-547 Classification commit message has the UUID of the classification prepended to it
+	static int classificationSaveMessageLength = 36 + CLASSIFIED_ONTOLOGY.length();
+			
 	private static final Set<String> TRACKED_REFERENCE_SET_IDS = ImmutableSet.of(Concepts.REFSET_CONCEPT_INACTIVITY_INDICATOR,
 			Concepts.REFSET_DESCRIPTION_INACTIVITY_INDICATOR,
 			Concepts.REFSET_ALTERNATIVE_ASSOCIATION,
@@ -298,9 +302,11 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				final String branch = commitChangeSet.getView().getBranch().getPathName();
 				
 				//APDS-547 We don't need to audit the object state when saving a classification
-				if (commitChangeSet.getCommitComment().equals(CLASSIFIED_ONTOLOGY)) {
-					LOGGER.info("Lightweight audit of classification save on {}", branch);
+				if (commitChangeSet.getCommitComment().length() == classificationSaveMessageLength && 
+						commitChangeSet.getCommitComment().endsWith(CLASSIFIED_ONTOLOGY)) {
+					SYS_LOGGER.info("Lightweight audit of classification save on {}", branch);
 				} else {
+					SYS_LOGGER.info("Full audit of transaction on {} due to {}", branch, commitChangeSet.getCommitComment());
 					final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
 					final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
 				
@@ -338,7 +344,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					new SnomedBrowserAxiomExpander().expandAxioms(convertedConcepts, axiomConversionService, getLocales(), branch, bus);
 				}
 			}
-			LOGGER.info(WRITER.writeValueAsString(entry));
+			TRACE_LOGGER.info(WRITER.writeValueAsString(entry));
 		} catch (IOException e) {
 			throw SnowowlRuntimeException.wrap(e);
 		} finally {
