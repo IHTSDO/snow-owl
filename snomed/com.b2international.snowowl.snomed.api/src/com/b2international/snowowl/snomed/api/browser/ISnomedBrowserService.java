@@ -84,13 +84,13 @@ public interface ISnomedBrowserService {
 	 * @param locales the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
 	 * @param stated {@code true} if stated children should be returned, {@code false} if inferred
 	 * @param preferredDescriptionType 
+	 * @param offset 
+	 * @param limit 
 	 * @return the child concept list for the requested concept
 	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
 	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
-	List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated);
-	
 	List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType, int offset, int limit);
 	
 	/**

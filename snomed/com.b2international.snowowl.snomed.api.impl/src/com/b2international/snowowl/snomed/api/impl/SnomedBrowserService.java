@@ -675,13 +675,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}.run();
 	}
 	
-	
-	@Override
-	// TODO Remove unused method
-	public List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated) {
-		return getConceptChildren(conceptRef, locales, stated, SnomedBrowserDescriptionType.FSN, 0, 2000);
-	}
-	
 	@Override
 	public List<ISnomedBrowserChildConcept> getConceptChildren(final IComponentRef conceptRef, final List<ExtendedLocale> locales, final boolean stated, 
 			final SnomedBrowserDescriptionType preferredDescriptionType, final int offset, final int limit) {
