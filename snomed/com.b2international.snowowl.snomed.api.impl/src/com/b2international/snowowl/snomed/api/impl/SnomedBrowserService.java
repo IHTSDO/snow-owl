@@ -677,12 +677,14 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 	
 	@Override
+	// TODO Remove unused method
 	public List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated) {
-		return getConceptChildren(conceptRef, locales, stated, SnomedBrowserDescriptionType.FSN);
+		return getConceptChildren(conceptRef, locales, stated, SnomedBrowserDescriptionType.FSN, 0, 2000);
 	}
 	
 	@Override
-	public List<ISnomedBrowserChildConcept> getConceptChildren(final IComponentRef conceptRef, final List<ExtendedLocale> locales, final boolean stated, final SnomedBrowserDescriptionType preferredDescriptionType) {
+	public List<ISnomedBrowserChildConcept> getConceptChildren(final IComponentRef conceptRef, final List<ExtendedLocale> locales, final boolean stated, 
+			final SnomedBrowserDescriptionType preferredDescriptionType, final int offset, final int limit) {
 		final InternalComponentRef internalConceptRef = ClassUtils.checkAndCast(conceptRef, InternalComponentRef.class);
 		final String branch = internalConceptRef.getBranch().path();
 		final DescriptionService descriptionService = new DescriptionService(bus, conceptRef.getBranchPath());
@@ -692,7 +694,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			@Override
 			protected Iterable<SnomedConcept> getConceptEntries(String conceptId) {
 				return SnomedRequests.prepareSearchConcept()
-						.all()
+						.setOffset(offset)
+						.setLimit(limit)
 						.filterByActive(true)
 						.filterByParent(stated ? null : conceptId)
 						.filterByStatedParent(stated ? conceptId : null)

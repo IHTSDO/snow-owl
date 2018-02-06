@@ -91,7 +91,7 @@ public interface ISnomedBrowserService {
 	 */
 	List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated);
 	
-	List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType);
+	List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType, int offset, int limit);
 	
 	/**
 	 * Retrieves a list of descriptions matching the entered query string.

@@ -379,7 +379,15 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
 			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
-			final SnomedBrowserDescriptionType preferredDescriptionType) {
+			final SnomedBrowserDescriptionType preferredDescriptionType,
+			
+			@ApiParam(value="The starting offset in the list")
+			@RequestParam(value="offset", defaultValue="0", required=false) 
+			final int offset,
+
+			@ApiParam(value="The maximum number of items to return")
+			@RequestParam(value="limit", defaultValue="2000", required=false) 
+			final int limit) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -393,7 +401,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		
 		if ("stated".equals(form) || "inferred".equals(form)) {
 			final IComponentRef ref = createComponentRef(branchPath, conceptId);
-			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form), preferredDescriptionType);
+			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form), preferredDescriptionType, offset, limit);
 		}
 		
 		throw new BadRequestException("Form parameter should be either 'stated' or 'inferred'");
