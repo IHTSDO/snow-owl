@@ -72,7 +72,7 @@ public class ExternalClassifyRequest implements Request<ServiceProvider, ApiErro
 			
 			LOG.info("Initiating external classification request for {}", settings.getSnomedBranchPath().getPath());
 			
-			String externalClassificationId = reasonerService.sendExternalRequest(settings.getSnomedBranchPath().getPath(), settings.getReasonerId());
+			String externalClassificationId = reasonerService.sendExternalRequest(settings.getSnomedBranchPath().getPath(), settings.getReasonerId(), settings.getUserId());
 			Path results = reasonerService.getExternalResults(externalClassificationId);
 			reasonerService.registerExternalResults(internalClassificationId, results);
 			

@@ -22,7 +22,7 @@ import java.nio.file.Path;
  */
 public interface SnomedExternalReasonerService extends SnomedReasonerService {
 
-	String sendExternalRequest(String path, String reasonerId);
+	String sendExternalRequest(String path, String reasonerId, String userId);
 
 	Path getExternalResults(String externalClassificationId);
 

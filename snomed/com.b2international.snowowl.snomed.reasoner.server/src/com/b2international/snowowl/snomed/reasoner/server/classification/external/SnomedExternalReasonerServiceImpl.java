@@ -164,7 +164,7 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 	}
 
 	@Override
-	public String sendExternalRequest(String branchPath, String reasonerId) {
+	public String sendExternalRequest(String branchPath, String reasonerId, String userId) {
         
 		try {
         	
@@ -172,6 +172,7 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
         			.setReleaseType(Rf2ReleaseType.DELTA)
         			.setIncludeUnpublished(true)
         			.setConceptsAndRelationshipOnly(true)
+        			.setUserId(userId)
         			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
         			.execute(getEventBus())
         			.getSync();
