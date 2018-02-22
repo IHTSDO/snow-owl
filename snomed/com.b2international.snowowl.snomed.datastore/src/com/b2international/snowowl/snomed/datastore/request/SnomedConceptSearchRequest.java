@@ -70,6 +70,8 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		 */
 		TERM,
 		
+		DESCRIPTION_ACTIVE,
+		
 		/**
 		 * Parse the term for query syntax search
 		 */
@@ -277,11 +279,14 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 	private Map<String, Float> executeDescriptionSearch(BranchContext context, String term) {
 		final SnomedDescriptionSearchRequestBuilder requestBuilder = SnomedRequests.prepareSearchDescription()
 			.all()
-			.filterByActive(true)
 			.filterByTerm(term)
 			.filterByLanguageRefSetIds(languageRefSetIds())
 			.setFields(SnomedDescriptionIndexEntry.Fields.ID, SnomedDescriptionIndexEntry.Fields.CONCEPT_ID)
 			.sortBy(SCORE);
+		
+		if (containsKey(OptionKey.DESCRIPTION_ACTIVE)) {
+			requestBuilder.filterByActive(getBoolean(OptionKey.DESCRIPTION_ACTIVE));
+		}
 			
 		applyIdFilter(requestBuilder, (rb, ids) -> rb.filterByConceptId(ids));
 		

@@ -80,6 +80,10 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedComponentSear
 		return addOption(SnomedConceptSearchRequest.OptionKey.TERM, term);
 	}
 
+	public final SnomedConceptSearchRequestBuilder filterByDescriptionActive(Boolean active) {
+		return addOption(SnomedConceptSearchRequest.OptionKey.DESCRIPTION_ACTIVE, active);
+	}
+
 	/**
 	 * Filters the concepts based on the type of its descriptions where the description type is specified by concept ID 
 	 * representing the type. E.g.: "900000000000003001" for <i>Fully Specified Name</i>.

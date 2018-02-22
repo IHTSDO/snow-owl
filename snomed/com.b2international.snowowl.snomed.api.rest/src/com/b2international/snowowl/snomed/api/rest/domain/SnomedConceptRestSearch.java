@@ -26,6 +26,7 @@ public class SnomedConceptRestSearch {
 	private String moduleFilter;
 	private String expand;
 	private Boolean activeFilter = null;
+	private Boolean descriptionActiveFilter = null;
 	private int offset = 0;
 	private int limit = 50;
 	
@@ -75,6 +76,14 @@ public class SnomedConceptRestSearch {
 
 	public void setActiveFilter(Boolean activeFilter) {
 		this.activeFilter = activeFilter;
+	}
+	
+	public Boolean getDescriptionActiveFilter() {
+		return descriptionActiveFilter;
+	}
+	
+	public void setDescriptionActiveFilter(Boolean descriptionActiveFilter) {
+		this.descriptionActiveFilter = descriptionActiveFilter;
 	}
 
 	public String getExpand() {
