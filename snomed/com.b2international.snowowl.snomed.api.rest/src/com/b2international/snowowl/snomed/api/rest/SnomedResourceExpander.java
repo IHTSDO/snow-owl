@@ -32,8 +32,7 @@ public class SnomedResourceExpander {
 
 	public static final String FSN = "fsn";
 
-	public List<IRelationshipChange> expandRelationshipChanges(String branchPath, List<IRelationshipChange> changes, 
-			List<ExtendedLocale> locales, List<String> expantions) {
+	public List<IRelationshipChange> expandRelationshipChanges(String branchPath, List<IRelationshipChange> changes, List<ExtendedLocale> locales, List<String> expantions) {
 
 		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 
@@ -49,11 +48,11 @@ public class SnomedResourceExpander {
 		boolean expandType = false;
 		boolean expandDestination = false;
 		for (String expantion : expantions) {
-			if (expantion.equals(SOURCE_FSN)) {
+			if (SOURCE_FSN.equals(expantion)) {
 				expandSource = true;
-			} else if (expantion.equals(TYPE_FSN)) {
+			} else if (TYPE_FSN.equals(expantion)) {
 				expandType = true;
-			} else if (expantion.equals(DESTINATION_FSN)) {
+			} else if (DESTINATION_FSN.equals(expantion)) {
 				expandDestination = true;
 			} else {
 				throw new BadRequestException("Unrecognised expand parameter '%s'.", expantion);
