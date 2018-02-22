@@ -121,6 +121,10 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@ApiParam(value="The description term to match")
 			@RequestParam(value="term", required=false) 
 			final String termFilter,
+			
+			@ApiParam(value="The description active state to match")
+			@RequestParam(value="termActive", required=false) 
+			final Boolean descriptionActiveFilter,
 
 			@ApiParam(value="Deprecated! The ESCG expression to match")
 			@RequestParam(value="escg", required=false) 
@@ -157,6 +161,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				effectiveTimeFilter,
 				definitionStatusFilter,
 				termFilter,
+				descriptionActiveFilter,
 				escgFilter,
 				eclFilter,
 				conceptIds,
@@ -200,6 +205,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				null, // TODO
 				null, // TODO
 				body.getTermFilter(),
+				body.getDescriptionActiveFilter(),
 				body.getEscgFilter(),
 				body.getEclFilter(),
 				body.getConceptIds(),
@@ -217,6 +223,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final String effectiveTimeFilter,
 			final String definitionStatusFilter,
 			final String termFilter,
+			final Boolean descriptionActiveFilter,
 			final String escgFilter,
 			final String eclFilter,
 			final Set<String> conceptIds, 
@@ -251,6 +258,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.filterByDefinitionStatus(definitionStatusFilter)
 					.filterByNamespace(namespaceFilter)
 					.filterByTerm(termFilter)
+					.filterByDescriptionActive(descriptionActiveFilter)
 					.filterByEscg(escgFilter)
 					.filterByEcl(eclFilter)
 					.filterByExtendedLocales(extendedLocales)
