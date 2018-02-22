@@ -25,6 +25,7 @@ import static com.google.common.collect.Maps.newHashMap;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -40,6 +41,7 @@ import com.b2international.snowowl.core.exceptions.IllegalQueryParameterExceptio
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
@@ -280,7 +282,6 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		final SnomedDescriptionSearchRequestBuilder requestBuilder = SnomedRequests.prepareSearchDescription()
 			.all()
 			.filterByTerm(term)
-			.filterByLanguageRefSetIds(languageRefSetIds())
 			.setFields(SnomedDescriptionIndexEntry.Fields.ID, SnomedDescriptionIndexEntry.Fields.CONCEPT_ID)
 			.sortBy(SCORE);
 		
@@ -311,12 +312,23 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		final Map<String, Float> conceptMap = newHashMap();
 		
 		for (SnomedDescription description : items) {
+			Map<String, Acceptability> acceptabilityMap = description.getAcceptabilityMap();
+			if (!description.isActive() || descriptionAcceptable(acceptabilityMap, languageRefSetIds()))
 			if (!conceptMap.containsKey(description.getConceptId())) {
 				conceptMap.put(description.getConceptId(), description.getScore());
 			}
 		}
 		
 		return conceptMap;
+	}
+
+	private boolean descriptionAcceptable(Map<String, Acceptability> acceptabilityMap, List<String> languageRefSetIds) {
+		for (String languageRefSetId : languageRefSetIds) {
+			if (acceptabilityMap.containsKey(languageRefSetId)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 }
