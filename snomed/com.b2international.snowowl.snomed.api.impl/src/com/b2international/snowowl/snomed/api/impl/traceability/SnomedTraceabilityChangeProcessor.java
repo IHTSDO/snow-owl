@@ -306,7 +306,6 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 						commitChangeSet.getCommitComment().endsWith(CLASSIFIED_ONTOLOGY)) {
 					SYS_LOGGER.info("Lightweight audit of classification save on {}", branch);
 				} else {
-					SYS_LOGGER.info("Full audit of transaction on {} due to {}", branch, commitChangeSet.getCommitComment());
 					final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
 					final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
 				
