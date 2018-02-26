@@ -390,12 +390,12 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 
 	protected void createSnomedVersionFor(final String lastUnitEffectiveTimeKey) {
 		
-		if (AbstractSnomedImporter.UNPUBLISHED_KEY.equals(lastUnitEffectiveTimeKey)) {
-			return;
-		}
-		
 		try {
 
+			if (AbstractSnomedImporter.UNPUBLISHED_KEY.equals(lastUnitEffectiveTimeKey)) {
+				return;
+			}
+			
 			boolean existingVersionFound = false;
 
 			if (importContext.isVersionCreationEnabled()) {
