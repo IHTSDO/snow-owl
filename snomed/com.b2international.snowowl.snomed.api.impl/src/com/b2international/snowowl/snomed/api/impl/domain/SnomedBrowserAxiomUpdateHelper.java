@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.elasticsearch.common.collect.MapBuilder;
-import org.snomed.otf.owltoolkit.conversion.ConversionService;
+import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
 import org.snomed.otf.owltoolkit.domain.AxiomRepresentation;
 import org.snomed.otf.owltoolkit.domain.Relationship;
 
@@ -26,9 +26,9 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class SnomedBrowserAxiomUpdateHelper {
 	
-	private ConversionService axiomConversionService;
+	private AxiomRelationshipConversionService axiomConversionService;
 	
-	public SnomedBrowserAxiomUpdateHelper(ConversionService axiomConversionService) {
+	public SnomedBrowserAxiomUpdateHelper(AxiomRelationshipConversionService axiomConversionService) {
 		this.axiomConversionService = axiomConversionService;
 	}
 

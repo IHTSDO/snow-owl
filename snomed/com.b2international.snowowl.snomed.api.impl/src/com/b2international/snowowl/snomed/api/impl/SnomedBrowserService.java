@@ -38,7 +38,7 @@ import javax.annotation.Resource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.snomed.otf.owltoolkit.conversion.ConversionService;
+import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
 
 import com.b2international.commons.ClassUtils;
 import com.b2international.commons.collections.Procedure;
@@ -208,7 +208,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.execute(bus())
 			.getSync();
 
-		ConversionService conversionService = getAxiomConversionService(branchPath, bus);
+		AxiomRelationshipConversionService conversionService = getAxiomConversionService(branchPath, bus);
 
 		Set<SnomedBrowserConcept> results = new HashSet<>();
 		for (SnomedConcept concept : concepts.getItems()) {
@@ -241,7 +241,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return results.stream().collect(Collectors.toSet());
 	}
 	
-	public static ConversionService getAxiomConversionService(final String branchPath, IEventBus eventBus) {
+	public static AxiomRelationshipConversionService getAxiomConversionService(final String branchPath, IEventBus eventBus) {
 		final SnomedReferenceSetMembers mrcmMembers = SnomedRequests.prepareSearchMember()
 				.all()
 				.filterByRefSet(Sets.newHashSet(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL))
@@ -255,7 +255,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			Boolean grouped = (Boolean) object;
 			return !grouped;
 		}).map(member -> Long.parseLong(member.getReferencedComponent().getId())).collect(Collectors.toSet());
-		return new org.snomed.otf.owltoolkit.conversion.ConversionService(ungroupedAttributes);
+		return new org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService(ungroupedAttributes);
 	}
 
 	private SnomedBrowserConcept convertConcept(SnomedConcept concept) {

@@ -31,7 +31,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.snomed.otf.owltoolkit.conversion.ConversionService;
+import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.index.revision.RevisionIndex;
@@ -339,7 +339,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					}
 					
 					// Lookup and expand axioms
-					ConversionService axiomConversionService = SnomedBrowserService.getAxiomConversionService(branch, bus);
+					AxiomRelationshipConversionService axiomConversionService = SnomedBrowserService.getAxiomConversionService(branch, bus);
 					new SnomedBrowserAxiomExpander().expandAxioms(convertedConcepts, axiomConversionService, getLocales(), branch, bus);
 				}
 			}

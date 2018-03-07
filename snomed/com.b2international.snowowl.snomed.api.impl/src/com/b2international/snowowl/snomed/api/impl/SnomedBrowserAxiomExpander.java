@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snomed.otf.owltoolkit.conversion.ConversionException;
-import org.snomed.otf.owltoolkit.conversion.ConversionService;
+import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
 import org.snomed.otf.owltoolkit.domain.AxiomRepresentation;
 import org.snomed.otf.owltoolkit.domain.Relationship;
 
@@ -41,7 +41,7 @@ public class SnomedBrowserAxiomExpander {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserAxiomExpander.class);
 	
-	public void expandAxioms(Collection<SnomedBrowserConcept> concepts, ConversionService conversionService, final List<ExtendedLocale> locales, final String branchPath, IEventBus eventBus) {
+	public void expandAxioms(Collection<SnomedBrowserConcept> concepts, AxiomRelationshipConversionService conversionService, final List<ExtendedLocale> locales, final String branchPath, IEventBus eventBus) {
 		final Set<String> conceptIds = concepts.stream().map(SnomedBrowserConcept::getConceptId).collect(Collectors.toSet());
 		
 		// Load relevant members from OWL Axiom Reference Set
