@@ -49,10 +49,8 @@ import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.core.exceptions.NotImplementedException;
-import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.ecl.ecl.AncestorOf;
 import com.b2international.snowowl.snomed.ecl.ecl.AncestorOrSelfOf;
 import com.b2international.snowowl.snomed.ecl.ecl.AndExpressionConstraint;
@@ -69,6 +67,7 @@ import com.b2international.snowowl.snomed.ecl.ecl.NestedExpression;
 import com.b2international.snowowl.snomed.ecl.ecl.OrExpressionConstraint;
 import com.b2international.snowowl.snomed.ecl.ecl.ParentOf;
 import com.b2international.snowowl.snomed.ecl.ecl.RefinedExpressionConstraint;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 
@@ -88,6 +87,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 	private final PolymorphicDispatcher<Promise<Expression>> dispatcher = PolymorphicDispatcher.createForSingleTarget("eval", 2, 2, this);
 
 	@Nullable
+	@JsonProperty
 	private String expression;
 
 	SnomedEclEvaluationRequest() {
@@ -440,19 +440,6 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 					// otherwise always evaluate the expression to ID set and return that
 					return EclExpression.of(eclExpression).resolve(context);
 				}
-			}
-		};
-	}
-	
-	private static Function<Set<String>, Promise<SnomedConcepts>> fetchConcepts(final BranchContext context) {
-		return new Function<Set<String>, Promise<SnomedConcepts>>() {
-			@Override
-			public Promise<SnomedConcepts> apply(Set<String> ids) {
-				return SnomedRequests.prepareSearchConcept()
-						.filterByIds(ids)
-						.setLimit(ids.size())
-						.build(context.id(), context.branchPath())
-						.execute(context.service(IEventBus.class));
 			}
 		};
 	}
