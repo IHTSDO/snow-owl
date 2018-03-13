@@ -99,9 +99,8 @@ public final class EclExpression {
 	public Promise<Expression> resolveToExpression(final BranchContext context) {
 		if (expressionPromise == null) {
 			expressionPromise = SnomedRequests.prepareEclEvaluation(ecl)
-					.build(context.id(), context.branchPath())
-					.execute(context.service(IEventBus.class))
-					.thenWith(result -> result);
+					.build()
+					.execute(context);
 		}
 		return expressionPromise;
 	}
