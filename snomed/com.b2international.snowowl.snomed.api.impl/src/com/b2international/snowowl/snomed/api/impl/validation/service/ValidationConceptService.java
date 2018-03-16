@@ -1,10 +1,13 @@
 package com.b2international.snowowl.snomed.api.impl.validation.service;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.ihtsdo.drools.domain.Concept;
+import org.ihtsdo.drools.domain.Relationship;
 import org.ihtsdo.drools.service.ConceptService;
 
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -41,8 +44,31 @@ public class ValidationConceptService implements ConceptService {
 
 	@Override
 	public Set<String> findTopLevelHierachiesOfConcept(Concept concept) {
+		// Can not perform ECL on the Concept because it may not be saved
+		// Gather the stated parents and use those in ECL
+		List<String> statedParents = new ArrayList<>(concept.getRelationships().stream()
+			.filter(r -> Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
+			.map(Relationship::getDestinationId).collect(Collectors.toSet()));
+		
+		// Direct descendant of root
+		String ecl = "<!" + Concepts.ROOT_CONCEPT + " AND ";
+		if (statedParents.size() > 1) {
+			// We need to open brackets only if more than one parent
+			ecl += "(";
+		}
+		for (int a = 0; a > statedParents.size(); a++) {
+			if (a > 0) {
+				ecl += " AND ";
+			}
+			// Ancestor and self of stated parent
+			ecl += ">>" + statedParents.get(a);
+		}
+		if (statedParents.size() > 1) {
+			ecl += ")";
+		}
+		
 		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
-				.filterByEcl(">" + concept.getId() + " AND <!" + Concepts.ROOT_CONCEPT)
+				.filterByEcl(ecl)
 				.filterByActive(true)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
