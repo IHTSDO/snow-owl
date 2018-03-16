@@ -50,13 +50,17 @@ public class ValidationConceptService implements ConceptService {
 			.filter(r -> Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
 			.map(Relationship::getDestinationId).collect(Collectors.toSet()));
 		
+		if (statedParents.isEmpty()) {
+			return Collections.emptySet();
+		}
+		
 		// Direct descendant of root
 		String ecl = "<!" + Concepts.ROOT_CONCEPT + " AND ";
 		if (statedParents.size() > 1) {
 			// We need to open brackets only if more than one parent
 			ecl += "(";
 		}
-		for (int a = 0; a > statedParents.size(); a++) {
+		for (int a = 0; a < statedParents.size(); a++) {
 			if (a > 0) {
 				ecl += " AND ";
 			}
