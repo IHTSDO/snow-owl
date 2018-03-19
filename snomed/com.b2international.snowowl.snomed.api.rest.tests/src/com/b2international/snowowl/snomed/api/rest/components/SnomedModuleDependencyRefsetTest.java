@@ -14,6 +14,8 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.eclipse.xtext.util.Pair;
 import org.eclipse.xtext.util.Tuples;
@@ -99,16 +101,16 @@ public class SnomedModuleDependencyRefsetTest extends AbstractSnomedApiTest {
 		ImmutableSet<String> INT_MODULE_IDS = ImmutableSet.of(Concepts.MODULE_SCT_MODEL_COMPONENT, Concepts.MODULE_SCT_CORE, ICD_10_MAPPING_MODULE);
 		Map<Pair<String, String>, Date> moduleToReferencedComponentAndEffectiveDateMap = Maps.newHashMap();
 
-		SnomedReferenceSetMembers intModuleDependencyMembers = SnomedRequests.prepareSearchMember()
+		Set<SnomedReferenceSetMember> intModuleDependencyMembers = SnomedRequests.prepareSearchMember()
 				.all()
 				.filterByActive(true)
 				.filterByRefSet(Concepts.REFSET_MODULE_DEPENDENCY_TYPE)
-				.filterByModules(INT_MODULE_IDS)
 				.filterByReferencedComponent(INT_MODULE_IDS)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(getBus())
-				.getSync();
-
+				.getSync()
+				.getItems().stream().filter(member -> INT_MODULE_IDS.contains(member.getModuleId())).collect(Collectors.toSet());
+		
 		intModuleDependencyMembers.forEach(member -> {
 			Pair<String, String> pair = Tuples.pair(member.getModuleId(), member.getReferencedComponent().getId());
 			moduleToReferencedComponentAndEffectiveDateMap.put(
