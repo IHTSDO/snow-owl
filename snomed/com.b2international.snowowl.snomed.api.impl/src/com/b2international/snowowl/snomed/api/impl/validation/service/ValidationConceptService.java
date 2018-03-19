@@ -62,7 +62,7 @@ public class ValidationConceptService implements ConceptService {
 		}
 		for (int a = 0; a < statedParents.size(); a++) {
 			if (a > 0) {
-				ecl += " AND ";
+				ecl += " OR ";
 			}
 			// Ancestor and self of stated parent
 			ecl += ">>" + statedParents.get(a);
