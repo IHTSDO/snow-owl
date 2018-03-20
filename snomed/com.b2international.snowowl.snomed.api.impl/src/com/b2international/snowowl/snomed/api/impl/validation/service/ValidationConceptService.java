@@ -9,7 +9,10 @@ import java.util.stream.Collectors;
 import org.ihtsdo.drools.domain.Concept;
 import org.ihtsdo.drools.domain.Relationship;
 import org.ihtsdo.drools.service.ConceptService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import com.b2international.commons.FileUtils;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
@@ -21,7 +24,8 @@ public class ValidationConceptService implements ConceptService {
 
 	private final String branchPath;
 	private final IEventBus bus;
-
+	private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
+	
 	public ValidationConceptService(String branchPath, IEventBus bus) {
 		this.branchPath = branchPath;
 		this.bus = bus;
@@ -49,7 +53,7 @@ public class ValidationConceptService implements ConceptService {
 		List<String> statedParents = new ArrayList<>(concept.getRelationships().stream()
 			.filter(r -> Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
 			.map(Relationship::getDestinationId).collect(Collectors.toSet()));
-		
+		LOGGER.info("Class name : " + this.getClass().getName() + ". Method: findTopLevelHierachiesOfConcept. statedParents : " +  statedParents);
 		if (statedParents.isEmpty()) {
 			return Collections.emptySet();
 		}
@@ -71,13 +75,14 @@ public class ValidationConceptService implements ConceptService {
 			ecl += ")";
 		}
 		
+		LOGGER.info("Class name : " + this.getClass().getName() + ". Method: findTopLevelHierachiesOfConcept. ecl : " +  ecl);
 		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
 				.filterByEcl(ecl)
 				.filterByActive(true)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync();
-			
+		LOGGER.info("Class name : " + this.getClass().getName() + ". Method: findTopLevelHierachiesOfConcept. concepts : " +  concepts.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet()));	
 		return concepts.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet());
 	}
 
