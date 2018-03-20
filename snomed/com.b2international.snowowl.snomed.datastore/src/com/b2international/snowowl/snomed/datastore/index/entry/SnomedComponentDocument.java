@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.datastore.index.entry;
 
 import static com.b2international.index.query.Expressions.exactMatch;
+import static com.b2international.index.query.Expressions.matchAny;
 
 import java.util.Collection;
 import java.util.List;
@@ -46,6 +47,14 @@ public abstract class SnomedComponentDocument extends SnomedDocument {
 		
 		public static Expression referringMappingRefSet(String referringMappingRefSet) {
 			return exactMatch(Fields.REFERRING_MAPPING_REFSETS, referringMappingRefSet);
+		}
+		
+		public static Expression referringRefSets(Iterable<String> referringRefSets) {
+			return matchAny(Fields.REFERRING_REFSETS, referringRefSets);
+		}
+		
+		public static Expression referringMappingRefSets(Iterable<String> referringMappingRefSets) {
+			return matchAny(Fields.REFERRING_MAPPING_REFSETS, referringMappingRefSets);
 		}
 		
 	}
