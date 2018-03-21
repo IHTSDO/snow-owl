@@ -92,7 +92,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
 		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/concepts", method=RequestMethod.GET)
+	@RequestMapping(value="/{path:**}/concepts", method=RequestMethod.GET, produces={ AbstractRestService.SO_MEDIA_TYPE, "text/csv" })
 	public @ResponseBody DeferredResult<SnomedConcepts> search(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
