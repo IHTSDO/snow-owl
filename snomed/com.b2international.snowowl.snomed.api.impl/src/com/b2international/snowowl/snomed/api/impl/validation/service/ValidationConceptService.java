@@ -42,8 +42,44 @@ public class ValidationConceptService implements ConceptService {
 
 	@Override
 	public Set<String> findStatedAncestorsOfConcept(Concept concept) {
+		List<String> statedParents = new ArrayList<>(concept.getRelationships().stream()
+			.filter(r -> Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
+			.map(Relationship::getDestinationId).collect(Collectors.toSet()));
 		
-		return Collections.emptySet();
+		if (statedParents.isEmpty()) {
+			return Collections.emptySet();
+		}
+		// Descendant of root
+		String ecl = "<" + Concepts.ROOT_CONCEPT + " AND ";
+		if (statedParents.size() > 1) {
+			// We need to open brackets only if more than one parent
+			ecl += "(";
+		}
+		for (int i = 0; i < statedParents.size(); i++) {
+			if (i > 0) {
+				ecl += " OR ";
+			}
+			// Ancestor and self of stated parent
+			ecl += ">>" + statedParents.get(i);
+		}
+		if (statedParents.size() > 1) {
+			ecl += ")";
+		}
+		
+		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
+				.filterByEcl(ecl)
+				.filterByActive(true)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync();
+		
+		if(concepts.isEmpty()) {
+			return Collections.emptySet();
+		}
+		
+		Set<String> list = concepts.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet());
+		LOGGER.info("findStatedAncestorsOfConcept : " + list);	
+		return list;
 	}
 
 	@Override
