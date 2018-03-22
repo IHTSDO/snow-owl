@@ -45,7 +45,7 @@ public class ValidationConceptService implements ConceptService {
 		List<String> statedParents = new ArrayList<>(concept.getRelationships().stream()
 			.filter(r -> Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
 			.map(Relationship::getDestinationId).collect(Collectors.toSet()));
-		
+		LOGGER.info("Method: findStatedAncestorsOfConcept. statedParents : " +  statedParents);
 		if (statedParents.isEmpty()) {
 			return Collections.emptySet();
 		}
@@ -65,7 +65,7 @@ public class ValidationConceptService implements ConceptService {
 		if (statedParents.size() > 1) {
 			ecl += ")";
 		}
-		
+		LOGGER.info("Method: findStatedAncestorsOfConcept. ecl : " +  ecl);
 		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
 				.filterByEcl(ecl)
 				.filterByActive(true)
@@ -78,7 +78,7 @@ public class ValidationConceptService implements ConceptService {
 		}
 		
 		Set<String> list = concepts.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet());
-		LOGGER.info("findStatedAncestorsOfConcept : " + list);	
+		LOGGER.info("Method: findStatedAncestorsOfConcept. concepts : " + list);
 		return list;
 	}
 
@@ -89,7 +89,7 @@ public class ValidationConceptService implements ConceptService {
 		List<String> statedParents = new ArrayList<>(concept.getRelationships().stream()
 			.filter(r -> Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
 			.map(Relationship::getDestinationId).collect(Collectors.toSet()));
-		LOGGER.info("Class name : " + this.getClass().getName() + ". Method: findTopLevelHierachiesOfConcept. statedParents : " +  statedParents);
+		LOGGER.info("Method: findTopLevelHierachiesOfConcept. statedParents : " +  statedParents);
 		if (statedParents.isEmpty()) {
 			return Collections.emptySet();
 		}
@@ -111,14 +111,14 @@ public class ValidationConceptService implements ConceptService {
 			ecl += ")";
 		}
 		
-		LOGGER.info("Class name : " + this.getClass().getName() + ". Method: findTopLevelHierachiesOfConcept. ecl : " +  ecl);
+		LOGGER.info("Method: findTopLevelHierachiesOfConcept. ecl : " +  ecl);
 		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
 				.filterByEcl(ecl)
 				.filterByActive(true)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync();
-		LOGGER.info("Class name : " + this.getClass().getName() + ". Method: findTopLevelHierachiesOfConcept. concepts : " +  concepts.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet()));	
+		LOGGER.info("Method: findTopLevelHierachiesOfConcept. concepts : " +  concepts.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet()));	
 		return concepts.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet());
 	}
 
