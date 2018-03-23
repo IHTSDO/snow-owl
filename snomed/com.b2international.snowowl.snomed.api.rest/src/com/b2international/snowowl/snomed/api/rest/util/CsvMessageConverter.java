@@ -42,15 +42,16 @@ public class CsvMessageConverter extends AbstractHttpMessageConverter<Collection
 
 	public CsvMessageConverter() {
 		super(MEDIA_TYPE);
-		this.mapper = csvMapper();
-		this.predefinedSchemas = defineSchemas();
+		this.mapper = initCsvMapper();
+		this.predefinedSchemas = initSchemas();
 	}
 
+	@Override
 	protected boolean supports(Class<?> clazz) {
 		return CollectionResource.class.isAssignableFrom(clazz);
 	}
 
-	public CsvMapper csvMapper() {
+	private CsvMapper initCsvMapper() {
 		final CsvMapper csvMapper = new CsvMapper();
 		csvMapper.registerModule(new GuavaModule());
 		csvMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
@@ -89,7 +90,7 @@ public class CsvMessageConverter extends AbstractHttpMessageConverter<Collection
 		throw new NotImplementedException();
 	}
 
-	private Map<Class<?>, CsvSchema> defineSchemas() {
+	private Map<Class<?>, CsvSchema> initSchemas() {
 		final Map<Class<?>, CsvSchema> predefinedSchemas = Maps.newHashMap();
 		final CsvSchema snomedConceptCsvSchema = createSchemaForSnomedConcept();
 		predefinedSchemas.put(SnomedConcept.class, snomedConceptCsvSchema);
