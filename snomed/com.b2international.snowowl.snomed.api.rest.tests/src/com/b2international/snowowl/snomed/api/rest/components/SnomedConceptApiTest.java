@@ -51,11 +51,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.core.events.bulk.BulkRequest;
+import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
+import com.b2international.snowowl.core.exceptions.ConflictException;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.core.merge.MergeConflict;
 import com.b2international.snowowl.core.merge.MergeConflict.ConflictType;
@@ -648,6 +651,34 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.extract().as(SnomedConcept.class);
 		
 		assertEquals(1, updatedConcept.getMembers().getTotal());
+	}
+	
+	@Test(expected = ConflictException.class)
+	public void doNotDeleteReleasedConceptsInTheSameTransaction() {
+		
+		String conceptId = createNewConcept(branchPath);
+		
+		getComponent(branchPath, SnomedComponentType.CONCEPT, Concepts.PART_OF)
+			.statusCode(200)
+			.body("released", equalTo(true));
+		
+		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId)
+			.statusCode(200)
+			.body("released", equalTo(false));
+		
+		final BulkRequestBuilder<TransactionContext> bulk = BulkRequest.create();
+		
+		bulk.add(SnomedRequests.prepareDeleteConcept(conceptId));
+		bulk.add(SnomedRequests.prepareDeleteConcept(Concepts.PART_OF));
+
+		SnomedRequests.prepareCommit()
+			.setBody(bulk)
+			.setCommitComment("Delete multiple concepts")
+			.setUserId("test")
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+			.getSync();
+		
 	}
 	
 }
