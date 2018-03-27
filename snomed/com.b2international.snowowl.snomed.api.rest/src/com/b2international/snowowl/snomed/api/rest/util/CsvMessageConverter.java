@@ -77,7 +77,7 @@ public class CsvMessageConverter extends AbstractHttpMessageConverter<Collection
 			CsvSchema schema = predefinedSchemas.get(clazz);
 
 			if (schema == null) {
-				schema = mapper.schemaFor(clazz).withHeader();
+				schema = mapper.schemaFor(clazz).withHeader().withColumnSeparator('\t');
 			}
 			ObjectWriter writer = mapper.writer(schema);
 			writer.writeValue(output.getBody(), items);
