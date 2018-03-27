@@ -105,7 +105,8 @@ public class CsvMessageConverter extends AbstractHttpMessageConverter<Collection
 				.addColumn(SnomedRf2Headers.FIELD_MODULE_ID)
 				.addColumn(DEFINITION_STATUS)
 				.build()
-				.withHeader();
+				.withHeader()
+				.withColumnSeparator('\t');
 		
 		return csvSnomedConceptSchema;
 	}
