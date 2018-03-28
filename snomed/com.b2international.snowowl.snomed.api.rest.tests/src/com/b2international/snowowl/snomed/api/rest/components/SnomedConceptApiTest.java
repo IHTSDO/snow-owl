@@ -35,6 +35,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reserveComponentId;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.endsWith;
@@ -49,7 +50,9 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 
@@ -90,14 +93,21 @@ import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.snomed.datastore.id.domain.IdentifierStatus;
 import com.b2international.snowowl.snomed.datastore.id.domain.SctId;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
+import com.jayway.restassured.response.ValidatableResponse;
 
 /**
  * @since 2.0
  */
 public class SnomedConceptApiTest extends AbstractSnomedApiTest {
+
+	private static final String CONTENT_TYPE_TXT_CSV = "text/csv";
+	private static final String CONTENT_TYPE_UTF_8_JSON = "application/json; charset=UTF-8";
 
 	@Test
 	public void createConceptNonExistentBranch() {
@@ -678,6 +688,37 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 			.getSync();
+		
+	}
+	
+	@Test
+	public void testConceptSearchPostResponse() {
+		
+		final Map<?, ?> requestBody = ImmutableMap.builder()
+				.put("offset", 0)
+				.put("limit", 3)
+				.put("activeFilter", true)
+				.put("eclFilter", "105590001 OR 71388002 OR 362981000")
+				.build();
+				
+		final ValidatableResponse response = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+				.accept(CONTENT_TYPE_TXT_CSV)
+				.contentType(CONTENT_TYPE_UTF_8_JSON)
+				.body(requestBody)
+				.post("/{path}/concepts/search", branchPath.getPath())
+				.then()
+				.statusCode(200);
+
+		final String responseString = response.extract().asString();
+		
+		Set<String> expectedRows = Sets.newHashSet(
+				String.format("%s\t%s\t%s\t%s\t%s","id", "effectiveTime", "active", "moduleId", "definitionStatus"),
+				String.format("%s\t%s\t%s\t%s\t%s", "362981000", "20020131", "true", "900000000000207008", "PRIMITIVE"),
+				String.format("%s\t%s\t%s\t%s\t%s", "105590001", "20020131", "true", "900000000000207008", "PRIMITIVE"),
+				String.format("%s\t%s\t%s\t%s\t%s", "71388002", "20020131", "true", "900000000000207008", "PRIMITIVE"));
+		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
+			
+		assertEquals(responseRows, expectedRows);
 		
 	}
 	
