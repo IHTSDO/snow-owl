@@ -112,7 +112,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		return relationships.size();
 	}
 
-	//@Test
+	@Test
 	public void persistInferredRelationship() throws Exception {
 		String parentConceptId = createNewConcept(branchPath);
 		String targetConceptId = createNewConcept(branchPath);
@@ -176,7 +176,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		assertEquals(Type.NOT_AVAILABLE, response.getType()); 
 	}
 
-	//@Test
+	@Test
 	public void persistRedundantRelationship() throws Exception {
 		String parentConceptId = createNewConcept(branchPath);
 		String childConceptId = createNewConcept(branchPath, parentConceptId);
@@ -213,7 +213,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		assertEquals(1, getPersistedInferredRelationshipCount(branchPath, childConceptId));
 	}
 
-	//@Test
+	@Test
 	public void issue_SO_2152_testGroupRenumbering() throws Exception {
 		String conceptId = createNewConcept(branchPath);
 
@@ -256,7 +256,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		assertTrue("No redundant relationships found in response.", redundantFound);
 	}
 	
-	//@Test
+	@Test
 	public void issue_APDS_327_testNoStatedRedundantRelationshipChanges() throws Exception {
 		
 		String conceptId = createNewConcept(branchPath);
@@ -313,7 +313,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		}
 	}
 
-	//@Test
+	@Test
 	public void issue_SO_1830_testInferredEquivalentConceptParents() throws Exception {
 		String parentConceptId = createNewConcept(branchPath);
 		String childConceptId = createNewConcept(branchPath, parentConceptId);
@@ -386,7 +386,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
 		
 		Set<String> expectedRows = Sets.newHashSet(
-				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s","changeNature", "sourceId", "sourceFsn", "typeId", "typeFsn", "destinationId", "destinationFsn", "destinationNegated", "characteristicTypeId", "group", "id", "unionGroup", "modifier"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "changeNature", "sourceId", "sourceFsn", "typeId", "typeFsn", "destinationId", "destinationFsn", "destinationNegated", "characteristicTypeId", "group", "id", "unionGroup", "modifier"),
 				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "INFERRED", sourceConcept, "\"FSN of concept\"", "116680003", "\"Is a (attribute)\"", "138875005", "\"SNOMED CT Concept (SNOMED RT+CTV3)\"", "false", "900000000000011006", "", "", "", "EXISTENTIAL"));
 
 		assertEquals(responseRows, expectedRows);
