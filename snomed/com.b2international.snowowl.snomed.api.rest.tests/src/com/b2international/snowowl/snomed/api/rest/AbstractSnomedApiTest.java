@@ -43,6 +43,9 @@ import com.jayway.restassured.response.Response;
 @BranchBase(Branch.MAIN_PATH)
 public abstract class AbstractSnomedApiTest {
 	
+	protected static final String CONTENT_TYPE_TXT_CSV = "text/csv";
+	protected static final String CONTENT_TYPE_UTF_8_JSON = "application/json; charset=UTF-8";
+	
 	private final class CustomTestWatcher extends TestWatcher {
 		@Override
 		protected void starting(Description description) {
