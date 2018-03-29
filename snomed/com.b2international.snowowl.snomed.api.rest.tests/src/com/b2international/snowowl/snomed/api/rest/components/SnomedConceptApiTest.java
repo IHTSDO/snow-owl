@@ -106,9 +106,6 @@ import com.jayway.restassured.response.ValidatableResponse;
  */
 public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
-	private static final String CONTENT_TYPE_TXT_CSV = "text/csv";
-	private static final String CONTENT_TYPE_UTF_8_JSON = "application/json; charset=UTF-8";
-
 	@Test
 	public void createConceptNonExistentBranch() {
 		Map<?, ?> requestBody = createConceptRequestBody(Concepts.ROOT_CONCEPT)
@@ -697,6 +694,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		final Map<?, ?> requestBody = ImmutableMap.builder()
 				.put("offset", 0)
 				.put("limit", 3)
+				.put("expand", "fsn()")
 				.put("activeFilter", true)
 				.put("eclFilter", "105590001 OR 71388002 OR 362981000")
 				.build();
@@ -711,15 +709,35 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		final String responseString = response.extract().asString();
 		
+		
 		Set<String> expectedRows = Sets.newHashSet(
-				String.format("%s\t%s\t%s\t%s\t%s","id", "effectiveTime", "active", "moduleId", "definitionStatus"),
-				String.format("%s\t%s\t%s\t%s\t%s", "362981000", "20020131", "true", "900000000000207008", "PRIMITIVE"),
-				String.format("%s\t%s\t%s\t%s\t%s", "105590001", "20020131", "true", "900000000000207008", "PRIMITIVE"),
-				String.format("%s\t%s\t%s\t%s\t%s", "71388002", "20020131", "true", "900000000000207008", "PRIMITIVE"));
+				String.format("%s\t%s\t%s\t%s\t%s\t%s","id", "fsn", "effectiveTime", "active", "moduleId", "definitionStatus"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s", "362981000","\"Qualifier value (qualifier value)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s", "105590001", "\"Substance (substance)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s", "71388002", "\"Procedure (procedure)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"));
 		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
-			
 		assertEquals(responseRows, expectedRows);
 		
+	}
+	
+	@Test
+	public void testConceptsGetResponse() {
+		ValidatableResponse response = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+				.accept(CONTENT_TYPE_TXT_CSV)
+				.when().get("/{path}/concepts?active=true&ecl=105590001OR71388002OR362981000&offset=0&limit=3&expand=fsn()", branchPath.getPath())
+				.then()
+				.statusCode(200);
+
+		final String responseString = response.extract().asString();
+		
+		
+		Set<String> expectedRows = Sets.newHashSet(
+				String.format("%s\t%s\t%s\t%s\t%s\t%s","id", "fsn", "effectiveTime", "active", "moduleId", "definitionStatus"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s", "362981000","\"Qualifier value (qualifier value)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s", "105590001", "\"Substance (substance)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s", "71388002", "\"Procedure (procedure)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"));
+		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
+		assertEquals(responseRows, expectedRows);
 	}
 	
 }
