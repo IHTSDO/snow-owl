@@ -1,6 +1,6 @@
 /*
  * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -206,7 +206,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		createComponent(branchPath, SnomedComponentType.CONCEPT, requestBody).statusCode(400);
 	}
-	
+
 	@Test
 	public void createShortIsACycle() throws Exception {
 		String concept1Id = createNewConcept(branchPath);
@@ -219,21 +219,21 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		createComponent(branchPath, SnomedComponentType.RELATIONSHIP, requestBody).statusCode(400);
 	}
-	
+
 	@Test
 	public void createLongIsACycle() throws Exception {
 		String concept1Id = createNewConcept(branchPath);
 		String concept2Id = createNewConcept(branchPath, concept1Id);
 		String concept3Id = createNewConcept(branchPath, concept2Id);
-		
+
 		// Try creating a cycle between the starting and the ending concept
 		Map<?, ?> requestBody = createRelationshipRequestBody(concept1Id, Concepts.IS_A, concept3Id)
 				.put("commitComment", "Created an IS A cycle with three relationships")
 				.build();
-		
+
 		createComponent(branchPath, SnomedComponentType.RELATIONSHIP, requestBody).statusCode(400);
 	}
-	
+
 	@Test
 	public void testConceptInactivation() throws Exception {
 		String conceptId = createNewConcept(branchPath);
@@ -242,7 +242,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId).statusCode(200)
 		.body("active", equalTo(false));
 	}
-	
+
 	@Test
 	public void testConceptReactivation() throws Exception {
 		// Create two concepts, add an additional relationship pointing from one to the other
@@ -257,52 +257,52 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.put("associationTargets", ImmutableMap.of(AssociationType.POSSIBLY_EQUIVALENT_TO, ImmutableList.of(conceptId1)))
 				.put("commitComment", "Inactivated concept")
 				.build();
-		
+
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, inactivationBody).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, "inactivationProperties()").statusCode(200)
 			.body("active", equalTo(false))
 			.body("inactivationIndicator", equalTo(InactivationIndicator.DUPLICATE.toString()))
 		.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(conceptId1));
-		
+
 		// Verify that the inbound relationship is inactive
 		getComponent(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId).statusCode(200)
 		.body("active", equalTo(false));
-		
+
 		// Reactivate the concept
 		reactivateConcept(branchPath, conceptId2);
-		
+
 		// Verify that the concept is active again, it has two active descriptions, no association targets, no indicator
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, "inactivationProperties()").statusCode(200)
 			.body("active", equalTo(true))
 			.body("inactivationIndicator", nullValue())
 			.body("associationTargets", nullValue());
-		
+
 		// Verify that the inbound relationship is still inactive, meaning that manual reactivation is required
 		getComponent(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId).statusCode(200)
 		.body("active", equalTo(false));
 	}
-	
+
 	@Test
 	public void restoreEffectiveTimeOnReleasedConcept() throws Exception {
 		String conceptId = createNewConcept(branchPath);
-		
+
 		String shortName = "SNOMEDCT-CON-1";
 		createCodeSystem(branchPath, shortName).statusCode(201);
 		String effectiveDate = getNextAvailableEffectiveDateAsString(shortName);
 		createVersion(shortName, "v1", effectiveDate).statusCode(201);
-		
+
 		// After versioning, the concept should be released and have an effective time set on it
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId).statusCode(200)
 		.body("released", equalTo(true))
 		.body("effectiveTime", equalTo(effectiveDate));
-		
+
 		inactivateConcept(branchPath, conceptId);
-		
+
 		// An inactivation should unset the effective time field
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId).statusCode(200)
 		.body("released", equalTo(true))
 		.body("effectiveTime", nullValue());
-		
+
 		reactivateConcept(branchPath, conceptId);
 
 		// Getting the concept back to its originally released state should restore the effective time
@@ -310,13 +310,13 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		.body("released", equalTo(true))
 		.body("effectiveTime", equalTo(effectiveDate));
 	}
-	
+
 	@Test
 	public void updateAssociationTarget() throws Exception {
 		String conceptId1 = createNewConcept(branchPath);
 		String conceptId2 = createNewConcept(branchPath);
 		String conceptId3 = createNewConcept(branchPath);
-		
+
 		// Inactivate the duplicate concept and point to the other one
 		Map<?, ?> inactivationRequestBody = ImmutableMap.<String, Object>builder()
 				.put("active", false)
@@ -324,7 +324,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.put("associationTargets", ImmutableMap.of(AssociationType.POSSIBLY_EQUIVALENT_TO, ImmutableList.of(conceptId1)))
 				.put("commitComment", "Inactivated concept")
 				.build();
-		
+
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, inactivationRequestBody).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, "inactivationProperties()").statusCode(200)
 			.body("active", equalTo(false))
@@ -338,7 +338,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.put("associationTargets", ImmutableMap.of(AssociationType.REPLACED_BY, ImmutableList.of(conceptId3)))
 				.put("commitComment", "Changed inactivation reason and association target")
 				.build();
-		
+
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, updateRequestBody).statusCode(204);
 
 		// Verify association target and inactivation indicator update
@@ -348,14 +348,14 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), nullValue())
 		.body("associationTargets." + AssociationType.REPLACED_BY.name(), allOf(hasItem(conceptId3), not(hasItem(conceptId1))));
 	}
-	
+
 	@Test
 	public void updateAssociationTargetWithReuse() throws Exception {
 		String conceptId1 = createNewConcept(branchPath);
 		String conceptId2 = createNewConcept(branchPath);
 		String conceptId3 = createNewConcept(branchPath);
 		String conceptId4 = createNewConcept(branchPath);
-		
+
 		// Inactivate the duplicate concept and point to the other one
 		Map<?, ?> inactivationRequestBody = ImmutableMap.<String, Object>builder()
 				.put("active", false)
@@ -363,9 +363,9 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.put("associationTargets", ImmutableMap.of(AssociationType.POSSIBLY_EQUIVALENT_TO, ImmutableList.of(conceptId1)))
 				.put("commitComment", "Inactivated concept")
 				.build();
-		
+
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, inactivationRequestBody).statusCode(204);
-		Collection<String> memberIds = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, 
+		Collection<String> memberIds = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2,
 				"members()", "inactivationProperties()").statusCode(200)
 				.body("active", equalTo(false))
 				.body("inactivationIndicator", equalTo(InactivationIndicator.DUPLICATE.toString()))
@@ -373,7 +373,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.extract().path("members.items.id");
 
 		assertEquals(2, memberIds.size());
-		
+
 		// Update the inactivation reason and association target
 		Map<?, ?> updateRequestBody = ImmutableMap.<String, Object>builder()
 				.put("active", false)
@@ -383,16 +383,16 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 						AssociationType.REPLACED_BY, ImmutableList.of(conceptId4)))
 				.put("commitComment", "Changed inactivation reason and association targets")
 				.build();
-		
+
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, updateRequestBody).statusCode(204);
-		Collection<String> updatedMemberIds = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2, 
+		Collection<String> updatedMemberIds = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId2,
 				"members()", "inactivationProperties()").statusCode(200)
 				.body("active", equalTo(false))
 				.body("inactivationIndicator", equalTo(InactivationIndicator.AMBIGUOUS.toString()))
 				.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), allOf(hasItem(conceptId3), hasItem(conceptId1)))
 				.body("associationTargets." + AssociationType.REPLACED_BY.name(), hasItem(conceptId4))
 				.extract().path("members.items.id");
-		
+
 		// Verify that the member UUIDs have not been cycled
 		assertEquals(4, updatedMemberIds.size());
 		assertTrue(updatedMemberIds.containsAll(memberIds));
@@ -416,11 +416,11 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		deleteComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, false).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId).statusCode(404);
 	}
-	
+
 	@Test
 	public void deleteConceptOnNestedBranch() {
 		String parentId = ROOT_CONCEPT;
-		
+
 		for (int i = 0; i < 10; i++) {
 			parentId = createNewConcept(branchPath, parentId);
 		}
@@ -472,44 +472,44 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		IBranchPath projectPath = BranchPathUtils.createPath(branchPath, "P");
 		SnomedBranchingRestRequests.createBranch(projectPath);
-		
+
 		IBranchPath firstTaskPath = BranchPathUtils.createPath(projectPath, "1");
 		SnomedBranchingRestRequests.createBranch(firstTaskPath);
-		
+
 		// Create new concept, promote to project
 		String concept = SnomedRestFixtures.createNewConcept(firstTaskPath);
 		SnomedRestFixtures.merge(firstTaskPath, firstTaskPath.getParent(), "Merging first task into project").body("status", equalTo(Merge.Status.COMPLETED.name()));
-		
+
 		// Create task A, modify concept
-		
+
 		IBranchPath taskAPath = BranchPathUtils.createPath(projectPath, "A");
 		SnomedBranchingRestRequests.createBranch(taskAPath);
-		
+
 		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(200);
 		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").body("definitionStatus", equalTo(DefinitionStatus.PRIMITIVE.name()));
-		
+
 		final Map<?, ?> changeOnTask = ImmutableMap.builder()
 				.put("definitionStatus", DefinitionStatus.FULLY_DEFINED)
 				.put("commitComment", "Changed definition status on task A")
 				.build();
-		
+
 		SnomedComponentRestRequests.updateComponent(taskAPath, SnomedComponentType.CONCEPT, concept, changeOnTask);
 		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").body("definitionStatus", equalTo(DefinitionStatus.FULLY_DEFINED.name()));
 		// Create task B, delete concept, promote to project
-		
+
 		IBranchPath taskBPath = BranchPathUtils.createPath(projectPath, "B");
 		SnomedBranchingRestRequests.createBranch(taskBPath);
-		
+
 		SnomedComponentRestRequests.getComponent(taskBPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(200);
 		SnomedComponentRestRequests.deleteComponent(taskBPath, SnomedComponentType.CONCEPT, concept, true);
 		SnomedComponentRestRequests.getComponent(taskBPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(404);
 		SnomedRestFixtures.merge(taskBPath, taskBPath.getParent(), "Merging task B into project").body("status", equalTo(Merge.Status.COMPLETED.name()));
 
-		
+
 		// Rebase task A - does not rebase as expected
-		
+
 		Collection<MergeConflict> conflicts = SnomedRestFixtures.merge(taskAPath.getParent(), taskAPath, "Rebasing task A should fail")
-								.body("status", equalTo(Merge.Status.CONFLICTS.name())) 
+								.body("status", equalTo(Merge.Status.CONFLICTS.name()))
 								//	XXX:	"message"	: 	"Branch MAIN/SnomedConceptApiTest/deleteConceptOnNestedBranchThenRebase/P/A should be in FORWARD state to be merged into MAIN/SnomedConceptApiTest/deleteConceptOnNestedBranchThenRebase/P. It's currently DIVERGED",
 								//	XXX:	"status" 	: 	"FAILED"
 								.extract().as(Merge.class)
@@ -518,14 +518,14 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		MergeConflict conflict = Iterables.getOnlyElement(conflicts);
 		assertEquals(ConflictType.CHANGED_WHILE_DELETED, conflict.getType());
-		
+
 		// Delete concept on task A and rebase again.
-		
+
 		SnomedComponentRestRequests.deleteComponent(taskAPath, SnomedComponentType.CONCEPT, concept, true).assertThat().statusCode(204);
 		SnomedRestFixtures.merge(taskAPath.getParent(), taskAPath, "Rebase task A").body("status", equalTo(Merge.Status.COMPLETED.name()));
-		
+
 	}
-	
+
 	@Test
 	public void createConceptWithMember() throws Exception {
 			String refSetId = createNewRefSet(branchPath);
@@ -547,7 +547,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "members()").statusCode(200)
 		.body("members.items[0].referenceSetId", equalTo(refSetId));
 	}
-	
+
 	@Test
 	public void addDescriptionViaConceptUpdate() throws Exception {
 		String conceptId = createNewConcept(branchPath);
@@ -557,7 +557,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		assertEquals(2, concept.getDescriptions().getTotal());
 
-		// Add a text definition	
+		// Add a text definition
 		SnomedDescription newTextDefinition = new SnomedDescription();
 		newTextDefinition.setId(reserveComponentId(null, ComponentCategory.DESCRIPTION));
 		newTextDefinition.setActive(true);
@@ -567,22 +567,22 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		newTextDefinition.setLanguageCode("en");
 		newTextDefinition.setCaseSignificance(CaseSignificance.INITIAL_CHARACTER_CASE_INSENSITIVE);
 		newTextDefinition.setModuleId(Concepts.MODULE_SCT_CORE);
-		
+
 		List<SnomedDescription> changedDescriptions = ImmutableList.<SnomedDescription>builder()
 				.addAll(concept.getDescriptions())
 				.add(newTextDefinition)
 				.build();
-		
+
 		Map<?, ?> updateRequestBody = ImmutableMap.builder()
 				.put("descriptions", SnomedDescriptions.of(changedDescriptions))
 				.put("commitComment", "Add new description via concept update")
 				.build();
-		
+
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, updateRequestBody).statusCode(204);
 		SnomedConcept updatedConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "descriptions()")
 				.statusCode(200)
 				.extract().as(SnomedConcept.class);
-		
+
 		assertEquals(3, updatedConcept.getDescriptions().getTotal());
 	}
 
@@ -606,25 +606,25 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		newRelationship.setGroup(0);
 		newRelationship.setUnionGroup(0);
 		newRelationship.setModifier(RelationshipModifier.EXISTENTIAL);
-		
+
 		List<SnomedRelationship> changedRelationships = ImmutableList.<SnomedRelationship>builder()
 				.addAll(concept.getRelationships())
 				.add(newRelationship)
 				.build();
-		
+
 		Map<?, ?> updateRequestBody = ImmutableMap.builder()
 				.put("relationships", SnomedRelationships.of(changedRelationships))
 				.put("commitComment", "Add new relationship via concept update")
 				.build();
-		
+
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, updateRequestBody).statusCode(204);
 		SnomedConcept updatedConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "relationships()")
 				.statusCode(200)
 				.extract().as(SnomedConcept.class);
-		
+
 		assertEquals(2, updatedConcept.getRelationships().getTotal());
 	}
-	
+
 	@Test
 	public void addMemberViaConceptUpdate() throws Exception {
 		String refSetId = createNewRefSet(branchPath);
@@ -632,9 +632,9 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		SnomedConcept concept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "members()")
 				.statusCode(200)
 				.extract().as(SnomedConcept.class);
-		
+
 		assertEquals(0, concept.getMembers().getTotal());
-		
+
 		// Add a reference set member
 		SnomedReferenceSetMember newMember = new SnomedReferenceSetMember();
 		newMember.setId(UUID.randomUUID().toString());
@@ -651,30 +651,30 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.put("members", SnomedReferenceSetMembers.of(changedMembers))
 				.put("commitComment", "Add new reference set member via concept update")
 				.build();
-		
+
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, updateRequestBody).statusCode(204);
 		SnomedConcept updatedConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "members()")
 				.statusCode(200)
 				.extract().as(SnomedConcept.class);
-		
+
 		assertEquals(1, updatedConcept.getMembers().getTotal());
 	}
-	
+
 	@Test(expected = ConflictException.class)
 	public void doNotDeleteReleasedConceptsInTheSameTransaction() {
-		
+
 		String conceptId = createNewConcept(branchPath);
-		
+
 		getComponent(branchPath, SnomedComponentType.CONCEPT, Concepts.PART_OF)
 			.statusCode(200)
 			.body("released", equalTo(true));
-		
+
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId)
 			.statusCode(200)
 			.body("released", equalTo(false));
-		
+
 		final BulkRequestBuilder<TransactionContext> bulk = BulkRequest.create();
-		
+
 		bulk.add(SnomedRequests.prepareDeleteConcept(conceptId));
 		bulk.add(SnomedRequests.prepareDeleteConcept(Concepts.PART_OF));
 
@@ -685,12 +685,12 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 			.getSync();
-		
+
 	}
-	
+
 	@Test
 	public void testConceptSearchPostResponse() {
-		
+
 		final Map<?, ?> requestBody = ImmutableMap.builder()
 				.put("offset", 0)
 				.put("limit", 3)
@@ -698,7 +698,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.put("activeFilter", true)
 				.put("eclFilter", "105590001 OR 71388002 OR 362981000")
 				.build();
-				
+
 		final ValidatableResponse response = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.accept(CONTENT_TYPE_TXT_CSV)
 				.contentType(CONTENT_TYPE_UTF_8_JSON)
@@ -708,8 +708,8 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.statusCode(200);
 
 		final String responseString = response.extract().asString();
-		
-		
+
+
 		Set<String> expectedRows = Sets.newHashSet(
 				String.format("%s\t%s\t%s\t%s\t%s\t%s","id", "fsn", "effectiveTime", "active", "moduleId", "definitionStatus"),
 				String.format("%s\t%s\t%s\t%s\t%s\t%s", "362981000","\"Qualifier value (qualifier value)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"),
@@ -717,9 +717,9 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				String.format("%s\t%s\t%s\t%s\t%s\t%s", "71388002", "\"Procedure (procedure)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"));
 		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
 		assertEquals(responseRows, expectedRows);
-		
+
 	}
-	
+
 	@Test
 	public void testConceptsGetResponse() {
 		ValidatableResponse response = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
@@ -729,8 +729,8 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.statusCode(200);
 
 		final String responseString = response.extract().asString();
-		
-		
+
+
 		Set<String> expectedRows = Sets.newHashSet(
 				String.format("%s\t%s\t%s\t%s\t%s\t%s","id", "fsn", "effectiveTime", "active", "moduleId", "definitionStatus"),
 				String.format("%s\t%s\t%s\t%s\t%s\t%s", "362981000","\"Qualifier value (qualifier value)\"", "20020131", "true", "900000000000207008", "PRIMITIVE"),
@@ -739,5 +739,5 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
 		assertEquals(responseRows, expectedRows);
 	}
-	
+
 }
