@@ -64,7 +64,7 @@ public class ValidationRelationshipService implements RelationshipService {
 	}
 
 	@Override
-    Set<String> findParentsNotContainSematicTag(Concept c, String sematicTag) {
+	public Set<String> findParentsNotContainSematicTag(Concept c, String sematicTag) {
     	Set<String> parentIds = new HashSet<>();
 		for (Relationship r: c.getRelationships()) {
 			if(r.isActive() && Constants.IS_A.equals(r.getTypeId()) && !Constants.INFERRED_RELATIONSHIP.equals(r.getCharacteristicTypeId())) {

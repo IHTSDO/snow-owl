@@ -138,7 +138,7 @@ public class ValidationConceptService implements ConceptService {
 	}
     
 	@Override
-	Set<String> findSematicTagOfAncestors(List<String> conceptIds) {
+	public Set<String> findSematicTagOfAncestors(List<String> conceptIds) {
 		if (conceptIds.isEmpty()) {
 			return Collections.emptySet();
 		}
