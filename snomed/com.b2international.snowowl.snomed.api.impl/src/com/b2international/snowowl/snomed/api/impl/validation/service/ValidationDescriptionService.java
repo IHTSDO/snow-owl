@@ -17,6 +17,7 @@ import org.ihtsdo.drools.domain.Concept;
 import org.ihtsdo.drools.domain.Constants;
 import org.ihtsdo.drools.domain.Description;
 import org.ihtsdo.drools.domain.Relationship;
+import org.ihtsdo.drools.helper.DescriptionHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -418,6 +419,35 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				}
 			}
 		}
+		return result;
+	}
+
+	@Override
+	public Set<String> findParentsNotContainSematicTag(Concept concept, String termSematicTag, String... languageRefsetIds) {
+		Set<String> conceptIds = new HashSet<String>();
+		for (Relationship relationship : concept.getRelationships()) {
+			if (Constants.IS_A.equals(relationship.getTypeId()) 
+				&& relationship.isActive() 
+				&& Constants.STATED_RELATIONSHIP.equals(relationship.getCharacteristicTypeId())) {
+				conceptIds.add(relationship.getDestinationId());
+			}
+		}
+		
+		List<ExtendedLocale> locales = new ArrayList<>();
+		for (String languageRefsetId : languageRefsetIds) {
+			String languageCode = LanguageCodeReferenceSetIdentifierMapping.getLanguageCode(languageRefsetId);
+			locales.add(new ExtendedLocale(languageCode, null, languageRefsetId));
+		}
+		
+		Set<String> result = new HashSet<String>();
+		Map<String, SnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds,locales);
+		for (String key : fullySpecifiedNames.keySet()) {
+			SnomedDescription description = fullySpecifiedNames.get(key);
+			if (!termSematicTag.equals(DescriptionHelper.getTag(description.getTerm()))) {
+				result.add(key);
+			}
+		}
+		
 		return result;
 	}
 }

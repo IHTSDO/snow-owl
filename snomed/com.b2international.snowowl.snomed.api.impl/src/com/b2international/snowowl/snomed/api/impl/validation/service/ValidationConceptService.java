@@ -7,9 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.ihtsdo.drools.domain.Concept;
-import org.ihtsdo.drools.domain.Constants;
 import org.ihtsdo.drools.domain.Relationship;
-import org.ihtsdo.drools.helper.DescriptionHelper;
 import org.ihtsdo.drools.service.ConceptService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +17,6 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
@@ -138,10 +135,8 @@ public class ValidationConceptService implements ConceptService {
 	}
     
 	@Override
-	public Set<String> findSematicTagOfAncestors(List<String> conceptIds) {
-		if (conceptIds.isEmpty()) {
-			return Collections.emptySet();
-		}
+	public Set<String> findStatedAncestorsOfConcepts(List<String> conceptIds) {
+		// TODO Auto-generated method stub
 		// Descendant of root
 		String ecl = "<" + Concepts.ROOT_CONCEPT + " AND ";
 		if (conceptIds.size() > 1) {
@@ -158,6 +153,7 @@ public class ValidationConceptService implements ConceptService {
 		if (conceptIds.size() > 1) {
 			ecl += ")";
 		}
+		LOGGER.info("findStatedAncestorsOfConcepts. ecl : " +  ecl);
 		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
 				.filterByEcl(ecl)
 				.filterByActive(true)
@@ -169,16 +165,9 @@ public class ValidationConceptService implements ConceptService {
 			return Collections.emptySet();
 		}
 		
-		List<String> fsns = new ArrayList<>();
-		for (SnomedConcept c:  concepts.getItems()) {
-			fsns.addAll(c.getDescriptions().getItems().stream()
-				.filter(d -> d.isActive() && Constants.FSN.equals(d.getType()))
-				.map(SnomedDescription::getTerm)
-				.collect(Collectors.toList()));
-		}
-		Set<String> result = fsns.stream().map(fsn -> DescriptionHelper.getTag(fsn)).collect(Collectors.toSet());
-		LOGGER.info("Method: findSematicTagOfAncestors. Ancestor Sematic tags : " + result);
+		Set<String> result = concepts.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet());
+		LOGGER.info("findStatedAncestorsOfConcepts. concepts : " + result);
+		
 		return result;
-    }
-
+	}
 }

@@ -61,25 +61,4 @@ public class ValidationRelationshipService implements RelationshipService {
 		return totalInbound - totalInboundInferred > 0;
 	}
 
-	@Override
-	public Set<String> findParentsNotContainSematicTag(Concept c, String sematicTag) {
-    	Set<String> parentIds = new HashSet<>();
-		for (Relationship r: c.getRelationships()) {
-			if(r.isActive() && Constants.IS_A.equals(r.getTypeId()) && !Constants.INFERRED_RELATIONSHIP.equals(r.getCharacteristicTypeId())) {
-				SnomedConcept parentConcept = SnomedRequests.prepareGetConcept(r.getDestinationId())
-						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-						.execute(bus)
-						.getSync();
-				SnomedDescription fsn = parentConcept.getFsn();
-				if (fsn.isActive()) {
-					String parentSematicTag = DescriptionHelper.getTag(fsn.getTerm());
-					if (!sematicTag.equals(parentSematicTag)) {
-						parentIds.add(parentConcept.getId());
-					}
-				}
-			}
-		}
-    	return parentIds;
-    }
-
 }
