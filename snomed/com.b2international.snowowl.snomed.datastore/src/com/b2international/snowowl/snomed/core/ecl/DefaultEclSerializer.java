@@ -34,13 +34,15 @@ public class DefaultEclSerializer implements EclSerializer {
 	
 	@Override
 	public String serialize(ExpressionConstraint expression) {
-		return eclSerializer.serialize(expression);
+		synchronized (eclSerializer) {
+			return eclSerializer.serialize(expression);
+		}
 	}
 	
 	@Override
 	public String serializeWithoutTerms(ExpressionConstraint expression) {
 		removeTerms(expression);
-		return eclSerializer.serialize(expression).trim();
+		return serialize(expression).trim();
 	}
 
 	private void removeTerms(EObject expression) {

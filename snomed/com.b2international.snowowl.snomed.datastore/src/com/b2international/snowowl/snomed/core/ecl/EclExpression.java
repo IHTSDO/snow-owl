@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,23 @@
  */
 package com.b2international.snowowl.snomed.core.ecl;
 
+import static com.google.common.collect.Sets.newHashSet;
+
+import java.io.IOException;
+import java.util.Collections;
 import java.util.Set;
 
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
+import com.b2international.index.query.Query;
+import com.b2international.index.revision.RevisionSearcher;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
@@ -38,7 +44,7 @@ import com.google.common.collect.ImmutableSet;
 /**
  * @since 5.4
  */
-final class EclExpression {
+public final class EclExpression {
 
 	private final String ecl;
 	
@@ -61,18 +67,20 @@ final class EclExpression {
 	
 	public Promise<Set<String>> resolve(final BranchContext context) {
 		if (promise == null) {
-			promise = SnomedRequests.prepareSearchConcept()
-					.all()
-					.setFields(ImmutableSet.of(SnomedConceptDocument.Fields.ID))
-					.filterByEcl(ecl)
-					.build(context.id(), context.branchPath())
-					.execute(context.service(IEventBus.class))
-					.then(new Function<SnomedConcepts, Set<String>>() {
-						@Override
-						public Set<String> apply(SnomedConcepts input) {
-							return FluentIterable.from(input).transform(IComponent.ID_FUNCTION).toSet();
-						}
-					});
+			RevisionSearcher searcher = context.service(RevisionSearcher.class);
+			promise = resolveToExpression(context)
+				.then(expression -> {
+					try {
+						Query<String> query = Query.selectPartial(String.class, SnomedConceptDocument.class, Collections.singleton(SnomedConceptDocument.Fields.ID))
+								.where(expression)
+								.limit(Integer.MAX_VALUE)
+								.build();
+						
+						return newHashSet(searcher.search(query));
+					} catch (IOException e) {
+						throw new SnowowlRuntimeException(e);
+					}
+				});
 		}
 		return promise;
 	}
@@ -91,9 +99,8 @@ final class EclExpression {
 	public Promise<Expression> resolveToExpression(final BranchContext context) {
 		if (expressionPromise == null) {
 			expressionPromise = SnomedRequests.prepareEclEvaluation(ecl)
-					.build(context.id(), context.branchPath())
-					.execute(context.service(IEventBus.class))
-					.thenWith(result -> result);
+					.build()
+					.execute(context);
 		}
 		return expressionPromise;
 	}
@@ -135,6 +142,22 @@ final class EclExpression {
 					});
 		}
 		return conceptsWithGroups;
+	}
+
+	public Promise<Expression> resolveToAndExpression(BranchContext context, Set<String> matchingIds) {
+		if (matchingIds.isEmpty()) {
+			return Promise.immediate(Expressions.matchNone());
+		} else if (isAnyExpression()) {
+			return Promise.immediate(SnomedEclEvaluationRequest.matchIdsOrNone().apply(matchingIds));
+		} else {
+			return resolveToExpression(context)
+					.then(left -> {
+						return Expressions.builder()
+								.filter(left)
+								.filter(RevisionDocument.Expressions.ids(matchingIds))
+								.build();
+					});
+		}
 	}
 	
 }
