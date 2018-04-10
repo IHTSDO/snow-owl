@@ -1,3 +1,6 @@
+/*******************************************************************************
+ * Copyright (c) 2018 B2i Healthcare. All rights reserved.
+ *******************************************************************************/
 package com.b2international.snowowl.snomed.api.japi.branches;
 
 import static com.google.common.collect.Lists.newArrayList;
