@@ -23,6 +23,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
 import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.snomed.api.japi.branches.BranchCompareRequestTest;
+import com.b2international.snowowl.snomed.api.japi.branches.EclSerializerTest;
 import com.b2international.snowowl.snomed.api.japi.branches.SnomedBranchRequestTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedBranchingApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedListFeaturesTests;
@@ -96,7 +97,9 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	SnomedExtensionVersioningTest.class,
 	// Java API test cases
 	SnomedBranchRequestTest.class,
-	BranchCompareRequestTest.class
+	BranchCompareRequestTest.class,
+	EclSerializerTest.class
+	
 })
 public class AllSnomedApiTests {
 
