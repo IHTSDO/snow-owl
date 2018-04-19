@@ -43,7 +43,7 @@ public class ValidationConceptService implements ConceptService {
 	@Override
 	public Set<String> findStatedAncestorsOfConcept(Concept concept) {
 		List<String> statedParents = new ArrayList<>(concept.getRelationships().stream()
-			.filter(r -> Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
+			.filter(r -> r.isActive() && Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
 			.map(Relationship::getDestinationId).collect(Collectors.toSet()));
 		LOGGER.info("Method: findStatedAncestorsOfConcept. statedParents : " +  statedParents);
 		if (statedParents.isEmpty()) {
@@ -87,7 +87,7 @@ public class ValidationConceptService implements ConceptService {
 		// Can not perform ECL on the Concept because it may not be saved
 		// Gather the stated parents and use those in ECL
 		List<String> statedParents = new ArrayList<>(concept.getRelationships().stream()
-			.filter(r -> Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
+			.filter(r -> r.isActive() && Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
 			.map(Relationship::getDestinationId).collect(Collectors.toSet()));
 		LOGGER.info("Method: findTopLevelHierachiesOfConcept. statedParents : " +  statedParents);
 		if (statedParents.isEmpty()) {
