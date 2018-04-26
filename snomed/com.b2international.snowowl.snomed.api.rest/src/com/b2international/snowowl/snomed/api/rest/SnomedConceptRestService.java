@@ -203,7 +203,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				body.getModuleFilter(),
 				null, // TODO
 				null, // TODO
-				null, // TODO
+				body.getDefinitionStatusFilter(),
 				body.getTermFilter(),
 				body.getDescriptionActiveFilter(),
 				body.getEscgFilter(),

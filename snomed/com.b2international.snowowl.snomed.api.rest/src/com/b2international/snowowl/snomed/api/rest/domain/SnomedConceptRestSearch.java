@@ -24,6 +24,7 @@ public class SnomedConceptRestSearch {
 	private String eclFilter;
 	private Set<String> conceptIds;
 	private String moduleFilter;
+	private String definitionStatusFilter;
 	private String expand;
 	private Boolean activeFilter = null;
 	private Boolean descriptionActiveFilter = null;
@@ -68,6 +69,14 @@ public class SnomedConceptRestSearch {
 
 	public void setModuleFilter(String moduleFilter) {
 		this.moduleFilter = moduleFilter;
+	}
+	
+	public String getDefinitionStatusFilter() {
+		return definitionStatusFilter;
+	}
+	
+	public void setDefinitionStatusFilter(String definitionStatusFilter) {
+		this.definitionStatusFilter = definitionStatusFilter;
 	}
 
 	public Boolean getActiveFilter() {
