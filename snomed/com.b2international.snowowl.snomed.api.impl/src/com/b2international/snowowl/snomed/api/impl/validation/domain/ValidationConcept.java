@@ -2,6 +2,7 @@ package com.b2international.snowowl.snomed.api.impl.validation.domain;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 import org.ihtsdo.drools.domain.Description;
@@ -30,6 +31,10 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 		}
 	}
 	
+	public java.util.Collection<? extends org.ihtsdo.drools.domain.OntologyAxiom> getOntologyAxioms() {
+		return new HashSet<>();
+	}
+
 	@Override
 	public String getId() {
 		return browserConcept.getConceptId();
