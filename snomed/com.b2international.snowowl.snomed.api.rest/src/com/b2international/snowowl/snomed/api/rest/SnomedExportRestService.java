@@ -155,9 +155,10 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 
 	private void validateExportType(SnomedExportRestConfiguration configuration) {
 		if (Rf2ReleaseType.FULL.equals(configuration.getType())) {
-			if (configuration.getStartEffectiveTime() != null || configuration.getEndEffectiveTime() != null) {
-				throw new BadRequestException("Export date ranges can only be set if the export mode is not FULL.");
-			}
+			throw new BadRequestException("FULL export type has been disabled in this version.");
+		}
+		if (configuration.getEndEffectiveTime() != null && configuration.getStartEffectiveTime() == null) {
+			throw new BadRequestException("When endEffectiveTime is used startEffectiveTime is required to prevent exporting everything.");			
 		}
 	}
 
