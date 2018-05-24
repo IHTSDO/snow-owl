@@ -31,7 +31,7 @@ public final class SnomedEclEvaluationRequestBuilder
 		extends BaseRequestBuilder<SnomedEclEvaluationRequestBuilder, BranchContext, Promise<Expression>> 
 		implements RevisionIndexRequestBuilder<Promise<Expression>> {
 	
-	private String expression;
+	private final String expression;
 	
 	private String expressionForm = Trees.INFERRED_FORM;
 	
@@ -40,7 +40,7 @@ public final class SnomedEclEvaluationRequestBuilder
 	}
 
 	public SnomedEclEvaluationRequestBuilder setExpressionForm(String expressionForm) {
-		Preconditions.checkArgument(Trees.INFERRED_FORM.equals(expressionForm) || Trees.STATED_FORM.equals(expressionForm));
+		Preconditions.checkArgument(Trees.INFERRED_FORM.equals(expressionForm) || Trees.STATED_FORM.equals(expressionForm), String.format("Expression form must be either %s or %s but got %s", Trees.INFERRED_FORM, Trees.STATED_FORM, expressionForm));
 		this.expressionForm = expressionForm;
 		return getSelf();
 	}
