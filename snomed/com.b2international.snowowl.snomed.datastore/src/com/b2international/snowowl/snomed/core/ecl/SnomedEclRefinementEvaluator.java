@@ -46,6 +46,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
+import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipSearchRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -95,7 +96,8 @@ import com.google.common.collect.Sets;
  */
 final class SnomedEclRefinementEvaluator {
 
-	static final Set<String> ALLOWED_CHARACTERISTIC_TYPES = ImmutableSet.of(Concepts.INFERRED_RELATIONSHIP, Concepts.ADDITIONAL_RELATIONSHIP);
+	static final Set<String> INFERRED_CHARACTERISTIC_TYPES = ImmutableSet.of(Concepts.INFERRED_RELATIONSHIP, Concepts.ADDITIONAL_RELATIONSHIP);
+	static final Set<String> STATED_CHARACTERISTIC_TYPES = ImmutableSet.of(Concepts.STATED_RELATIONSHIP, Concepts.ADDITIONAL_RELATIONSHIP);
 	private static final int UNBOUNDED_CARDINALITY = -1;
 	private static final Range<Long> ANY_GROUP = Range.closed(0L, Long.MAX_VALUE);
 	
@@ -421,7 +423,7 @@ final class SnomedEclRefinementEvaluator {
 			final Collection<String> destinationConceptFilter = Collections.singleton(serializer.serializeWithoutTerms(((AttributeComparison) comparison).getConstraint()));
 			final Collection<String> focusConceptFilter = refinement.isReversed() ? destinationConceptFilter : null;
 			final Collection<String> valueConceptFilter = refinement.isReversed() ? null : destinationConceptFilter;
-			return evalRelationships(context, focusConceptFilter, typeConceptFilter, valueConceptFilter, grouped);
+			return evalRelationships(context, focusConceptFilter, typeConceptFilter, valueConceptFilter, grouped, focusConcepts.getExpressionForm());
 		} else if (comparison instanceof DataTypeComparison) {
 			if (grouped) {
 				throw new BadRequestException("Group refinement is not supported in data type based comparison (string/numeric)");
@@ -498,7 +500,7 @@ final class SnomedEclRefinementEvaluator {
 		} else {
 			return SnomedEclEvaluationRequest.throwUnsupported(comparison);
 		}
-		return evalMembers(context, attributeNames, type, value, operator)
+		return evalMembers(context, attributeNames, type, value, operator, focusConcepts.getExpressionForm())
 				.then(new Function<SnomedReferenceSetMembers, Collection<Property>>() {
 					@Override
 					public Collection<Property> apply(SnomedReferenceSetMembers matchingMembers) {
@@ -521,9 +523,13 @@ final class SnomedEclRefinementEvaluator {
 			final Collection<String> attributeNames, 
 			final DataType type, 
 			final Object value, 
-			SearchResourceRequest.Operator operator) {
+			SearchResourceRequest.Operator operator,
+			String expressionForm) {
+		final Set<String> characteristicTypes = Trees.INFERRED_FORM.equals(expressionForm) 
+					? INFERRED_CHARACTERISTIC_TYPES
+					: STATED_CHARACTERISTIC_TYPES;
 		final Options propFilter = Options.builder()
-				.put(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, ALLOWED_CHARACTERISTIC_TYPES)
+				.put(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, characteristicTypes)
 				.put(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, attributeNames)
 				.put(SnomedRefSetMemberIndexEntry.Fields.DATA_TYPE, type)
 				.put(SnomedRf2Headers.FIELD_VALUE, value)
@@ -608,7 +614,8 @@ final class SnomedEclRefinementEvaluator {
 			final Collection<String> sourceFilter, 
 			final Collection<String> typeFilter,
 			final Collection<String> destinationFilter,
-			final boolean groupedRelationshipsOnly) {
+			final boolean groupedRelationshipsOnly,
+			String expressionForm) {
 
 		final ImmutableSet.Builder<String> fieldsToLoad = ImmutableSet.builder();
 		fieldsToLoad.add(ID, SOURCE_ID,	DESTINATION_ID);
@@ -616,11 +623,13 @@ final class SnomedEclRefinementEvaluator {
 			fieldsToLoad.add(GROUP);
 		}
 		
+		final Set<String> characteristicTypes = Trees.INFERRED_FORM.equals(expressionForm) ? INFERRED_CHARACTERISTIC_TYPES : STATED_CHARACTERISTIC_TYPES;
+		
 		final SnomedRelationshipSearchRequestBuilder req = SnomedRequests.prepareSearchRelationship()
 				.all()
 				.filterByActive(true) 
 				.filterByType(typeFilter)
-				.filterByCharacteristicTypes(ALLOWED_CHARACTERISTIC_TYPES)
+				.filterByCharacteristicTypes(characteristicTypes)
 				.setFields(fieldsToLoad.build());
 		
 		// XXX more than 1000 IDs will be filtered using Java instead of in the query to gain performance
