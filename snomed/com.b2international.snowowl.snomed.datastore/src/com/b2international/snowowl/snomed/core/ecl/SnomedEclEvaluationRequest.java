@@ -185,7 +185,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 		// <* should eval to * MINUS parents IN (ROOT_ID)
 		if (inner instanceof Any) {
 			return Promise.immediate(Expressions.builder()
-					.mustNot(addParentsExpressionBasedOnForm(Collections.singleton(IComponent.ROOT_ID)))
+					.mustNot(matchParents(Collections.singleton(IComponent.ROOT_ID)))
 					.build());
 		} else {
 			return evaluate(context, inner)
@@ -194,8 +194,8 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 						@Override
 						public Expression apply(Set<String> ids) {
 							return Expressions.builder()
-									.should(addParentsExpressionBasedOnForm(ids))
-									.should(addAncestorsExpressionBasedOnForm(ids))
+									.should(matchParents(ids))
+									.should(matchAncestors(ids))
 									.build();
 						}
 
@@ -220,8 +220,8 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 						public Expression apply(Set<String> ids) {
 							return Expressions.builder()
 									.should(ids(ids))
-									.should(addParentsExpressionBasedOnForm(ids))
-									.should(addAncestorsExpressionBasedOnForm(ids))
+									.should(matchParents(ids))
+									.should(matchAncestors(ids))
 									.build();
 						}
 					});
@@ -237,7 +237,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 		// <!* should eval to * MINUS parents in (ROOT_ID)
 		if (innerConstraint instanceof Any) {
 			return Promise.immediate(Expressions.builder()
-					.mustNot(addParentsExpressionBasedOnForm(Collections.singleton(IComponent.ROOT_ID)))
+					.mustNot(matchParents(Collections.singleton(IComponent.ROOT_ID)))
 					.build());
 		} else {
 			return evaluate(context, innerConstraint)
@@ -245,7 +245,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 					.then(new Function<Set<String>, Expression>() {
 						@Override
 						public Expression apply(Set<String> ids) {
-							return addParentsExpressionBasedOnForm(ids);
+							return matchParents(ids);
 						}
 					});
 		}
@@ -490,11 +490,11 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 		}
 	}
 	
-	private Expression addParentsExpressionBasedOnForm (Set<String> ids) {
+	private Expression matchParents(Set<String> ids) {
 		return Trees.INFERRED_FORM.equals(expressionForm) ? parents(ids) : statedParents(ids);
 	}
 	
-	private Expression addAncestorsExpressionBasedOnForm(Set<String> ids) {
+	private Expression matchAncestors(Set<String> ids) {
 		return Trees.INFERRED_FORM.equals(expressionForm) ? ancestors(ids) : statedAncestors(ids);
 	}
 	
