@@ -45,6 +45,7 @@ import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.ecl.EclExpression;
+import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
 import com.b2international.snowowl.snomed.datastore.escg.EscgParseFailedException;
@@ -92,9 +93,14 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		ESCG,
 		
 		/**
-		 * ECL expression to match
+		 * ECL expression to match in the inferred tree
 		 */
 		ECL,
+		
+		/**
+		 * ECL expression to match in the stated tree
+		 */
+		STATED_ECL,
 		
 		/**
 		 * The definition status to match
@@ -206,6 +212,15 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 			// thus the need for allowing this request to time out to avoid deadlock. 
 			// set to 1 minute to match tomcat's time out
 			queryBuilder.filter(EclExpression.of(ecl).resolveToExpression(context).getSync(1, TimeUnit.MINUTES));
+		}
+		
+		if (containsKey(OptionKey.STATED_ECL)) {
+			final String statedEcl = getString(OptionKey.STATED_ECL);
+			
+			final EclExpression expression = EclExpression.of(statedEcl);
+			expression.setExpressionForm(Trees.STATED_FORM);
+			
+			queryBuilder.filter(expression.resolveToExpression(context).getSync(1, TimeUnit.MINUTES));
 		}
 		
 		Expression searchProfileQuery = null;

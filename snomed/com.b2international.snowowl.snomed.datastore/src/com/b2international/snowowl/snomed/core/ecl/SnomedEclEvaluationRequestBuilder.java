@@ -21,6 +21,8 @@ import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.datastore.request.RevisionIndexRequestBuilder;
+import com.b2international.snowowl.snomed.core.tree.Trees;
+import com.google.common.base.Preconditions;
 
 /**
  * @since 5.4
@@ -28,16 +30,28 @@ import com.b2international.snowowl.datastore.request.RevisionIndexRequestBuilder
 public final class SnomedEclEvaluationRequestBuilder 
 		extends BaseRequestBuilder<SnomedEclEvaluationRequestBuilder, BranchContext, Promise<Expression>> 
 		implements RevisionIndexRequestBuilder<Promise<Expression>> {
-
-	private final SnomedEclEvaluationRequest req = new SnomedEclEvaluationRequest();
+	
+	private final String expression;
+	
+	private String expressionForm = Trees.INFERRED_FORM;
 	
 	public SnomedEclEvaluationRequestBuilder(String expression) {
-		req.setExpression(expression);
+		this.expression = expression;
+	}
+
+	public SnomedEclEvaluationRequestBuilder setExpressionForm(String expressionForm) {
+		Preconditions.checkArgument(Trees.INFERRED_FORM.equals(expressionForm) || Trees.STATED_FORM.equals(expressionForm), String.format("Expression form must be either %s or %s but got %s", Trees.INFERRED_FORM, Trees.STATED_FORM, expressionForm));
+		this.expressionForm = expressionForm;
+		return getSelf();
 	}
 	
 	@Override
 	protected Request<BranchContext, Promise<Expression>> doBuild() {
-		return req;
+		final SnomedEclEvaluationRequest request = new SnomedEclEvaluationRequest();
+		
+		request.setExpression(expression);
+		request.setExpressionForm(expressionForm);
+		return request;
 	}
 	
 }

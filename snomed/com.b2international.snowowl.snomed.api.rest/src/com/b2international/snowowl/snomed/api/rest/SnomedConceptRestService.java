@@ -130,9 +130,13 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="escg", required=false) 
 			final String escgFilter,
 			
-			@ApiParam(value="The ECL expression to match")
+			@ApiParam(value="The ECL expression to match in the inferred tree")
 			@RequestParam(value="ecl", required=false) 
 			final String eclFilter,
+			
+			@ApiParam(value="The ECL expression to match in the stated tree")
+			@RequestParam(value="statedEcl", required=false)
+			final String statedEclFilter,
 			
 			@ApiParam(value="A set of concept identifiers")
 			@RequestParam(value="conceptIds", required=false) 
@@ -164,6 +168,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				descriptionActiveFilter,
 				escgFilter,
 				eclFilter,
+				statedEclFilter,
 				conceptIds,
 				offset,
 				limit,
@@ -208,6 +213,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				body.getDescriptionActiveFilter(),
 				body.getEscgFilter(),
 				body.getEclFilter(),
+				body.getStatedEclFilter(),
 				body.getConceptIds(),
 				body.getOffset(),
 				body.getLimit(),
@@ -226,6 +232,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final Boolean descriptionActiveFilter,
 			final String escgFilter,
 			final String eclFilter,
+			final String statedEclFilter,
 			final Set<String> conceptIds, 
 			final int offset,
 			final int limit,
@@ -261,6 +268,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.filterByDescriptionActive(descriptionActiveFilter)
 					.filterByEscg(escgFilter)
 					.filterByEcl(eclFilter)
+					.filterByStatedEcl(statedEclFilter)
 					.filterByExtendedLocales(extendedLocales)
 					.setExpand(expand)
 					.setLocales(extendedLocales)

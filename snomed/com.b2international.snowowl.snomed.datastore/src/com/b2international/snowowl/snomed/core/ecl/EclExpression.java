@@ -33,6 +33,7 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -48,6 +49,8 @@ public final class EclExpression {
 
 	private final String ecl;
 	
+	private String expressionForm = Trees.INFERRED_FORM;
+	
 	private Promise<Set<String>> promise;
 	private Promise<Expression> expressionPromise;
 	private Promise<SnomedConcepts> conceptPromise;
@@ -59,6 +62,14 @@ public final class EclExpression {
 	
 	public String getEcl() {
 		return ecl;
+	}
+	
+	public void setExpressionForm(String expressionForm) {
+		this.expressionForm = expressionForm;
+	}
+	
+	public String getExpressionForm() {
+		return expressionForm;
 	}
 	
 	public boolean isAnyExpression() {
@@ -99,6 +110,7 @@ public final class EclExpression {
 	public Promise<Expression> resolveToExpression(final BranchContext context) {
 		if (expressionPromise == null) {
 			expressionPromise = SnomedRequests.prepareEclEvaluation(ecl)
+					.setExpressionForm(expressionForm)
 					.build()
 					.execute(context);
 		}
@@ -108,7 +120,7 @@ public final class EclExpression {
 	public static EclExpression of(String ecl) {
 		return new EclExpression(ecl);
 	}
-
+	
 	public Promise<Expression> resolveToExclusionExpression(final BranchContext context, final Set<String> excludedMatches) {
 		return resolveToExpression(context)
 				.then(new Function<Expression, Expression>() {
@@ -125,10 +137,13 @@ public final class EclExpression {
 	
 	public Promise<Set<String>> resolveToConceptsWithGroups(final BranchContext context) {
 		if (conceptsWithGroups == null) {
+			final Set<String> characteristicTypes = Trees.INFERRED_FORM.equals(expressionForm)
+					? SnomedEclRefinementEvaluator.INFERRED_CHARACTERISTIC_TYPES
+					: SnomedEclRefinementEvaluator.STATED_CHARACTERISTIC_TYPES;
 			conceptsWithGroups = SnomedRequests.prepareSearchRelationship()
 					.all()
 					.filterByActive(true)
-					.filterByCharacteristicTypes(SnomedEclRefinementEvaluator.ALLOWED_CHARACTERISTIC_TYPES)
+					.filterByCharacteristicTypes(characteristicTypes)
 					.filterBySource(ecl)
 					.filterByGroup(1, Integer.MAX_VALUE)
 					.setFields(ImmutableSet.of(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID))

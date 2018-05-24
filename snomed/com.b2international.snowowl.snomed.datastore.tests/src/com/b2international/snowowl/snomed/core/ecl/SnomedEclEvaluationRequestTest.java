@@ -25,11 +25,14 @@ import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedCom
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Fields.REFERRING_REFSETS;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.ancestors;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.parents;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedAncestors;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedParents;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -39,6 +42,9 @@ import org.eclipse.xtext.validation.IResourceValidator;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.b2international.collections.PrimitiveCollectionModule;
 import com.b2international.collections.PrimitiveSets;
@@ -59,6 +65,7 @@ import com.b2international.snowowl.datastore.request.RevisionIndexReadRequest;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.id.RandomSnomedIdentiferGenerator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
@@ -78,6 +85,7 @@ import com.google.inject.Injector;
 /**
  * @since 5.4
  */
+@RunWith(Parameterized.class)
 public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 
 	private static final String ROOT_ID = Concepts.ROOT_CONCEPT;
@@ -117,6 +125,17 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	
 	private BranchContext context;
 
+	private String expressionForm;
+	
+	public SnomedEclEvaluationRequestTest(String expressionForm) {
+		this.expressionForm = expressionForm;
+	}
+	
+	@Parameters(name = "{0}")
+	public static Iterable<? extends Object> data() {
+		return Arrays.asList(Trees.INFERRED_FORM, Trees.STATED_FORM);
+	}
+	
 	@Override
 	protected void configureMapper(ObjectMapper mapper) {
 		super.configureMapper(mapper);
@@ -142,7 +161,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	}
 	
 	private Expression eval(String expression) {
-		return new RevisionIndexReadRequest<>(SnomedRequests.prepareEclEvaluation(expression).build())
+		return new RevisionIndexReadRequest<>(SnomedRequests.prepareEclEvaluation(expression).setExpressionForm(expressionForm).build())
 				.execute(context)
 				.getSync();		
 	}
@@ -212,7 +231,9 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	public void memberOfNested() throws Exception {
 		indexRevision(MAIN, nextStorageKey(), concept(Concepts.SYNONYM)
 				.parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.REFSET_DESCRIPTION_TYPE)))
+				.statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.REFSET_DESCRIPTION_TYPE)))
 				.ancestors(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
+				.statedAncestors(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
 				.build());
 		final Expression actual = eval("^(<" + Concepts.REFSET_DESCRIPTION_TYPE + ")");
 		final Expression expected = Expressions.builder()
@@ -225,18 +246,28 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	@Test
 	public void descendantOf() throws Exception {
 		final Expression actual = eval("<"+ROOT_ID);
-		final Expression expected = descendantsOf(ROOT_ID);
+		final Expression expected = descendantsOf(expressionForm, ROOT_ID);
 		assertEquals(expected, actual);
 	}
 	
 	@Test
 	public void descendantOrSelfOf() throws Exception {
 		final Expression actual = eval("<<"+ROOT_ID);
-		final Expression expected = Expressions.builder()
-				.should(ids(Collections.singleton(ROOT_ID)))
-				.should(parents(Collections.singleton(ROOT_ID)))
-				.should(ancestors(Collections.singleton(ROOT_ID)))
-				.build();
+		Expression expected;
+		if (expressionForm.equals(Trees.INFERRED_FORM)) {
+			expected = Expressions.builder()
+					.should(ids(Collections.singleton(ROOT_ID)))
+					.should(parents(Collections.singleton(ROOT_ID)))
+					.should(ancestors(Collections.singleton(ROOT_ID)))
+					.build();
+			
+		} else {
+			expected = Expressions.builder()
+					.should(ids(Collections.singleton(ROOT_ID)))
+					.should(statedParents(Collections.singleton(ROOT_ID)))
+					.should(statedAncestors(Collections.singleton(ROOT_ID)))
+					.build();
+		}
 		assertEquals(expected, actual);
 	}
 	
@@ -265,14 +296,20 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	@Test
 	public void childOf() throws Exception {
 		final Expression actual = eval("<!"+ROOT_ID);
-		final Expression expected = parents(Collections.singleton(ROOT_ID));
+		Expression expected; 
+		if (expressionForm.equals(Trees.INFERRED_FORM)) {
+			expected = parents(Collections.singleton(ROOT_ID));
+		} else {
+			expected = statedParents(Collections.singleton(ROOT_ID));
+			
+		}
 		assertEquals(expected, actual);
 	}
 	
 	@Test
 	public void parentOf() throws Exception {
 		// SCT Core module has a single parent in this test case
-		indexRevision(MAIN, STORAGE_KEY1, concept(Concepts.MODULE_SCT_CORE).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.MODULE_ROOT))).build());
+		indexRevision(MAIN, STORAGE_KEY1, concept(Concepts.MODULE_SCT_CORE).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.MODULE_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.MODULE_ROOT))).build());
 		final Expression actual = eval(">!"+Concepts.MODULE_SCT_CORE);
 		final Expression expected = ids(Collections.singleton(Concepts.MODULE_ROOT));
 		assertEquals(expected, actual);
@@ -283,7 +320,9 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		// SCT Core module has a single parent and a single ancestor in this test case
 		indexRevision(MAIN, STORAGE_KEY1, concept(Concepts.MODULE_SCT_CORE)
 				.ancestors(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.ROOT_CONCEPT)))
+				.statedAncestors(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.ROOT_CONCEPT)))
 				.parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.MODULE_ROOT)))
+				.statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.MODULE_ROOT)))
 				.build());
 		final Expression actual = eval(">"+Concepts.MODULE_SCT_CORE);
 		final Expression expected = ids(ImmutableSet.of(Concepts.ROOT_CONCEPT, Concepts.MODULE_ROOT));
@@ -295,7 +334,9 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		// SCT Core module has a single parent and a single ancestor in this test case
 		indexRevision(MAIN, STORAGE_KEY1, concept(Concepts.MODULE_SCT_CORE)
 				.ancestors(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.ROOT_CONCEPT)))
+				.statedAncestors(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.ROOT_CONCEPT)))
 				.parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.MODULE_ROOT)))
+				.statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.MODULE_ROOT)))
 				.build());
 		final Expression actual = eval(">>"+Concepts.MODULE_SCT_CORE);
 		final Expression expected = ids(ImmutableSet.of(Concepts.ROOT_CONCEPT, Concepts.MODULE_ROOT, Concepts.MODULE_SCT_CORE));
@@ -369,7 +410,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugHierarchy();
 		final Expression actual = eval(String.format("<%s:%s=%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT1));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(PANADOL_TABLET, TRIPHASIL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -382,7 +423,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		indexRevision(MAIN, nextStorageKey(), concept(HAS_BOSS).build());
 		final Expression actual = eval(String.format("<%s:(%s OR %s)=(%s OR %s)", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, HAS_BOSS, INGREDIENT1, INGREDIENT2));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(PANADOL_TABLET, TRIPHASIL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -394,7 +435,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s:%s=%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT2));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(Collections.singleton(TRIPHASIL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -406,7 +447,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s:%s!=%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT1));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(Collections.singleton(TRIPHASIL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -427,7 +468,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: R %s=%s", SUBSTANCE, HAS_ACTIVE_INGREDIENT, TRIPHASIL_TABLET));
 		final Expression expected = and(
-			descendantsOf(SUBSTANCE),
+			descendantsOf(expressionForm, SUBSTANCE),
 			ids(ImmutableSet.of(INGREDIENT1, INGREDIENT2))
 		);
 		assertEquals(expected, actual);
@@ -439,7 +480,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: R *=%s", SUBSTANCE, TRIPHASIL_TABLET));
 		final Expression expected = and(
-			descendantsOf(SUBSTANCE),
+			descendantsOf(expressionForm, SUBSTANCE),
 			ids(ImmutableSet.of(INGREDIENT1, INGREDIENT2))
 		);
 		assertEquals(expected, actual);
@@ -451,7 +492,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: R %s=*", SUBSTANCE, HAS_ACTIVE_INGREDIENT));
 		final Expression expected = and(
-			descendantsOf(SUBSTANCE),
+			descendantsOf(expressionForm, SUBSTANCE),
 			ids(ImmutableSet.of(INGREDIENT1, INGREDIENT2))
 		);
 		assertEquals(expected, actual);
@@ -463,7 +504,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 
 		final Expression actual = eval(String.format("<%s: %s=<%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(TRIPHASIL_TABLET, PANADOL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -475,7 +516,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [0..*] %s=<%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		// since 0..* cardinality is equal to just the focusConcepts, then this will eval to all concepts under DRUG_ROOT
-		final Expression expected = descendantsOf(DRUG_ROOT);
+		final Expression expected = descendantsOf(expressionForm, DRUG_ROOT);
 		assertEquals(expected, actual);
 	}
 	
@@ -487,7 +528,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		// this will properly eval to the concepts having at least one relationships without actual cardinality 
 		final Expression actual = eval(String.format("<%s: [1..*] %s=<%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(TRIPHASIL_TABLET, PANADOL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -499,7 +540,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [0..0] %s=<%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected =	Expressions.builder()
-				.filter(descendantsOf(DRUG_ROOT))
+				.filter(descendantsOf(expressionForm, DRUG_ROOT))
 				.mustNot(ids(ImmutableSet.of(TRIPHASIL_TABLET, PANADOL_TABLET)))
 				.build();
 		assertEquals(expected, actual);
@@ -508,12 +549,12 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	@Test
 	public void refinementCardinalityZeroToZeroNotEquals() throws Exception {
 		generateDrugHierarchy();
-		indexRevision(MAIN, nextStorageKey(), concept(DRUG_WITH_INVALID_HAI).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(DRUG_WITH_INVALID_HAI).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
 		indexRevision(MAIN, nextStorageKey(), relationship(DRUG_WITH_INVALID_HAI, HAS_ACTIVE_INGREDIENT, DRUG_WITH_INVALID_HAI).group(0).build());
 		
 		final Expression actual = eval(String.format("<%s: [0..0] %s != <%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected =	Expressions.builder()
-				.filter(descendantsOf(DRUG_ROOT))
+				.filter(descendantsOf(expressionForm, DRUG_ROOT))
 				.mustNot(ids(ImmutableSet.of(DRUG_WITH_INVALID_HAI)))
 				.build();
 		assertEquals(expected, actual);
@@ -525,7 +566,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [0..0] %s != %s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT1));
 		final Expression expected =	Expressions.builder()
-				.filter(descendantsOf(DRUG_ROOT))
+				.filter(descendantsOf(expressionForm, DRUG_ROOT))
 				.mustNot(ids(ImmutableSet.of(TRIPHASIL_TABLET)))
 				.build();
 		assertEquals(expected, actual);
@@ -537,7 +578,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [0..1] %s=<%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected =	Expressions.builder()
-				.filter(descendantsOf(DRUG_ROOT))
+				.filter(descendantsOf(expressionForm, DRUG_ROOT))
 				.mustNot(ids(ImmutableSet.of(TRIPHASIL_TABLET)))
 				.build();
 		assertEquals(expected, actual);
@@ -549,7 +590,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [1..1] %s=<%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(Collections.singleton(PANADOL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -561,7 +602,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [1..2] %s=<%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(TRIPHASIL_TABLET, PANADOL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -573,11 +614,11 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		final Expression actual = eval(String.format("<%s:%s=%s,%s=%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT1, HAS_ACTIVE_INGREDIENT, INGREDIENT2));
 		final Expression expected = and(
 			and(
-				descendantsOf(DRUG_ROOT),
+				descendantsOf(expressionForm, DRUG_ROOT),
 				ids(ImmutableSet.of(PANADOL_TABLET, TRIPHASIL_TABLET))
 			),
 			and(
-				descendantsOf(DRUG_ROOT),
+				descendantsOf(expressionForm, DRUG_ROOT),
 				ids(ImmutableSet.of(TRIPHASIL_TABLET))
 			)
 		);
@@ -591,11 +632,11 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		final Expression actual = eval(String.format("<%s:%s=%s OR %s=%s", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT2, HAS_ACTIVE_INGREDIENT, INGREDIENT4));
 		final Expression expected = Expressions.builder()
 				.should(and(
-					descendantsOf(DRUG_ROOT),
+					descendantsOf(expressionForm, DRUG_ROOT),
 					ids(ImmutableSet.of(TRIPHASIL_TABLET))
 				))
 				.should(and(
-					descendantsOf(DRUG_ROOT),
+					descendantsOf(expressionForm, DRUG_ROOT),
 					ids(ImmutableSet.of(TISSEL_KIT)))
 				)
 				.build();
@@ -609,16 +650,16 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		final Expression actual = eval(String.format("<%s:%s=%s OR (%s=%s AND %s=%s)", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT2, HAS_ACTIVE_INGREDIENT, INGREDIENT4, HAS_ACTIVE_INGREDIENT, INGREDIENT2));
 		final Expression expected = Expressions.builder()
 				.should(and(
-					descendantsOf(DRUG_ROOT),
+					descendantsOf(expressionForm, DRUG_ROOT),
 					ids(ImmutableSet.of(TRIPHASIL_TABLET))
 				))
 				.should(and(
 					and(
-						descendantsOf(DRUG_ROOT),
+						descendantsOf(expressionForm, DRUG_ROOT),
 						ids(ImmutableSet.of(TISSEL_KIT))
 					),
 					and(
-						descendantsOf(DRUG_ROOT),
+						descendantsOf(expressionForm, DRUG_ROOT),
 						ids(ImmutableSet.of(TRIPHASIL_TABLET))
 					)
 				))
@@ -641,7 +682,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugHierarchy();
 		
 		final Expression actual = eval(String.format("<%s: [0..*] R %s=%s", SUBSTANCE, HAS_ACTIVE_INGREDIENT, TRIPHASIL_TABLET));
-		final Expression expected = descendantsOf(SUBSTANCE);
+		final Expression expected = descendantsOf(expressionForm, SUBSTANCE);
 		assertEquals(expected, actual);
 	}
 	
@@ -678,7 +719,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: {%s=<%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ASPIRIN_TABLET, ALGOFLEX_TABLET, TRIPLEX_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -690,7 +731,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [2..2] {%s=<%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ALGOFLEX_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -701,7 +742,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugsWithGroups();
 		
 		final Expression actual = eval(String.format("<%s: [0..*] {%s=<%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
-		final Expression expected = descendantsOf(DRUG_ROOT);
+		final Expression expected = descendantsOf(expressionForm, DRUG_ROOT);
 		assertEquals(expected, actual);
 	}
 	
@@ -711,7 +752,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [0..0] {%s=<%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = Expressions.builder()
-				.filter(descendantsOf(DRUG_ROOT))
+				.filter(descendantsOf(expressionForm, DRUG_ROOT))
 				.mustNot(ids(ImmutableSet.of(ASPIRIN_TABLET, ALGOFLEX_TABLET, TRIPLEX_TABLET)))
 				.build();
 		assertEquals(expected, actual);
@@ -723,7 +764,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [0..1] {%s=<%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = Expressions.builder()
-				.filter(descendantsOf(DRUG_ROOT))
+				.filter(descendantsOf(expressionForm, DRUG_ROOT))
 				.mustNot(ids(ImmutableSet.of(ALGOFLEX_TABLET)))
 				.build();
 		assertEquals(expected, actual);
@@ -735,7 +776,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [1..1] {%s=<%s,%s=<%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE, HAS_BOSS, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ASPIRIN_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -747,7 +788,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: {[1..1] %s=<%s,[1..1] %s=<%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE, HAS_BOSS, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ASPIRIN_TABLET, ALGOFLEX_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -759,7 +800,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [1..1] {%s=%s OR %s=%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT5, HAS_BOSS, INGREDIENT5));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ASPIRIN_TABLET, TRIPLEX_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -771,7 +812,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: [1..1] {(%s=%s AND %s=%s) OR %s=%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, INGREDIENT5, HAS_BOSS, INGREDIENT6, HAS_ACTIVE_INGREDIENT, INGREDIENT6));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ASPIRIN_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -783,7 +824,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: %s = 'PANADOL'", DRUG_ROOT, HAS_TRADE_NAME));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(PANADOL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -804,7 +845,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		
 		final Expression actual = eval(String.format("<%s: %s != 'PANADOL'", DRUG_ROOT, HAS_TRADE_NAME));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT), 
+			descendantsOf(expressionForm, DRUG_ROOT), 
 			ids(ImmutableSet.of(TRIPHASIL_TABLET, AMOXICILLIN_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -824,7 +865,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugHierarchy();
 		final Expression actual = eval(String.format("<%s: %s = #500", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(PANADOL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -835,7 +876,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugHierarchy();
 		final Expression actual = eval(String.format("<%s: %s = #-500", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(TRIPHASIL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -846,7 +887,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugHierarchy();
 		final Expression actual = eval(String.format("<%s: %s != #500", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(TRIPHASIL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -857,7 +898,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugHierarchy();
 		final Expression actual = eval(String.format("<%s: %s = #5.5", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(AMOXICILLIN_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -868,7 +909,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugHierarchy();
 		final Expression actual = eval(String.format("<%s: %s = #-5.5", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ABACAVIR_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -879,7 +920,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugHierarchy();
 		final Expression actual = eval(String.format("<%s: %s != #5.5", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ABACAVIR_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -891,7 +932,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugWithIntegerStrengthOfValueOne();
 		final Expression actual = eval(String.format("<%s: %s < #1", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(TRIPHASIL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -903,7 +944,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugWithDecimalStrengthOfValueOne();
 		final Expression actual = eval(String.format("<%s: %s < #1.0", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ABACAVIR_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -915,7 +956,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugWithIntegerStrengthOfValueOne();
 		final Expression actual = eval(String.format("<%s: %s <= #1", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(TRIPHASIL_TABLET, DRUG_1_MG))
 		);
 		assertEquals(expected, actual);
@@ -927,7 +968,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugWithDecimalStrengthOfValueOne();
 		final Expression actual = eval(String.format("<%s: %s <= #1.0", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ABACAVIR_TABLET, DRUG_1D_MG))
 		);
 		assertEquals(expected, actual);
@@ -939,7 +980,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugWithIntegerStrengthOfValueOne();
 		final Expression actual = eval(String.format("<%s: %s > #1", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(PANADOL_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -951,7 +992,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugWithDecimalStrengthOfValueOne();
 		final Expression actual = eval(String.format("<%s: %s > #1.0", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(AMOXICILLIN_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -963,7 +1004,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugWithIntegerStrengthOfValueOne();
 		final Expression actual = eval(String.format("<%s: %s >= #1", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(PANADOL_TABLET, DRUG_1_MG))
 		);
 		assertEquals(expected, actual);
@@ -975,7 +1016,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugWithDecimalStrengthOfValueOne();
 		final Expression actual = eval(String.format("<%s: %s >= #1.0", DRUG_ROOT, PREFERRED_STRENGTH));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(AMOXICILLIN_TABLET, DRUG_1D_MG))
 		);
 		assertEquals(expected, actual);
@@ -995,7 +1036,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 				.build());
 		
 		final Expression actual = eval(String.format("<^%s", refSetId));
-		final Expression expected = descendantsOf(member1, member2);
+		final Expression expected = descendantsOf(expressionForm, member1, member2);
 		assertEquals(expected, actual);
 	}
 
@@ -1021,7 +1062,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugsWithGroups();
 		final Expression actual = eval(String.format("<%s: { [0..1] %s = <%s }", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = and(
-			descendantsOf(DRUG_ROOT),
+			descendantsOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ASPIRIN_TABLET, TRIPLEX_TABLET, ALGOFLEX_TABLET))
 		);
 		assertEquals(expected, actual);
@@ -1032,7 +1073,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugsWithGroups();
 		final Expression actual = eval(String.format("<%s: [0..0] { %s = <%s }", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = Expressions.builder()
-				.filter(descendantsOf(DRUG_ROOT))
+				.filter(descendantsOf(expressionForm, DRUG_ROOT))
 				.mustNot(ids(ImmutableSet.of(ALGOFLEX_TABLET, TRIPLEX_TABLET, ASPIRIN_TABLET)))
 				.build();;
 		assertEquals(expected, actual);
@@ -1043,7 +1084,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		generateDrugsWithGroups();
 		final Expression actual = eval(String.format("<%s: [0..1] { %s = <%s }", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
 		final Expression expected = Expressions.builder()
-				.filter(descendantsOf(DRUG_ROOT))
+				.filter(descendantsOf(expressionForm, DRUG_ROOT))
 				.mustNot(ids(ImmutableSet.of(ALGOFLEX_TABLET)))
 				.build();;
 		assertEquals(expected, actual);
@@ -1053,7 +1094,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	public void groupCardinalityZeroToOneWithDefaultAttributeCardinalityNotEquals() throws Exception {
 		generateDrugsWithGroups();
 		final Expression actual = eval(String.format("<%s: [0..1] { %s != <%s }", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE));
-		final Expression expected = descendantsOf(DRUG_ROOT);
+		final Expression expected = descendantsOf(expressionForm, DRUG_ROOT);
 		assertEquals(expected, actual);
 	}
 	
@@ -1115,20 +1156,23 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	 */
 	private void generateDrugHierarchy() {
 		// substances
-		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT1).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT2).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT3).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT1).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT2).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT3).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
 		// drugs
-		indexRevision(MAIN, nextStorageKey(), concept(ABACAVIR_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(PANADOL_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(TRIPHASIL_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(AMOXICILLIN_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(ABACAVIR_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(PANADOL_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(TRIPHASIL_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(AMOXICILLIN_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
 		// has active ingredient relationships
 		indexRevision(MAIN, nextStorageKey(), relationship(PANADOL_TABLET, HAS_ACTIVE_INGREDIENT, INGREDIENT1).group(0).build());
 		indexRevision(MAIN, nextStorageKey(), relationship(TRIPHASIL_TABLET, HAS_ACTIVE_INGREDIENT, INGREDIENT1).group(0).build());
 		indexRevision(MAIN, nextStorageKey(), relationship(TRIPHASIL_TABLET, HAS_ACTIVE_INGREDIENT, INGREDIENT2).group(0).build());
 		indexRevision(MAIN, nextStorageKey(), relationship(TRIPHASIL_TABLET, HAS_BOSS, INGREDIENT2).group(0).build());
-		indexRevision(MAIN, nextStorageKey(), relationship(AMOXICILLIN_TABLET, HAS_ACTIVE_INGREDIENT, INGREDIENT1).group(0).characteristicTypeId(Concepts.STATED_RELATIONSHIP).build());
+		
+		// XXX: This relationship's characteristicType setting is here for a reason so in ecl searches we won't find this
+		indexRevision(MAIN, nextStorageKey(), relationship(AMOXICILLIN_TABLET, HAS_ACTIVE_INGREDIENT, INGREDIENT1).group(0).characteristicTypeId(Trees.INFERRED_FORM.equals(expressionForm) ? Concepts.STATED_RELATIONSHIP : Concepts.INFERRED_RELATIONSHIP).build());
+		
 		// trade names
 		indexRevision(MAIN, nextStorageKey(), stringMember(PANADOL_TABLET, HAS_TRADE_NAME, "PANADOL").build());
 		indexRevision(MAIN, nextStorageKey(), stringMember(TRIPHASIL_TABLET, HAS_TRADE_NAME, "TRIPHASIL").build());
@@ -1156,8 +1200,8 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	 * </ul>
 	 */
 	private void generateTisselKit() {
-		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT4).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(TISSEL_KIT).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT4).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(TISSEL_KIT).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
 		indexRevision(MAIN, nextStorageKey(), relationship(TISSEL_KIT, HAS_ACTIVE_INGREDIENT, INGREDIENT4).group(0).build());
 	}
 	
@@ -1181,13 +1225,13 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	 * </ul>
 	 */
 	private void generateDrugsWithGroups() {
-		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT5).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT6).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT5).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(INGREDIENT6).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(SUBSTANCE))).build());
 		
-		indexRevision(MAIN, nextStorageKey(), concept(EPOX_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(ASPIRIN_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(ALGOFLEX_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
-		indexRevision(MAIN, nextStorageKey(), concept(TRIPLEX_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(EPOX_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(ASPIRIN_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(ALGOFLEX_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(TRIPLEX_TABLET).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
 		
 		indexRevision(MAIN, nextStorageKey(), relationship(EPOX_TABLET, HAS_ACTIVE_INGREDIENT, INGREDIENT5).group(0).build());
 		
@@ -1204,12 +1248,12 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	}
 	
 	private void generateDrugWithIntegerStrengthOfValueOne() {
-		indexRevision(MAIN, nextStorageKey(), concept(DRUG_1_MG).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(DRUG_1_MG).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
 		indexRevision(MAIN, nextStorageKey(), integerMember(DRUG_1_MG, PREFERRED_STRENGTH, 1).build());
 	}
 	
 	private void generateDrugWithDecimalStrengthOfValueOne() {
-		indexRevision(MAIN, nextStorageKey(), concept(DRUG_1D_MG).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
+		indexRevision(MAIN, nextStorageKey(), concept(DRUG_1D_MG).parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(DRUG_ROOT))).build());
 		indexRevision(MAIN, nextStorageKey(), decimalMember(DRUG_1D_MG, PREFERRED_STRENGTH, BigDecimal.valueOf(1.0d)).build());
 	}
 
@@ -1224,14 +1268,15 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 				.effectiveTime(EffectiveTimes.UNSET_EFFECTIVE_TIME)
 				.primitive(true)
 				.parents(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
-				.ancestors(PrimitiveSets.newLongOpenHashSet())
+				.ancestors(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
 				.statedParents(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
-				.statedAncestors(PrimitiveSets.newLongOpenHashSet())
+				.statedAncestors(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
 				.referringRefSets(Collections.<String>emptySet())
 				.referringMappingRefSets(Collections.<String>emptySet());
 	}
 	
 	private SnomedRelationshipIndexEntry.Builder relationship(final String source, final String type, final String destination) {
+		final String characteristicTypeId = Trees.INFERRED_FORM.equals(expressionForm) ? Concepts.INFERRED_RELATIONSHIP : Concepts.STATED_RELATIONSHIP;
 		return SnomedRelationshipIndexEntry.builder()
 				.id(RandomSnomedIdentiferGenerator.generateRelationshipId())
 				.active(true)
@@ -1239,7 +1284,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 				.sourceId(source)
 				.typeId(type)
 				.destinationId(destination)
-				.characteristicTypeId(Concepts.INFERRED_RELATIONSHIP)
+				.characteristicTypeId(characteristicTypeId)
 				.modifierId(Concepts.EXISTENTIAL_RESTRICTION_MODIFIER);
 	}
 	
@@ -1260,6 +1305,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 				SnomedIdentifiers.getComponentCategory(referencedComponentId) == ComponentCategory.CONCEPT 
 					? SnomedTerminologyComponentConstants.CONCEPT_NUMBER 
 					: SnomedTerminologyComponentConstants.RELATIONSHIP_NUMBER;
+		final String characteristicTypeId = Trees.INFERRED_FORM.equals(expressionForm) ? Concepts.INFERRED_RELATIONSHIP : Concepts.STATED_RELATIONSHIP;
 		return SnomedRefSetMemberIndexEntry.builder()
 				.id(RandomSnomedIdentiferGenerator.generateRelationshipId())
 				.active(true)
@@ -1268,7 +1314,7 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 				.referencedComponentType(referencedComponentType)
 				.referenceSetId(RandomSnomedIdentiferGenerator.generateConceptId())
 				.referenceSetType(SnomedRefSetType.CONCRETE_DATA_TYPE)
-				.field(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, Concepts.INFERRED_RELATIONSHIP)
+				.field(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, characteristicTypeId)
 				.field(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, attributeName)
 				.field(Fields.DATA_TYPE, type)
 				.field(SnomedRf2Headers.FIELD_VALUE, value);
@@ -1278,11 +1324,21 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		return Expressions.builder().filter(left).filter(right).build();
 	}
 	
-	private static Expression descendantsOf(String...conceptIds) {
-		return Expressions.builder()
-				.should(parents(ImmutableSet.copyOf(conceptIds)))
-				.should(ancestors(ImmutableSet.copyOf(conceptIds)))
-				.build();
+	private static Expression descendantsOf(String expressionForm, String...conceptIds) {
+		Expression expression;
+		if (Trees.INFERRED_FORM.equals(expressionForm)) {
+			expression = Expressions.builder()
+					.should(parents(ImmutableSet.copyOf(conceptIds)))
+					.should(ancestors(ImmutableSet.copyOf(conceptIds)))
+					.build();
+		} else {
+			expression = Expressions.builder()
+					.should(statedParents(ImmutableSet.copyOf(conceptIds)))
+					.should(statedAncestors(ImmutableSet.copyOf(conceptIds)))
+					.build();
+		}
+		
+		return expression;
 	}
 
 }
