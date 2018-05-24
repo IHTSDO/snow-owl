@@ -106,8 +106,11 @@ final class SnomedEclRefinementEvaluator {
 	
 	private final EclExpression focusConcepts;
 	
+	private String expressionForm = Trees.INFERRED_FORM;
+	
 	public SnomedEclRefinementEvaluator(EclExpression focusConcepts) {
 		this.focusConcepts = focusConcepts;
+		this.expressionForm = focusConcepts.getExpressionForm();
 	}
 	
 	public Promise<Expression> evaluate(BranchContext context, Refinement refinement) {
@@ -423,7 +426,7 @@ final class SnomedEclRefinementEvaluator {
 			final Collection<String> destinationConceptFilter = Collections.singleton(serializer.serializeWithoutTerms(((AttributeComparison) comparison).getConstraint()));
 			final Collection<String> focusConceptFilter = refinement.isReversed() ? destinationConceptFilter : null;
 			final Collection<String> valueConceptFilter = refinement.isReversed() ? null : destinationConceptFilter;
-			return evalRelationships(context, focusConceptFilter, typeConceptFilter, valueConceptFilter, grouped, focusConcepts.getExpressionForm());
+			return evalRelationships(context, focusConceptFilter, typeConceptFilter, valueConceptFilter, grouped, expressionForm);
 		} else if (comparison instanceof DataTypeComparison) {
 			if (grouped) {
 				throw new BadRequestException("Group refinement is not supported in data type based comparison (string/numeric)");
@@ -500,7 +503,7 @@ final class SnomedEclRefinementEvaluator {
 		} else {
 			return SnomedEclEvaluationRequest.throwUnsupported(comparison);
 		}
-		return evalMembers(context, attributeNames, type, value, operator, focusConcepts.getExpressionForm())
+		return evalMembers(context, attributeNames, type, value, operator)
 				.then(new Function<SnomedReferenceSetMembers, Collection<Property>>() {
 					@Override
 					public Collection<Property> apply(SnomedReferenceSetMembers matchingMembers) {
@@ -523,8 +526,7 @@ final class SnomedEclRefinementEvaluator {
 			final Collection<String> attributeNames, 
 			final DataType type, 
 			final Object value, 
-			SearchResourceRequest.Operator operator,
-			String expressionForm) {
+			SearchResourceRequest.Operator operator) {
 		final Set<String> characteristicTypes = Trees.INFERRED_FORM.equals(expressionForm) 
 					? INFERRED_CHARACTERISTIC_TYPES
 					: STATED_CHARACTERISTIC_TYPES;
