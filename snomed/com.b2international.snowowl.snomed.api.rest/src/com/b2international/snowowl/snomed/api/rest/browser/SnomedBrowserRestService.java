@@ -333,7 +333,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
 			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
-			final SnomedBrowserDescriptionType preferredDescriptionType) {
+			final SnomedBrowserDescriptionType preferredDescriptionType,
+			
+			@ApiParam(value="Stated or inferred form", allowableValues="stated, inferred")
+			@RequestParam(value="form", defaultValue="inferred")
+			final String form) {
 		
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -346,7 +350,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptParents(ref, extendedLocales, preferredDescriptionType);
+		return browserService.getConceptParents(ref, extendedLocales, "stated".equals(form), preferredDescriptionType);
 	}
 	
 	@ApiOperation(

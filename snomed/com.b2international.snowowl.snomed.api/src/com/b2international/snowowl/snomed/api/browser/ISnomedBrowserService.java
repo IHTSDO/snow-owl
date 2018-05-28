@@ -69,6 +69,7 @@ public interface ISnomedBrowserService {
 	 * 
 	 * @param conceptRef the component reference pointing to the concept whose parents should be retrieved (may not be {@code null})
 	 * @param locales the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
+     * @param stated {@code true} if stated children should be returned, {@code false} if inferred
 	 * @return the parent concept list for the requested concept
 	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
 	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
@@ -76,7 +77,7 @@ public interface ISnomedBrowserService {
 	 */
 	List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef conceptRef, List<ExtendedLocale> locales);
 	
-	List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef ref, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType);
+	List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef ref, List<ExtendedLocale> extendedLocales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType);
 	/**
 	 * Retrieves a list of child concepts for a single identifier.
 	 * 

@@ -634,10 +634,11 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	@Override
 	public List<ISnomedBrowserParentConcept> getConceptParents(final IComponentRef conceptRef, final List<ExtendedLocale> locales) {
-		return getConceptParents(conceptRef, locales, SnomedBrowserDescriptionType.FSN);
+		return getConceptParents(conceptRef, locales, false, SnomedBrowserDescriptionType.FSN);
 	}
 	
-	public List<ISnomedBrowserParentConcept> getConceptParents(final IComponentRef conceptRef, final List<ExtendedLocale> locales, SnomedBrowserDescriptionType preferredDescriptionType) {
+	@Override
+	public List<ISnomedBrowserParentConcept> getConceptParents(final IComponentRef conceptRef, final List<ExtendedLocale> locales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType) {
 		final InternalComponentRef internalConceptRef = ClassUtils.checkAndCast(conceptRef, InternalComponentRef.class);
 		final IBranchPath branchPath = internalConceptRef.getBranch().branchPath();
 		final DescriptionService descriptionService = new DescriptionService(bus, conceptRef.getBranchPath());
@@ -647,7 +648,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			@Override
 			protected Iterable<SnomedConcept> getConceptEntries(String conceptId) {
 				return SnomedRequests.prepareGetConcept(conceptId)
-						.setExpand("ancestors(form:\"inferred\",direct:true)")
+						.setExpand(stated ? "ancestors(form:\"stated\",direct:true)" : "ancestors(form:\"inferred\",direct:true)")
 						.setLocales(locales)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 						.execute(bus())
