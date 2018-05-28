@@ -649,7 +649,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			protected Iterable<SnomedConcept> getConceptEntries(String conceptId) {
 				if (stated) {
 					return SnomedRequests.prepareGetConcept(conceptId)
-							.setExpand("ancestors(form:\"stated\",direct:true)")
+							.setExpand("statedAncestors(form:\"stated\",direct:true)")
 							.setLocales(locales)
 							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 							.execute(bus())
