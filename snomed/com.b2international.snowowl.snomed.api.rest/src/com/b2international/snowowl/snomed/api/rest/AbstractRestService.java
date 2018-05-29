@@ -33,6 +33,8 @@ public abstract class AbstractRestService {
 	 */
 	public static final String SO_MEDIA_TYPE = "application/vnd.com.b2international.snowowl+json";
 
+	public static final String TEXT_CSV_MEDIA_TYPE = "text/csv";
+
 	@Autowired
 	@Value("${repositoryId}")
 	protected String repositoryId;

@@ -62,6 +62,9 @@ import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.google.common.base.Strings;
+import com.google.common.net.HttpHeaders;
+import com.mangofactory.swagger.annotations.ApiIgnore;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -92,7 +95,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
 		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/concepts", method=RequestMethod.GET, produces={ AbstractRestService.SO_MEDIA_TYPE, "text/csv" })
+	@RequestMapping(value="/{path:**}/concepts", method=RequestMethod.GET, produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
 	public @ResponseBody DeferredResult<SnomedConcepts> search(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
@@ -149,15 +152,18 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
-			
 			@ApiParam(value="Expansion parameters")
 			@RequestParam(value="expand", required=false)
 			final String expand,
 
 			@ApiParam(value="Accepted language tags, in order of preference")
-			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage) {
-
+			@RequestHeader(value=HttpHeaders.ACCEPT_LANGUAGE, defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage,
+			
+			@ApiIgnore
+			@RequestHeader(value=HttpHeaders.ACCEPT, required=false)
+			final String contentType) {
+		
 		return doSearch(branch,
 				activeFilter,
 				moduleFilter,
@@ -173,7 +179,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				offset,
 				limit,
 				expand,
-				acceptLanguage);
+				acceptLanguage,
+				contentType);
 	}
 
 	@ApiOperation(
@@ -190,7 +197,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
 		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/concepts/search", method = {RequestMethod.POST},  produces={ AbstractRestService.SO_MEDIA_TYPE, "text/csv" })
+	@RequestMapping(value="/{path:**}/concepts/search", method = {RequestMethod.POST},  produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
 	public @ResponseBody DeferredResult<SnomedConcepts> searchViaPost(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
@@ -200,9 +207,13 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final SnomedConceptRestSearch body,
 			
 			@ApiParam(value="Accepted language tags, in order of preference")
-			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage) {
-
+			@RequestHeader(value=HttpHeaders.ACCEPT_LANGUAGE, defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage,
+		
+			@ApiIgnore
+			@RequestHeader(value=HttpHeaders.ACCEPT, defaultValue=AbstractRestService.SO_MEDIA_TYPE, required=false)
+			final String contentType){
+		
 		return doSearch(branch,
 				body.getActiveFilter(),
 				body.getModuleFilter(),
@@ -218,7 +229,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				body.getOffset(),
 				body.getLimit(),
 				body.getExpand(),
-				acceptLanguage);
+				acceptLanguage,
+				contentType);
 	}
 
 	private DeferredResult<SnomedConcepts> doSearch(
@@ -236,11 +248,19 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final Set<String> conceptIds, 
 			final int offset,
 			final int limit,
-			final String expand,
-			final String acceptLanguage) {
+			final String expandParams,
+			final String acceptLanguage,
+			final String contentType) {
 		
 		final List<ExtendedLocale> extendedLocales;
 		
+		String expand = expandParams;
+		
+		if (AbstractRestService.TEXT_CSV_MEDIA_TYPE.equals(contentType)) {
+			if (!Strings.isNullOrEmpty(expand) && expand.contains("pt") && !expand.contains("descriptions()")) {
+				expand = String.format("%s,descriptions()", expand);
+			}
+		}
 		try {
 			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
 		} catch (IOException e) {
@@ -306,7 +326,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final String expand,
 			
 			@ApiParam(value="Accepted language tags, in order of preference")
-			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			@RequestHeader(value=HttpHeaders.ACCEPT_LANGUAGE, defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
 		final List<ExtendedLocale> extendedLocales;
@@ -351,7 +371,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final boolean normaliseAttributeValues,
 			
 			@ApiParam(value="Accepted language tags, in order of preference")
-			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			@RequestHeader(value=HttpHeaders.ACCEPT_LANGUAGE, defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
 		final List<ExtendedLocale> extendedLocales;
