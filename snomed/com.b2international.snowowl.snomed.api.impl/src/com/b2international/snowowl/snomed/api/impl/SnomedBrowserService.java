@@ -647,21 +647,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			
 			@Override
 			protected Iterable<SnomedConcept> getConceptEntries(String conceptId) {
-				if (stated) {
-					return SnomedRequests.prepareGetConcept(conceptId)
-							.setExpand("statedAncestors(form:\"stated\",direct:true)")
-							.setLocales(locales)
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
-							.execute(bus())
-							.getSync().getStatedAncestors();
-				} else {
-					return SnomedRequests.prepareGetConcept(conceptId)
-							.setExpand("ancestors(form:\"inferred\",direct:true)")
-							.setLocales(locales)
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
-							.execute(bus())
-							.getSync().getAncestors();
-				}
+				SnomedConcept concept = SnomedRequests.prepareGetConcept(conceptId)
+						.setExpand(stated ? "statedAncestors(direct:true)" : "ancestors(form:\"inferred\",direct:true)")
+						.setLocales(locales)
+						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+						.execute(bus())
+						.getSync();
+				return stated ? concept.getStatedAncestors() : concept.getAncestors();
 				
 			}
 
