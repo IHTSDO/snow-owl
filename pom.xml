@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.b2international.snowowl</groupId>
 	<artifactId>snowowl-parent</artifactId>
-	<version>5.13.0-SNAPSHOT</version>
+	<version>5.13.0</version>
 	<packaging>pom</packaging>
 
 	<properties>
@@ -699,21 +699,21 @@
 			</repositories>
 		</profile>
 		<profile>
-		  <id>tp_dependencies</id>
-		  <properties>
-		    <target.platform.version>5.13.0-SNAPSHOT</target.platform.version>
-		    <previous-target.platform.version>5.12.1-SNAPSHOT</previous-target.platform.version>
-		    <target.platform.url>${nexus.url}/content/unzip/snapshots.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
-			<previous-target.platform.url>${nexus.url}/content/unzip/snapshots.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${previous-target.platform.version}/com.b2international.snowowl.server.target.update-${previous-target.platform.version}.zip-unzip/</previous-target.platform.url>
-		  </properties>
-		  <repositories>
-		    <repository>
+			<id>tp_dependencies</id>
+			<properties>
+				<target.platform.version>5.13.0</target.platform.version>
+				<previous-target.platform.version>5.13.0-SNAPSHOT</previous-target.platform.version>
+				<target.platform.url>${nexus.url}/content/unzip/releases.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
+				<previous-target.platform.url>${nexus.url}/content/unzip/snapshots.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${previous-target.platform.version}/com.b2international.snowowl.server.target.update-${previous-target.platform.version}.zip-unzip/</previous-target.platform.url>
+			</properties>
+			<repositories>
+				<repository>
 					<!-- This repository containing the previous target platform is a workaround for the fact that some of the required dependencies are now missing from the Eclipse repositories.-->
-			  <id>tp</id>
-			  <url>${target.platform.url}</url>
-		      <layout>p2</layout>
-		    </repository>
-		  </repositories>
+					<id>tp</id>
+					<url>${target.platform.url}</url>
+					<layout>p2</layout>
+				</repository>
+			</repositories>
 		</profile>
 		<profile>
       		<id>docs</id>
