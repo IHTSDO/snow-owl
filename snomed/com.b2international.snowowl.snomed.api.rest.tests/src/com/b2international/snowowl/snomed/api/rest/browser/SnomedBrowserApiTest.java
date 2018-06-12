@@ -23,6 +23,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestReque
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.deleteComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reserveComponentId;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -41,7 +42,9 @@ import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserBulkChangeStatus;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests;
 import com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests;
@@ -56,11 +59,14 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
+import com.b2international.snowowl.test.commons.rest.RestExtensions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Maps;
+import com.jayway.restassured.response.ExtractableResponse;
+import com.jayway.restassured.response.Response;
 import com.jayway.restassured.response.ValidatableResponse;
 
 /**
@@ -389,16 +395,123 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		concepts.add(responseBody_2);		
 		
 		// Post updates		
-		final String bulkId = SnomedBrowserRestRequests.bulkUpdateBrowserConcepts(branchPath, concepts).assertThat().statusCode(201).extract().header("Location");
+		final String bulkId = RestExtensions.lastPathSegment(SnomedBrowserRestRequests.bulkUpdateBrowserConcepts(branchPath, concepts)
+				.statusCode(201)
+				.extract()
+				.header("Location"));
 				
 		// Wait for completion		
-		SnomedBrowserRestRequests.waitForGetBrowserConceptChanges(branchPath, bulkId);
+		SnomedBrowserRestRequests.waitForGetBrowserConceptChanges(branchPath, bulkId)
+			.body("status", equalTo(SnomedBrowserBulkChangeStatus.COMPLETED.name()));
 				
 		// Load concepts and assert updated
 		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId_1, "fsn()").assertThat().statusCode(200).body("fsn.term", equalTo("OneA"));
 		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId_2, "fsn()").assertThat().statusCode(200).body("fsn.term", equalTo("TwoA"));
 	}
 	
+	@Test
+	public void bulkCreateConceptsWithAllowCreateRequests() {
+		
+		Map<String, Object> firstConceptRequest = Maps.newHashMap(createBrowserConceptRequest());
+		Map<String, Object> secondConceptRequest = Maps.newHashMap(createBrowserConceptRequest());
+		
+		List<Map<String, Object>> concepts = new ArrayList<>();		
+		
+		concepts.add(firstConceptRequest);		
+		concepts.add(secondConceptRequest);		
+		
+		String bulkId = RestExtensions.lastPathSegment(givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().contentType(SnomedBrowserRestRequests.JSON_CONTENT_UTF8_CHARSET)
+			.and().body(concepts)
+			.when().post("/browser/{path}/concepts/bulk?allowCreate={flag}", branchPath.getPath(), true)
+			.then()
+			.statusCode(201)
+			.extract()
+			.header("Location"));
+		
+		SnomedBrowserBulkChangeRun bulkChangeRun = SnomedBrowserRestRequests.waitForGetBrowserConceptChanges(branchPath, bulkId)
+				.body("status", equalTo(SnomedBrowserBulkChangeStatus.COMPLETED.name()))
+				.extract()
+				.as(SnomedBrowserBulkChangeRun.class);
+		
+		for (String id : bulkChangeRun.getConceptIds()) {
+			SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.CONCEPT, id).statusCode(200);
+		}
+		
+	}
+	
+	@Test
+	public void bulkCreateConceptsWithOutAllowCreateRequests() {
+		
+		Map<String, Object> firstConceptRequest = Maps.newHashMap(createBrowserConceptRequest());
+		Map<String, Object> secondConceptRequest = Maps.newHashMap(createBrowserConceptRequest());
+		
+		List<Map<String, Object>> concepts = new ArrayList<>();		
+		
+		concepts.add(firstConceptRequest);		
+		concepts.add(secondConceptRequest);		
+		
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().contentType(SnomedBrowserRestRequests.JSON_CONTENT_UTF8_CHARSET)
+			.and().body(concepts)
+			.when().post("/browser/{path}/concepts/bulk", branchPath.getPath())
+			.then()
+			.statusCode(404);
+		
+	}
+	
+	@Test		
+	public void bulkUpdateAndCreateConcepts() throws Exception {		
+		
+		Map<String, Object> updateConceptRequest = Maps.newHashMap(createBrowserConceptRequest());
+		ValidatableResponse updateResponse = SnomedBrowserRestRequests.createBrowserConcept(branchPath, updateConceptRequest)
+			.statusCode(200);
+		String firstConceptId = updateResponse.extract().jsonPath().getString("conceptId");
+		
+		Map<String, Object> updateConceptResponse = Maps.newHashMap(updateResponse.extract().jsonPath().get());
+		
+		final Map<String, Object> fsnOne = getFsn(updateConceptResponse);
+		String updatedFsnTerm = "OneA";
+		fsnOne.put("term", updatedFsnTerm);		
+		fsnOne.remove("descriptionId");
+		
+		Map<String, Object> createConceptRequest = Maps.newHashMap(createBrowserConceptRequest());
+		
+		List<Map<String, Object>> concepts = new ArrayList<>();		
+		
+		concepts.add(updateConceptResponse);		
+		concepts.add(createConceptRequest);		
+		
+		// Post bulk change		
+		String bulkId = RestExtensions.lastPathSegment(givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().contentType(SnomedBrowserRestRequests.JSON_CONTENT_UTF8_CHARSET)
+			.and().body(concepts)
+			.when().post("/browser/{path}/concepts/bulk?allowCreate={flag}", branchPath.getPath(), true)
+			.then()
+			.statusCode(201)
+			.extract()
+			.header("Location"));
+		
+		// Wait for completion		
+		ExtractableResponse<Response> response = SnomedBrowserRestRequests.waitForGetBrowserConceptChanges(branchPath, bulkId, "concepts()")
+				.body("status", equalTo(SnomedBrowserBulkChangeStatus.COMPLETED.name()))
+				.extract();
+		
+		List<String> conceptIds = response.jsonPath().getList("conceptIds");
+		List<Map<String, Object>> browserConcepts = response.jsonPath().getList("concepts");
+		
+		assertEquals(2, conceptIds.size());
+		assertEquals(2, browserConcepts.size());
+		
+		Map<String, Object> updatedConcept = browserConcepts.get(0);
+		assertEquals(firstConceptId, updatedConcept.get("conceptId"));
+		assertEquals(conceptIds.get(0), updatedConcept.get("conceptId"));
+		assertEquals(updatedFsnTerm, updatedConcept.get("fsn"));
+		
+		Map<String, Object> createdConcept = browserConcepts.get(1);
+		assertEquals(conceptIds.get(1), createdConcept.get("conceptId"));
+		
+	}
 	
 	@Test		
 	public void getConceptChildren() throws IOException {		

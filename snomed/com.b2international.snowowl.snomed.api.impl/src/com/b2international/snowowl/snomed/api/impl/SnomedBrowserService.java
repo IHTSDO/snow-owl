@@ -14,6 +14,9 @@ package com.b2international.snowowl.snomed.api.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.Maps.newHashMap;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -26,11 +29,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -41,8 +43,9 @@ import org.slf4j.LoggerFactory;
 import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
 
 import com.b2international.commons.ClassUtils;
-import com.b2international.commons.collections.Procedure;
+import com.b2international.commons.CompareUtils;
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
@@ -53,9 +56,10 @@ import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
+import com.b2international.snowowl.core.events.bulk.BulkResponse;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
-import com.b2international.snowowl.datastore.request.CommitResult;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.request.RepositoryCommitRequestBuilder;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.SearchResourceRequest;
@@ -100,6 +104,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
@@ -111,6 +116,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.base.Strings;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -118,6 +124,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -128,6 +135,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserService.class);
 	private static final List<ConceptEnum> CONCEPT_ENUMS;
+	private static final String CONCEPT_ID_PLACEHOLDER = "$";
 
 	static {
 		final ImmutableList.Builder<ConceptEnum> conceptEnumsBuilder = ImmutableList.builder();
@@ -170,11 +178,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}
 	}
 	
-	
 	private final Cache<String, SnomedBrowserBulkChangeRun> bulkChangeRuns = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.DAYS).build();
-	
-	private final ExecutorService executorService = Executors.newCachedThreadPool();
-	
 	private final SnomedBrowserAxiomExpander axiomExpander = new SnomedBrowserAxiomExpander();
 
 	@Resource
@@ -301,7 +305,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	@Override
 	public void update(String branch, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales) {
 		final String commitComment = userId + " Bulk update.";
-		createBulkCommit(branch, updatedConcepts, userId, locales, commitComment)
+		createBulkCommit(branch, updatedConcepts, false, userId, locales, commitComment)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 			.execute(bus())
 			.getSync();
@@ -309,7 +313,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		LOGGER.info("Committed bulk concept changes on {}", branch);
 	}
 	
-	private RepositoryCommitRequestBuilder createBulkCommit(String branchPath, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales, final String commitComment) {
+	private RepositoryCommitRequestBuilder createBulkCommit(String branchPath, List<? extends ISnomedBrowserConcept> concepts, Boolean allowCreate, String userId, List<ExtendedLocale> locales, final String commitComment) {
 		final Stopwatch watch = Stopwatch.createStarted();
 		
 		final BulkRequestBuilder<TransactionContext> bulkRequest = BulkRequest.create();
@@ -319,20 +323,32 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		InputFactory inputFactory = new InputFactory(getBranch(branchPath), axiomUpdateHelper);
 
 		// Process concepts in batches of 1000
-		for (List<? extends ISnomedBrowserConcept> updatedConceptsBatch : Lists.partition(updatedConcepts, 1000)) {
+		for (List<? extends ISnomedBrowserConcept> updatedConceptsBatch : Lists.partition(concepts, 1000)) {
 			// Load existing versions in bulk
-			Set<String> conceptIds = updatedConceptsBatch.stream().map(ISnomedBrowserConcept::getConceptId).collect(Collectors.toSet());
+			Set<String> conceptIds = updatedConceptsBatch.stream().map(ISnomedBrowserConcept::getConceptId).filter(Objects::nonNull).collect(Collectors.toSet());
 			Set<ISnomedBrowserConcept> existingConcepts = getConceptDetailsInBulk(branchPath, conceptIds, locales);
 			Map<String, ISnomedBrowserConcept> existingConceptsMap = existingConcepts.stream().collect(Collectors.toMap(ISnomedBrowserConcept::getConceptId, concept -> concept));
 			
 			// For each concept add component updates to the bulk request
 			for (ISnomedBrowserConcept concept : updatedConceptsBatch) {
 				ISnomedBrowserConcept existingConcept = existingConceptsMap.get(concept.getConceptId());
+				
 				if (existingConcept == null) {
-					// If one existing concept is not found fail the whole commit 
-					throw new NotFoundException("Snomed Concept", concept.getConceptId());
+					
+					if (allowCreate) {
+						
+						final SnomedConceptCreateRequest req = inputFactory.createComponentInput(branchPath, concept, SnomedConceptCreateRequest.class);
+						bulkRequest.add(req);
+						
+					} else {
+						// If one existing concept is not found fail the whole commit 
+						throw new ComponentNotFoundException("Snomed Concept", concept.getConceptId());
+					}
+					
+				} else {
+					update(branchPath, concept, existingConcept, userId, locales, bulkRequest, inputFactory);
 				}
-				update(branchPath, concept, existingConcept, userId, locales, bulkRequest, inputFactory);
+				
 			}
 		}
 		
@@ -348,50 +364,93 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 	
 	@Override
-	public SnomedBrowserBulkChangeRun beginBulkChange(final String branch, final List<? extends ISnomedBrowserConcept> updatedConcepts, final String userId, final List<ExtendedLocale> locales) {
+	public SnomedBrowserBulkChangeRun beginBulkChange(final String branch, final List<? extends ISnomedBrowserConcept> concepts, Boolean allowCreate, final String userId, final List<ExtendedLocale> locales) {
+		
 		final SnomedBrowserBulkChangeRun run = new SnomedBrowserBulkChangeRun();
 		run.start();
 
-		executorService.submit(new Runnable() {
-			@Override
-			public void run() {
-				try {
-				
-					final String commitComment = userId + " Bulk update.";
-					createBulkCommit(branch, updatedConcepts, userId, locales, commitComment)
-						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-						.execute(bus())
-						.then(new Function<CommitResult, Void>() {
-							@Override public Void apply(CommitResult input) { return onSuccess(); }
-						})
-						.fail(new Procedure<Throwable>() {
-							@Override protected void doApply(Throwable throwable) { onFailure(throwable, "during commit"); }
-						});
-					
-				} catch(Exception e) {
-					onFailure(e, "while building commit");
-				}
-			}
-			
-			private Void onSuccess() {
-				run.end(SnomedBrowserBulkChangeStatus.COMPLETED);
-				LOGGER.info("Committed bulk concept changes on {}", branch);
-				return null;
-			}
-
-			private void onFailure(final Throwable throwable, final String phase) {
-				run.end(SnomedBrowserBulkChangeStatus.FAILED);
-				LOGGER.error("Bulk concept changes failed {} on {}", phase, branch, throwable);
-			}
-		});
+		List<String> conceptIds = concepts.stream()
+				.map(concept -> Strings.isNullOrEmpty(concept.getId()) ? CONCEPT_ID_PLACEHOLDER : concept.getId())
+				.collect(toList());
+		
+		final String commitComment = userId + " Bulk update.";
+		createBulkCommit(branch, concepts, allowCreate, userId, locales, commitComment)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
+			.execute(bus())
+			.then(commitResult -> onSuccess(run, conceptIds, branch, commitResult.getResultAs(BulkResponse.class)))
+			.fail(throwable -> onFailure(run, branch, throwable));
 		
 		bulkChangeRuns.put(run.getId(), run);
+		
 		return run;
 	}
 	
+	private Void onSuccess(SnomedBrowserBulkChangeRun run, List<String> conceptIds, String branch, BulkResponse response) {
+		
+		int currentIndex = 0;
+		
+		for (Object item : response.getItems()) {
+			if (item instanceof String) { // ignore updates and deletions, catch create requests
+				String id = (String) item;
+				if (ComponentCategory.CONCEPT == SnomedIdentifiers.getComponentCategory(id)) {
+					for (int i = currentIndex; i < conceptIds.size(); i++) {
+						String originalId = conceptIds.get(i);
+						if (CONCEPT_ID_PLACEHOLDER.equals(originalId)) {
+							conceptIds.set(i, id);
+							currentIndex = i + 1;
+							break;
+						}
+					}
+				}
+			}
+		}
+		
+		if (conceptIds.stream().anyMatch(id -> CONCEPT_ID_PLACEHOLDER.equals(id))) {
+			throw new IllegalStateException("Unknown item in bulk response: " + response);
+		}
+		
+		run.setConceptIds(conceptIds);
+		run.end(SnomedBrowserBulkChangeStatus.COMPLETED);
+		
+		LOGGER.info("Committed bulk concept changes on {}", branch);
+		
+		return null;
+	}
+	
+	private Void onFailure(SnomedBrowserBulkChangeRun run, String branch, final Throwable throwable) {
+		run.end(SnomedBrowserBulkChangeStatus.FAILED);
+		LOGGER.error("Bulk concept changes failed during commit on {}", branch, throwable);
+		return null;
+	}
+	
 	@Override
-	public ISnomedBrowserBulkChangeRun getBulkChange(String bulkChangeId) {
-		return bulkChangeRuns.getIfPresent(bulkChangeId);
+	public ISnomedBrowserBulkChangeRun getBulkChange(String branch, String bulkId, List<ExtendedLocale> locales, Options expand) {
+
+		SnomedBrowserBulkChangeRun run = bulkChangeRuns.getIfPresent(bulkId);
+
+		if (run != null && run.getConceptIds() != null && expand.containsKey("concepts")) {
+			
+			if (CompareUtils.isEmpty(run.getConceptIds())) {
+				run.setConcepts(Collections.emptyList());
+			} else {
+				
+				LOGGER.info(">>> Collecting bulk concept create / update results on {}", branch);
+				
+				Map<String, ISnomedBrowserConcept> allConcepts = newHashMap();
+				
+				for (List<String> conceptIdPartitions : Lists.partition(run.getConceptIds(), 1000)) {
+					Set<ISnomedBrowserConcept> concepts = getConceptDetailsInBulk(branch, ImmutableSet.copyOf(conceptIdPartitions), locales);
+					allConcepts.putAll(concepts.stream().collect(toMap(ISnomedBrowserConcept::getId, java.util.function.Function.identity())));
+				}
+				
+				run.setConcepts(run.getConceptIds().stream().map(allConcepts::get).collect(toList())); // keep the order
+				
+				LOGGER.info("<<< Bulk concept create / update results are ready on {}", branch);
+			}
+			
+		}
+		
+		return run;
 	}
 	
 	private void update(String branchPath, ISnomedBrowserConcept newVersionConcept, ISnomedBrowserConcept existingVersionConcept, String userId, List<ExtendedLocale> locales, 

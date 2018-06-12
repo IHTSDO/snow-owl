@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.domain.IStorageRef;
 import com.b2international.snowowl.core.domain.exceptions.CodeSystemNotFoundException;
@@ -125,8 +126,8 @@ public interface ISnomedBrowserService {
 
 	void update(String branch, List<? extends ISnomedBrowserConcept> concept, String userId, List<ExtendedLocale> extendedLocales);
 	
-	ISnomedBrowserBulkChangeRun beginBulkChange(String branch, List<? extends ISnomedBrowserConcept> newVersionConcepts, String userId, List<ExtendedLocale> locales);
+	ISnomedBrowserBulkChangeRun beginBulkChange(String branch, List<? extends ISnomedBrowserConcept> newVersionConcepts, Boolean allowCreate, String userId, List<ExtendedLocale> locales);
 
-	ISnomedBrowserBulkChangeRun getBulkChange(String bulkChangeId);
+	ISnomedBrowserBulkChangeRun getBulkChange(String branch, String bulkChangeId, List<ExtendedLocale> locales, Options expand);
 
 }
