@@ -108,6 +108,7 @@ import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasoner
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.base.Strings;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -218,7 +219,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 							.execute(getBus())
 							.getSync();
 					
-					removeOrDeactivate(builder, removeOrDeactivateRelationships, referringMembers);
+					removeOrDeactivate(builder, defaultModuleId, removeOrDeactivateRelationships, referringMembers);
 				}
 				
 				offset += relationshipChanges.getChanges().size();
@@ -311,7 +312,9 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					.execute(getBus());
 		}
 
-		private void removeOrDeactivate(final BulkRequestBuilder<TransactionContext> builder,
+		private void removeOrDeactivate(
+				final BulkRequestBuilder<TransactionContext> builder,
+				final String defaultModuleId,
 				final SnomedRelationships removeOrDeactivateRelationships,
 				final SnomedReferenceSetMembers referringMembers) {
 			
@@ -320,7 +323,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			for (SnomedRelationship relationship : removeOrDeactivateRelationships) {
 				
 				if (relationship.isReleased()) {
-					
+				
 					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationship.getId())) {
 						SnomedRefSetMemberUpdateRequestBuilder updateMemberBuilder = SnomedRequests.prepareUpdateMember()
 								.setMemberId(snomedReferenceSetMember.getId())
@@ -331,8 +334,13 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					
 					SnomedRelationshipUpdateRequestBuilder updateRequestBuilder = SnomedRequests.prepareUpdateRelationship(relationship.getId())
 							.setActive(false);
+					
+					if (!Strings.isNullOrEmpty(defaultModuleId)) {
+						updateRequestBuilder.setModuleId(defaultModuleId);
+					}
 
 					builder.add(updateRequestBuilder);
+					
 				} else {
 					
 					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationship.getId())) {
