@@ -21,10 +21,13 @@ import static com.b2international.snowowl.test.commons.rest.RestExtensions.given
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.b2international.commons.CompareUtils;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.ValidatableResponse;
@@ -36,7 +39,7 @@ public abstract class SnomedBrowserRestRequests {
 	
 	private static ImmutableSet<String> FINISH_STATES = ImmutableSet.of(COMPLETED.name(), FAILED.name());
 
-	private static String JSON_CONTENT_UTF8_CHARSET = "application/json; charset=UTF-8";
+	public static final String JSON_CONTENT_UTF8_CHARSET = "application/json; charset=UTF-8";
 	
 	public static ValidatableResponse createBrowserConcept(final IBranchPath conceptPath, final Map<?, ?> requestBody) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
@@ -93,18 +96,20 @@ public abstract class SnomedBrowserRestRequests {
 				.then();
 	}
 	
-	public static ValidatableResponse bulkGetBrowserConceptChanges(final IBranchPath branchPath, final String bulkChangeId) {
+	public static ValidatableResponse bulkGetBrowserConceptChanges(final IBranchPath branchPath, final String bulkChangeId, String...expand) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.with().contentType(JSON_CONTENT_UTF8_CHARSET)
-				.when().get("/browser/{path}/concepts/bulk/{bulkChangeId}", branchPath.getPath(), bulkChangeId)
+				.when()
+				.queryParam("expand", CompareUtils.isEmpty(expand) ? Collections.emptyList() : Arrays.asList(expand))
+				.get("/browser/{path}/concepts/bulk/{bulkChangeId}", branchPath.getPath(), bulkChangeId)
 				.then();
 	}
 	
-	public static ValidatableResponse waitForGetBrowserConceptChanges(final IBranchPath branchPath, final String bulkChangeId) {
-		return waitForJob(branchPath, bulkChangeId, FINISH_STATES);
+	public static ValidatableResponse waitForGetBrowserConceptChanges(final IBranchPath branchPath, final String bulkChangeId, String...expand) {
+		return waitForJob(branchPath, bulkChangeId, FINISH_STATES, expand);
 	}
 	
-	private static ValidatableResponse waitForJob(IBranchPath branchPath, String bulkChangeId, Set<String> exitStates) {
+	private static ValidatableResponse waitForJob(IBranchPath branchPath, String bulkChangeId, Set<String> exitStates, String...expand) {
 		long endTime = System.currentTimeMillis() + SnomedApiTestConstants.POLL_TIMEOUT;
 		long currentTime;
 		ValidatableResponse response = null;
@@ -118,7 +123,7 @@ public abstract class SnomedBrowserRestRequests {
 				fail(e.toString());
 			}
 
-			response = bulkGetBrowserConceptChanges(branchPath, bulkChangeId).statusCode(200);
+			response = bulkGetBrowserConceptChanges(branchPath, bulkChangeId, expand).statusCode(200);
 			jobStatus = response.extract().path("status");
 			currentTime = System.currentTimeMillis();
 
