@@ -15,6 +15,9 @@
  */
 package com.b2international.snowowl.snomed.api.rest.classification;
 
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests.createCodeSystem;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.createVersion;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.beginClassification;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.beginClassificationSave;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getClassificationJobId;
@@ -56,9 +59,11 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Equival
 import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChange;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
+import com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
@@ -69,6 +74,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
@@ -209,6 +215,76 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		.statusCode(200)
 		.body("status", equalTo(ClassificationStatus.SAVED.name()));
 
+		assertEquals(1, getPersistedInferredRelationshipCount(branchPath, parentConceptId));
+		assertEquals(1, getPersistedInferredRelationshipCount(branchPath, childConceptId));
+	}
+	
+	@Test
+	public void inactivateRedundantReleasedRelationshipWithoutModuleChange() throws Exception {
+		testRedundantRelationshipInactivation("");
+	}
+	
+	@Test
+	public void inactivateRedundantReleasedRelationshipWithModuleChange() throws Exception {
+		testRedundantRelationshipInactivation(Concepts.MODULE_SCT_MODEL_COMPONENT);
+	}
+
+	private void testRedundantRelationshipInactivation(final String defaultModuleId) throws Exception {
+		
+		final String codeSystemShortName = "SNOMEDCT-CLASSIFY-RSHIPS" + defaultModuleId;
+		createCodeSystem(branchPath, codeSystemShortName).statusCode(201);
+		
+		String parentConceptId = createNewConcept(branchPath);
+		String childConceptId = createNewConcept(branchPath, parentConceptId);
+		
+		// Add "regular" inferences before running the classification
+		createNewRelationship(branchPath, parentConceptId, Concepts.IS_A, Concepts.ROOT_CONCEPT, CharacteristicType.INFERRED_RELATIONSHIP);
+		createNewRelationship(branchPath, childConceptId, Concepts.IS_A, parentConceptId, CharacteristicType.INFERRED_RELATIONSHIP);
+
+		// Add redundant information that should be removed
+		String redundantRelationshipId = createNewRelationship(branchPath, childConceptId, Concepts.IS_A, Concepts.ROOT_CONCEPT, CharacteristicType.INFERRED_RELATIONSHIP);
+		
+		// Create version
+		String effectiveDate = getNextAvailableEffectiveDateAsString(codeSystemShortName);
+		createVersion(codeSystemShortName, "v1", effectiveDate).statusCode(201);
+		
+		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		waitForClassificationJob(branchPath, classificationId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+
+		PageableCollectionResource<IRelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+				.extract()
+				.asInputStream(), RELATIONSHIP_CHANGES_REFERENCE);
+
+		assertEquals(1, changes.getTotal());
+		IRelationshipChange relationshipChange = Iterables.getOnlyElement(changes);
+		assertEquals(ChangeNature.REDUNDANT, relationshipChange.getChangeNature());
+		assertEquals(childConceptId, relationshipChange.getSourceId());
+		assertEquals(Concepts.IS_A, relationshipChange.getTypeId());
+		assertEquals(Concepts.ROOT_CONCEPT, relationshipChange.getDestinationId());
+		assertEquals(redundantRelationshipId, relationshipChange.getId());
+		
+		getComponent(branchPath, SnomedComponentType.RELATIONSHIP, redundantRelationshipId)
+			.statusCode(200)
+			.body("active", equalTo(true))
+			.body("moduleId", equalTo(Concepts.MODULE_SCT_CORE));
+		
+		if (!Strings.isNullOrEmpty(defaultModuleId)) {
+			final Map<?, ?> metadataUpdated = ImmutableMap.of(SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY, defaultModuleId);
+			SnomedBranchingRestRequests.updateBranch(branchPath, metadataUpdated);
+		}
+		
+		beginClassificationSave(branchPath, classificationId);
+		waitForClassificationSaveJob(branchPath, classificationId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.SAVED.name()));
+
+		getComponent(branchPath, SnomedComponentType.RELATIONSHIP, redundantRelationshipId)
+			.statusCode(200)
+			.body("active", equalTo(false))
+			.body("moduleId", equalTo(Strings.isNullOrEmpty(defaultModuleId) ? Concepts.MODULE_SCT_CORE : defaultModuleId));
+		
 		assertEquals(1, getPersistedInferredRelationshipCount(branchPath, parentConceptId));
 		assertEquals(1, getPersistedInferredRelationshipCount(branchPath, childConceptId));
 	}
