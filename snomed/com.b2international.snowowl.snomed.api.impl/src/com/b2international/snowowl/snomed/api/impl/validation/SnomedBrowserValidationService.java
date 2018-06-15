@@ -5,7 +5,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.annotation.Resource;
 
 import org.ihtsdo.drools.RuleExecutor;
@@ -38,7 +39,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	private IEventBus bus;
 
 	private RuleExecutor ruleExecutor;
-
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	public SnomedBrowserValidationService() {
 		ruleExecutor = newRuleExecutor();
 	}
@@ -55,8 +56,10 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		if (Strings.isNullOrEmpty(assertionGroupNamesString)) {
 			throw new BadRequestException("No assertion groups configured for this branch.");
 		}
+		
 		assertionGroupNames.addAll(Arrays.asList(assertionGroupNamesString.split("\\,")));
 		DescriptionService descriptionService = new DescriptionService(bus, branchPath);
+		logger.info("Branch {}, and assertionGroupNames: {}", branchPath, assertionGroupNames);
 		
 		ValidationConceptService validationConceptService = new ValidationConceptService(branchPath, bus);
 		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(descriptionService, branchPath, bus);
