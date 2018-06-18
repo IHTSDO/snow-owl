@@ -7,7 +7,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConce
 
 public interface ISnomedBrowserValidationService {
 
-	List<ISnomedInvalidContent> validateConcept(String branchPath, ISnomedBrowserConcept browserConcept, List<ExtendedLocale> locales);
+	List<ISnomedInvalidContent> validateConcepts(String branchPath, List<? extends ISnomedBrowserConcept> concepts, List<ExtendedLocale> locales);
 
 	int reloadRules();
 

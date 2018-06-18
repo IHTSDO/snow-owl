@@ -17,6 +17,7 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.Principal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -184,7 +185,30 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestBody
 			final SnomedBrowserConcept concept) {
 
-		return validationService.validateConcept(branchPath, concept, getExtendedLocales(acceptLanguage));
+		return validationService.validateConcepts(branchPath, Collections.singletonList(concept), getExtendedLocales(acceptLanguage));
+	}
+	
+	@ApiOperation(
+			value="Validate collection of concepts",
+			notes="Validates a collection of concepts in the context of a branch, without persisting your changes.")
+	@ApiResponses({
+			@ApiResponse(code = 200, message = "OK", response = Void.class),
+			@ApiResponse(code = 404, message = "Code system version or concept not found")
+	})
+	@RequestMapping(value="/{path:**}/validate/concepts", method=RequestMethod.POST)
+	public @ResponseBody List<ISnomedInvalidContent> validateNewConcepts(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage,
+
+			@RequestBody
+			final List<SnomedBrowserConcept> concepts) {
+
+		return validationService.validateConcepts(branchPath, concepts, getExtendedLocales(acceptLanguage));
 	}
 
 	@ApiOperation(
