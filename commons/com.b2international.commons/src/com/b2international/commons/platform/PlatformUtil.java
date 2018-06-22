@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Paths;
 
 import org.eclipse.core.net.proxy.IProxyService;
 import org.eclipse.core.runtime.FileLocator;
@@ -150,7 +151,8 @@ public class PlatformUtil {
 	 */
 	public static String toAbsolutePath(URL fileURL) {
 		try {
-			return new File(toSafeURI(fileURL)).getAbsolutePath();
+			fileURL = new URL(fileURL.toString().replaceAll(" ", "%20"));
+			return Paths.get(fileURL.toURI()).toString();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

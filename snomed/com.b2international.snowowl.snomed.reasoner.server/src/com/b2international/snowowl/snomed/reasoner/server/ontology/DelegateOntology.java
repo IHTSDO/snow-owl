@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,8 +34,7 @@ import com.b2international.index.revision.RevisionIndex;
 import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.datastore.server.snomed.index.AbstractReasonerTaxonomyBuilder.Type;
-import com.b2international.snowowl.datastore.server.snomed.index.InitialReasonerTaxonomyBuilder;
+import com.b2international.snowowl.datastore.server.snomed.index.ReasonerTaxonomyBuilder;
 import com.b2international.snowowl.snomed.datastore.ConcreteDomainFragment;
 import com.b2international.snowowl.snomed.datastore.StatementFragment;
 import com.b2international.snowowl.snomed.reasoner.model.ConceptDefinition;
@@ -56,27 +55,23 @@ import uk.ac.manchester.cs.owl.owlapi.OWLObjectImpl;
 public class DelegateOntology extends OWLObjectImpl implements OWLMutableOntology {
 
 	private final OWLOntologyManager manager;
-
 	private final OWLOntologyID ontologyID;
-
 	private final DefaultPrefixManager prefixManager;
-
 	private final RevisionIndex index;
-	
 	private final boolean trackingChanges;
-	
 	private final OWLOntology plusOntology;
-
-	private volatile InitialReasonerTaxonomyBuilder reasonerTaxonomyBuilder;
-
+	private final boolean concreteDomainSupport;
 	private final IBranchPath branchPath;
 
-	public DelegateOntology(final OWLOntologyManager manager, final OWLOntologyID ontologyID, final IBranchPath branchPath, final RevisionIndex index) throws OWLOntologyCreationException {
+	private volatile ReasonerTaxonomyBuilder reasonerTaxonomyBuilder;
+
+	public DelegateOntology(final OWLOntologyManager manager, final OWLOntologyID ontologyID, final IBranchPath branchPath, final RevisionIndex index, boolean concreteDomainSupport) throws OWLOntologyCreationException {
 		super();
 		this.manager = manager;
 		this.ontologyID = ontologyID;
 		this.branchPath = branchPath;
 		this.index = index;
+		this.concreteDomainSupport = concreteDomainSupport;
 		this.prefixManager = SnomedOntologyUtils.createPrefixManager(this);
 		this.plusOntology = manager.createOntology();
 		this.trackingChanges = (null == ontologyID.getVersionIRI());
@@ -259,7 +254,7 @@ public class DelegateOntology extends OWLObjectImpl implements OWLMutableOntolog
 
 	private List<OWLAxiom> createRawAxioms(final long conceptId, final boolean primitive) {
 
-		final Collection<ConcreteDomainFragment> conceptDomainFragments = getReasonerTaxonomyBuilder().getConceptConcreteDomainFragments(conceptId);
+		final Collection<ConcreteDomainFragment> conceptDomainFragments = getReasonerTaxonomyBuilder().getStatedConcreteDomainFragments(conceptId);
 		final Set<ConcreteDomainDefinition> conceptDomainDefinitions = newHashSet();
 
 		for (final ConcreteDomainFragment conceptFragment : conceptDomainFragments) {
@@ -267,12 +262,11 @@ public class DelegateOntology extends OWLObjectImpl implements OWLMutableOntolog
 		}
 
 		final ConceptDefinition definition = new ConceptDefinition(conceptDomainDefinitions, conceptId, primitive, null);
-		final Collection<StatementFragment> statementFragments = getReasonerTaxonomyBuilder().getStatementFragments(conceptId);
+		final Collection<StatementFragment> statementFragments = getReasonerTaxonomyBuilder().getStatedStatementFragments(conceptId);
 
 		for (final StatementFragment statementFragment : statementFragments) {
 			final long statementId = statementFragment.getStatementId();
-			final Collection<ConcreteDomainFragment> relationshipDomainFragments = getReasonerTaxonomyBuilder().getStatementConcreteDomainFragments(
-					statementId);
+			final Collection<ConcreteDomainFragment> relationshipDomainFragments = getReasonerTaxonomyBuilder().getStatedConcreteDomainFragments(statementId);
 			final Set<ConcreteDomainDefinition> relationshipDomainDefinitions = newHashSet();
 
 			for (final ConcreteDomainFragment relationshipDomainFragment : relationshipDomainFragments) {
@@ -796,7 +790,7 @@ public class DelegateOntology extends OWLObjectImpl implements OWLMutableOntolog
 			}
 
 			// No non-ISA relationships can be present on the subtype
-			if (getReasonerTaxonomyBuilder().getNonIsAFragments(subTypeId).size() > 0) {
+			if (getReasonerTaxonomyBuilder().getStatedNonIsAFragments(subTypeId).size() > 0) {
 				continue;
 			}
 
@@ -868,7 +862,7 @@ public class DelegateOntology extends OWLObjectImpl implements OWLMutableOntolog
 			}
 
 			// No non-ISA relationships can be present on the subtype
-			if (getReasonerTaxonomyBuilder().getNonIsAFragments(subTypeId).size() > 0) {
+			if (getReasonerTaxonomyBuilder().getStatedNonIsAFragments(subTypeId).size() > 0) {
 				continue;
 			}
 
@@ -1143,13 +1137,13 @@ public class DelegateOntology extends OWLObjectImpl implements OWLMutableOntolog
 		return actuallyAppliedChanges;
 	}
 
-	public InitialReasonerTaxonomyBuilder getReasonerTaxonomyBuilder() {
+	public ReasonerTaxonomyBuilder getReasonerTaxonomyBuilder() {
 
 		if (null == reasonerTaxonomyBuilder) {
-			reasonerTaxonomyBuilder = index.read(branchPath.getPath(), new RevisionIndexRead<InitialReasonerTaxonomyBuilder>() {
+			reasonerTaxonomyBuilder = index.read(branchPath.getPath(), new RevisionIndexRead<ReasonerTaxonomyBuilder>() {
 				@Override
-				public InitialReasonerTaxonomyBuilder execute(RevisionSearcher searcher) throws IOException {
-					return new InitialReasonerTaxonomyBuilder(searcher, Type.REASONER);
+				public ReasonerTaxonomyBuilder execute(RevisionSearcher searcher) throws IOException {
+					return new ReasonerTaxonomyBuilder(searcher, concreteDomainSupport);
 				}
 			});
 		}

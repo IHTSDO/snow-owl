@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,57 +15,62 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
-import static com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument.Expressions.descendantIds;
-import static com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument.Expressions.refSetIds;
-import static com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument.Expressions.selfIds;
-import static com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument.Expressions.types;
-
-import java.io.IOException;
+import static com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintDocument.Expressions.descendantIds;
+import static com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintDocument.Expressions.refSetIds;
+import static com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintDocument.Expressions.relationshipKeys;
+import static com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintDocument.Expressions.selfIds;
+import static com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintDocument.Expressions.predicateTypes;
 
 import com.b2international.index.Hits;
+import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.query.Query;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
+import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
-import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument;
-import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument.PredicateType;
+import com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintPredicateType;
+import com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintDocument;
 
 /**
  * @since 4.7
  */
-final class SnomedConstraintSearchRequest extends SearchResourceRequest<BranchContext, SnomedConstraints> {
+final class SnomedConstraintSearchRequest extends SearchIndexResourceRequest<BranchContext, SnomedConstraints, SnomedConstraintDocument> {
 
 	public enum OptionKey {
 		
 		/**
-		 * Match MRCM constraints that are applicable to the given identifiers.
+		 * Match MRCM constraints that are applicable to concepts having the given
+		 * identifiers.
 		 */
 		SELF,
 		
 		/**
-		 * Match MRCM constraints that are applicable to the hierarchy of the given identifiers.
+		 * Match MRCM constraints that are applicable to concepts that are descendants
+		 * of other concepts with the given identifiers.
 		 */
 		DESCENDANT,
 		
 		/**
-		 * Match MRCM constraints that are applicable to the given reference set identifiers.
+		 * Match MRCM constraints that are applicable to concepts that are members of 
+		 * reference sets with the specified identifiers.
 		 */
 		REFSET, 
+		
+		/**
+		 * Match MRCM constraints that are applicable to concepts that have a relationship
+		 * with the specified type and destination identifiers.
+		 */
+		RELATIONSHIP,
 		
 		/**
 		 * Match MRCM constraints that has any of the given {@link PredicateType}.
 		 */
 		TYPE
-		
 	}
 	
 	@Override
-	protected SnomedConstraints doExecute(BranchContext context) throws IOException {
-		final RevisionSearcher searcher = context.service(RevisionSearcher.class);
+	protected Expression prepareQuery(BranchContext context) {
 		final ExpressionBuilder queryBuilder = Expressions.builder();
 		
 		addIdFilter(queryBuilder, SnomedConstraintDocument.Expressions::ids);
@@ -82,25 +87,30 @@ final class SnomedConstraintSearchRequest extends SearchResourceRequest<BranchCo
 			queryBuilder.filter(refSetIds(getCollection(OptionKey.REFSET, String.class)));
 		}
 		
-		if (containsKey(OptionKey.TYPE)) {
-			queryBuilder.filter(types(getCollection(OptionKey.TYPE, PredicateType.class)));
+		if (containsKey(OptionKey.RELATIONSHIP)) {
+			queryBuilder.filter(relationshipKeys(getCollection(OptionKey.RELATIONSHIP, String.class)));
 		}
 		
+		if (containsKey(OptionKey.TYPE)) {
+			queryBuilder.filter(predicateTypes(getCollection(OptionKey.TYPE, SnomedConstraintPredicateType.class)));
+		}
 		
-		final Query<SnomedConstraintDocument> query = select(SnomedConstraintDocument.class)
-				.where(queryBuilder.build())
-				.sortBy(sortBy())
-				.offset(offset())
-				.limit(limit())
-				.build();
-		
-		final Hits<SnomedConstraintDocument> hits = searcher.search(query);
-		return SnomedConverters.newConstraintConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
+		return queryBuilder.build();
+	}
+
+	@Override
+	protected Class<SnomedConstraintDocument> getDocumentType() {
+		return SnomedConstraintDocument.class;
 	}
 	
 	@Override
-	protected SnomedConstraints createEmptyResult(int offset, int limit) {
-		return new SnomedConstraints(offset, limit, 0);
+	protected SnomedConstraints toCollectionResource(BranchContext context, Hits<SnomedConstraintDocument> hits) {
+		return SnomedConverters.newConstraintConverter(context, expand(), locales()).convert(hits.getHits(), hits.getScrollId(), hits.getSearchAfter(), limit(), hits.getTotal());
+	}
+	
+	@Override
+	protected SnomedConstraints createEmptyResult(int limit) {
+		return new SnomedConstraints(limit, 0);
 	}
 
 }

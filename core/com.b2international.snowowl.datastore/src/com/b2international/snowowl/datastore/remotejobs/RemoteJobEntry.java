@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,29 +19,36 @@ import static com.b2international.index.query.Expressions.exactMatch;
 import static com.b2international.index.query.Expressions.match;
 import static com.b2international.index.query.Expressions.matchAny;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import com.b2international.commons.ClassUtils;
 import com.b2international.index.Doc;
+import com.b2international.index.Keyword;
 import com.b2international.index.Script;
 import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.index.query.Expression;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 
 @Doc(type = "job")
 @JsonDeserialize(builder=RemoteJobEntry.Builder.class)
 @Script(name=RemoteJobEntry.WITH_DELETED, script="ctx._source.deleted = true")
-@Script(name=RemoteJobEntry.WITH_STATE, script="ctx._source.state = params.state")
+@Script(name=RemoteJobEntry.WITH_STATE, script=""
+		+ "if (ctx._source.state == params.expectedState) {"
+		+ " ctx._source.state = params.newState; "
+		+ "}")
 @Script(name=RemoteJobEntry.WITH_COMPLETION_LEVEL, script="ctx._source.completionLevel = params.completionLevel")
 @Script(name=RemoteJobEntry.WITH_RUNNING, script="ctx._source.state = params.state;ctx._source.startDate = params.startDate")
 @Script(name=RemoteJobEntry.WITH_DONE, script="ctx._source.state = params.state;ctx._source.finishDate = params.finishDate;ctx._source.result = params.result")
@@ -85,7 +92,15 @@ public final class RemoteJobEntry implements Serializable {
 		}
 
 		public static Expression done() {
-			return matchAny(Fields.STATE, DONE_STATES.stream().map(Enum::name).collect(Collectors.toSet()));
+			return state(DONE_STATES);
+		}
+		
+		public static Expression state(RemoteJobState state) {
+			return state(Collections.singleton(state));
+		}
+		
+		public static Expression state(Iterable<RemoteJobState> states) {
+			return matchAny(Fields.STATE, FluentIterable.from(states).transform(Enum::name).toSet());
 		}
 		
 	}
@@ -121,8 +136,8 @@ public final class RemoteJobEntry implements Serializable {
 		private RemoteJobState state = RemoteJobState.SCHEDULED;
 		private int completionLevel = MIN_COMPLETION_LEVEL;
 		private boolean deleted;
-		private Map<String, Object> parameters;
-		private Map<String, Object> result;
+		private String parameters;
+		private String result;
 		
 		@JsonCreator
 		private Builder() {
@@ -173,12 +188,12 @@ public final class RemoteJobEntry implements Serializable {
 			return this;
 		}
 		
-		public Builder result(Map<String, Object> result) {
+		public Builder result(String result) {
 			this.result = result;
 			return this;
 		}
 		
-		public Builder parameters(Map<String, Object> parameters) {
+		public Builder parameters(String parameters) {
 			this.parameters = parameters;
 			return this;
 		}
@@ -198,9 +213,13 @@ public final class RemoteJobEntry implements Serializable {
 	private final Date finishDate;
 	private final RemoteJobState state;
 	private final int completionLevel;
-	private final Map<String, Object> result;
 	private final boolean deleted;
-	private final Map<String, Object> parameters;
+	
+	@Keyword(index=false)
+	private final String result;
+	
+	@Keyword(index=false)
+	private final String parameters;
 
 	private RemoteJobEntry(
 			final String id, 
@@ -212,8 +231,8 @@ public final class RemoteJobEntry implements Serializable {
 			final RemoteJobState state, 
 			final int completionLevel,
 			final boolean deleted,
-			final Map<String, Object> result,
-			final Map<String, Object> parameters) {
+			final String result,
+			final String parameters) {
 		this.id = id;
 		this.description = description;
 		this.user = user;
@@ -263,16 +282,65 @@ public final class RemoteJobEntry implements Serializable {
 		return deleted;
 	}
 	
-	public Map<String, Object> getParameters() {
+	/**
+	 * Returns a JSON serialized parameters object.
+	 * @return
+	 */
+	public String getParameters() {
 		return parameters;
 	}
 	
-	public Map<String, Object> getResult() {
+	/**
+	 * Returns a deserialized parameters {@link Map} using the given {@link ObjectMapper} to deserialize the {@link #getParameters()} JSON string.
+	 * @param mapper
+	 * @return
+	 */
+	public Map<String, Object> getParameters(ObjectMapper mapper) {
+		return getParametersAs(mapper, Map.class);
+	}
+	
+	/**
+	 * Returns a deserialized parameters object using the given {@link ObjectMapper} and type to deserialize the {@link #getParameters()} JSON string.
+	 * @param mapper
+	 * @return
+	 */
+	public <T> T getParametersAs(ObjectMapper mapper, Class<T> type) {
+		try {
+			return mapper.readValue(getParameters(), type);
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(e);
+		}
+	}
+	
+	/**
+	 * Returns a JSON serialized result object or <code>null</code> if there is no result. 
+	 * @return
+	 */
+	public String getResult() {
 		return result;
 	}
 	
-	public <T> T getResultAs(Class<T> type) {
-		return ClassUtils.checkAndCast(result, type);
+	/**
+	 * Returns a deserialized result {@link Map} using the given {@link ObjectMapper} to deserialize the {@link #getResult()} JSON string.
+	 * @param mapper
+	 * @return
+	 */
+	public Map<String, Object> getResult(ObjectMapper mapper) {
+		return getResultAs(mapper, Map.class);
+	}
+	
+	/**
+	 * Returns a deserialized result using the given {@link ObjectMapper} and type to deserialize the {@link #getResult()} JSON string.
+	 * @param mapper
+	 * @param type
+	 * @return
+	 */
+	public <T> T getResultAs(ObjectMapper mapper, Class<T> type) {
+		try {
+			return mapper.readValue(getResult(), type);
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(e);
+		}
 	}
 	
 	// Frequently used domain specific methods
@@ -287,57 +355,11 @@ public final class RemoteJobEntry implements Serializable {
 		return getState().oneOf(RemoteJobState.CANCELED, RemoteJobState.CANCEL_REQUESTED);
 	}
 	
-//	public String getFormattedScheduleDate() {
-//		return getScheduleDate() == null ? "Unknown" : Dates.formatByHostTimeZone(getScheduleDate(), DateFormats.MEDIUM);
-//	}
+	@JsonIgnore
+	public boolean isSuccessful() {
+		return RemoteJobState.FINISHED == getState();
+	}
 	
-//	public String getFormattedStartDate() {
-//		return getStartDate() == null ? "" : Dates.formatByHostTimeZone(getStartDate(), DateFormats.MEDIUM);
-//	}
-	
-//	public String getFormattedFinishDate() {
-//		return getFinishDate() == null ? "N/A" : Dates.formatByHostTimeZone(getFinishDate(), DateFormats.MEDIUM);
-//	}
-
-//	@JsonIgnore
-//	public void setCompletionPercent(final int newCompletionPercent) {
-//		final int limitedNewCompletionLevel = limitLevel(newCompletionPercent);
-//		if (limitedNewCompletionLevel > completionLevel) {
-//			completionLevel = limitedNewCompletionLevel;
-//		}
-//	}
-	
-//	public void setStartDate(final Date newStartDate) {
-//		this.startDate = newStartDate;
-//	}
-
-//	public void setState(final RemoteJobState newState) {
-//		this.state = newState;
-//	}
-	
-	// XXX (apeteri): this setter does not broadcast notifications
-//	public void setFinishDate(final Date newFinishDate) {
-//		if (dateSetFirst(finishDate, newFinishDate)) {
-//			finishDate = newFinishDate;
-//		}
-//	}
-
-//	private boolean dateSetFirst(final Date oldStartDate, final Date newStartDate) {
-//		return null == oldStartDate && null != newStartDate;
-//	}
-	
-	/**
-	 * Cancels this job entry by setting its state to CANCEL_REQUESTED and its finish date to now.
-	 */
-//	public void cancel() {
-//		setState(RemoteJobState.CANCEL_REQUESTED);
-//		setFinishDate(new Date());
-//	}
-	
-//	private int limitLevel(final int completionLevel) {
-//		return Math.max(MIN_COMPLETION_LEVEL, Math.min(MAX_COMPLETION_LEVEL, completionLevel));
-//	}
-
 	@Override
 	public int hashCode() {
 		return 31 + id.hashCode();
@@ -363,7 +385,7 @@ public final class RemoteJobEntry implements Serializable {
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("id", id)
 				.add("description", description)
 				.add("user", user)

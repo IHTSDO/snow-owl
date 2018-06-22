@@ -19,22 +19,10 @@ import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.MetadataHolder;
 import com.b2international.snowowl.core.MetadataHolderMixin;
 import com.b2international.snowowl.core.MetadataMixin;
-import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
-import com.b2international.snowowl.datastore.server.internal.branch.BranchImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.BranchImplMixin;
-import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchImplMixin;
-import com.b2international.snowowl.datastore.server.internal.branch.CDOMainBranchImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.CDOMainBranchImplMixin;
-import com.b2international.snowowl.datastore.server.internal.branch.InternalBranchMixin;
-import com.b2international.snowowl.datastore.server.internal.branch.MainBranchImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.MainBranchImplMixin;
-import com.b2international.snowowl.datastore.server.internal.review.BranchStateImpl;
-import com.b2international.snowowl.datastore.server.internal.review.BranchStateImplMixin;
+import com.b2international.snowowl.datastore.review.Review;
+import com.b2international.snowowl.datastore.review.ReviewMixin;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImplMixin;
-import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
-import com.b2international.snowowl.datastore.server.internal.review.ReviewImplMixin;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -45,20 +33,10 @@ public class JsonSupport {
 
 	public static ObjectMapper getDefaultObjectMapper() {
 		final ObjectMapper mapper = new ObjectMapper();
-		
 		mapper.setSerializationInclusion(Include.NON_NULL);
 		mapper.addMixIn(Metadata.class, MetadataMixin.class);
 		mapper.addMixIn(MetadataHolder.class, MetadataHolderMixin.class);
-		
-		mapper.addMixIn(BranchImpl.class, BranchImplMixin.class);
-		mapper.addMixIn(MainBranchImpl.class, MainBranchImplMixin.class);
-		mapper.addMixIn(InternalBranch.class, InternalBranchMixin.class);
-		
-		mapper.addMixIn(CDOBranchImpl.class, CDOBranchImplMixin.class);
-		mapper.addMixIn(CDOMainBranchImpl.class, CDOMainBranchImplMixin.class);
-		
-		mapper.addMixIn(ReviewImpl.class, ReviewImplMixin.class);
-		mapper.addMixIn(BranchStateImpl.class, BranchStateImplMixin.class);
+		mapper.addMixIn(Review.class, ReviewMixin.class);
 		mapper.addMixInAnnotations(MergeReviewImpl.class, MergeReviewImplMixin.class);
 		return mapper;
 	}

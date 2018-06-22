@@ -23,7 +23,7 @@ import com.b2international.snowowl.core.Repositories;
 import com.b2international.snowowl.core.RepositoryInfo;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.ServiceProvider;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
+import com.b2international.snowowl.core.request.SearchResourceRequest;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -34,17 +34,17 @@ class RepositorySearchRequest extends SearchResourceRequest<ServiceProvider, Rep
 	private static final long serialVersionUID = 1L;
 
 	@Override
-	protected Repositories createEmptyResult(int offset, int limit) {
+	protected Repositories createEmptyResult(int limit) {
 		return new Repositories();
 	}
 
 	@Override
 	protected Repositories doExecute(ServiceProvider context) throws IOException {
-		final Collection<String> ids = getCollection(SearchResourceRequest.OptionKey.COMPONENT_IDS, String.class);
+		final Collection<String> ids = componentIds();
 		final Collection<RepositoryInfo> repositories = context.service(RepositoryManager.class)
 				.repositories()
 				.stream()
-				.filter(repository -> ids.isEmpty() ? true : ids.contains(repository.id()))
+				.filter(repository -> ids == null ? true : ids.contains(repository.id()))
 				.map(RepositoryInfo::of)
 				.collect(Collectors.toList());
 		return new Repositories(ImmutableList.copyOf(repositories));

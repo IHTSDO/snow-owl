@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,15 @@
  */
 package com.b2international.snowowl.datastore.server.snomed;
 
+import java.util.Collection;
+import java.util.Map;
+
+import org.eclipse.emf.cdo.CDOObject;
 import org.eclipse.emf.cdo.common.commit.CDOCommitInfo;
 import org.eclipse.emf.cdo.util.CommitException;
 import org.eclipse.emf.ecore.EObject;
 
+import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
@@ -38,11 +43,20 @@ import com.google.inject.Provider;
  */
 public class ImportOnlySnomedTransactionContext implements TransactionContext {
 
+	private final String userId;
 	private final SnomedEditingContext editingContext;
+	private final RevisionSearcher searcher;
 	private Branch branch;
 
-	public ImportOnlySnomedTransactionContext(final SnomedEditingContext editingContext) {
+	public ImportOnlySnomedTransactionContext(final String userId, final RevisionSearcher searcher, final SnomedEditingContext editingContext) {
+		this.userId = userId;
+		this.searcher = searcher;
 		this.editingContext = editingContext;
+	}
+
+	@Override
+	public String userId() {
+		return userId;
 	}
 	
 	@Override
@@ -57,7 +71,7 @@ public class ImportOnlySnomedTransactionContext implements TransactionContext {
 		}
 		return branch;
 	}
-
+	
 	@Override
 	public String branchPath() {
 		return this.editingContext.getBranch();
@@ -81,7 +95,9 @@ public class ImportOnlySnomedTransactionContext implements TransactionContext {
 
 	@Override
 	public <T> T service(final Class<T> type) {
-		if (type.isAssignableFrom(SnomedEditingContext.class)) {
+		if (type.isAssignableFrom(RevisionSearcher.class)) {
+			return type.cast(searcher);
+		} else if (type.isAssignableFrom(SnomedEditingContext.class)) {
 			return type.cast(editingContext);
 		}
 		return ApplicationContext.getInstance().getServiceChecked(type);
@@ -118,6 +134,11 @@ public class ImportOnlySnomedTransactionContext implements TransactionContext {
 	}
 
 	@Override
+	public long commit() {
+		throw new UnsupportedOperationException("TODO implement me");
+	}
+	
+	@Override
 	public long commit(final String userId, final String commitComment, final String parentContextDescription) {
 		try {
 			final CDOCommitInfo info = new CDOServerCommitBuilder(userId, commitComment, editingContext.getTransaction())
@@ -138,17 +159,34 @@ public class ImportOnlySnomedTransactionContext implements TransactionContext {
 	public <T extends EObject> T lookup(final String componentId, final Class<T> type) {
 		return editingContext.lookup(componentId, type);
 	}
+	
+	@Override
+	public <T extends EObject> T lookupIfExists(String componentId, Class<T> type) {
+		return editingContext.lookupIfExists(componentId, type);
+	}
+	
+	@Override
+	public <T extends CDOObject> Map<String, T> lookup(Collection<String> componentIds, Class<T> type) {
+		return editingContext.lookup(componentIds, type);
+	}
+	
+	@Override
+	public void clearContents() {
+		editingContext.clearContents();
+	}
 
 	public SnomedEditingContext getEditingContext() {
 		return editingContext;
 	}
 	
-	public String getDefaultLanguageRefsetId() {
-		return editingContext.getLanguageRefSetId();
+	@Override
+	public boolean isNotificationEnabled() {
+		return true;
 	}
-
-	public String getDefaultLanguageCode() {
-		return editingContext.getDefaultLanguageCode();
+	
+	@Override
+	public void setNotificationEnabled(boolean notificationEnabled) {
+		throw new UnsupportedOperationException();
 	}
 	
 	public SnomedCoreConfiguration getSnomedCoreConfig() {

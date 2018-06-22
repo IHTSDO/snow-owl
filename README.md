@@ -12,16 +12,16 @@ These instructions will get Snow Owl up and running on your local machine for de
 From [version 5.1.0](CHANGELOG.md#510), Snow Owl requires Java 8 update 102 or later.
 
 Snow Owl is an Equinox-OSGi based server (using either Virgo or standalone OSGi). To develop plug-ins for Snow Owl you need to use Eclipse as IDE: 
-* Use latest Neon Eclipse IDE for Eclipse Committers: http://www.eclipse.org/downloads/packages/eclipse-ide-eclipse-committers/neon1a
+* Use latest Eclipse IDE for Eclipse Committers package: http://www.eclipse.org/downloads/eclipse-packages/
 
 Required Eclipse plug-ins (install the listed features):
 
 *Note: you may have to untick the `Show only the latest versions of the available software` checkbox to get older versions of a feature. Please use the exact version specified below, not the latest point release.*
 
 * Xtext/Xtend (http://download.eclipse.org/modeling/tmf/xtext/updates/composite/releases/)
- * MWE 2 language SDK 2.9.0 (MWE)
- * Xtend IDE 2.11.0 (Xtext)
- * Xtext Complete SDK 2.11.0 (Xtext)
+  * MWE 2 language SDK 2.9.0 (MWE)
+  * Xtend IDE 2.11.0 (Xtext)
+  * Xtext Complete SDK 2.11.0 (Xtext)
 * Optional: Maven integration (http://download.eclipse.org/technology/m2e/releases) 
  
 ### Eclipse Preferences

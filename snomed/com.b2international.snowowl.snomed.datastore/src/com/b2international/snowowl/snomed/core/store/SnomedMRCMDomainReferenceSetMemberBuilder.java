@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMDomainRefSetMem
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetFactory;
 
 /**
- * @since 5.10.19
+ * @since 6.5
  */
 public class SnomedMRCMDomainReferenceSetMemberBuilder extends SnomedMemberBuilder<SnomedMRCMDomainReferenceSetMemberBuilder, SnomedMRCMDomainRefSetMember> {
 
@@ -73,7 +73,7 @@ public class SnomedMRCMDomainReferenceSetMemberBuilder extends SnomedMemberBuild
 	}
 
 	@Override
-	protected void init(final SnomedMRCMDomainRefSetMember component, final TransactionContext context) {
+	public void init(final SnomedMRCMDomainRefSetMember component, final TransactionContext context) {
 		super.init(component, context);
 		component.setDomainConstraint(domainConstraint);
 		component.setParentDomain(parentDomain);

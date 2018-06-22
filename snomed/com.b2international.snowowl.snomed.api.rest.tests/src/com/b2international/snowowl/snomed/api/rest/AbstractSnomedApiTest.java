@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 
 import org.junit.Rule;
 import org.junit.rules.TestWatcher;
@@ -45,6 +46,7 @@ public abstract class AbstractSnomedApiTest {
 	
 	protected static final String CONTENT_TYPE_TXT_CSV = "text/csv";
 	protected static final String CONTENT_TYPE_UTF_8_JSON = "application/json; charset=UTF-8";
+	private static final Random RANDOM = new Random();
 	
 	private final class CustomTestWatcher extends TestWatcher {
 		@Override
@@ -60,10 +62,15 @@ public abstract class AbstractSnomedApiTest {
 				String testMethodName = description.getMethodName()
 						.replace("[", "_") // Remove special characters from parameterized test names
 						.replace("]", "");
-				// branch path segment cannot be longer than 50 chars (and we have very long test names...)
-				testMethodName = testMethodName.substring(0, Math.min(50, testMethodName.length()));
-
-				branchPath = BranchPathUtils.createPath(SnomedApiTestConstants.PATH_JOINER.skipNulls().join(testBasePath, testClassName, testMethodName));
+				
+				// Also add a random suffix if it would go over the 50 character branch name limit
+				if (testMethodName.length() > 50) {
+					String suffix = Integer.toString(RANDOM.nextInt(Integer.MAX_VALUE), 36);
+					testMethodName = testMethodName.substring(0, 44) + suffix;
+				}
+				
+				branchPath = BranchPathUtils.createPath(SnomedApiTestConstants.PATH_JOINER.join(testBasePath, testClassName, testMethodName));
+				
 			} else {
 				branchPath = BranchPathUtils.createPath(testBasePath);
 			}

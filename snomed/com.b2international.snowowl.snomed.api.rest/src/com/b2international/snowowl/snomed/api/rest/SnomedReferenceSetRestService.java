@@ -43,6 +43,8 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.core.events.bulk.BulkRequest;
+import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.snomed.api.rest.domain.ChangeRequest;
@@ -85,16 +87,21 @@ public class SnomedReferenceSetRestService extends AbstractSnomedRestService {
 			@PathVariable(value="path")
 			final String branchPath,
 			
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
+			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
+			@RequestParam(value="scrollKeepAlive", required=false) 
+			final String scrollKeepAlive,
+			
+			@ApiParam(value="A scrollId to continue scrolling a previous query")
+			@RequestParam(value="scrollId", required=false) 
+			final String scrollId,
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit) {
 		
 		return DeferredResults.wrap(SnomedRequests.prepareSearchRefSet()
-				.setOffset(offset)
+				.setScroll(scrollKeepAlive)
+				.setScrollId(scrollId)
 				.setLimit(limit)
 				.build(repositoryId, branchPath)
 				.execute(bus));
@@ -258,9 +265,13 @@ public class SnomedReferenceSetRestService extends AbstractSnomedRestService {
 		for (RestRequest req : bulkRequest.getRequests()) {
 			req.setSource("referenceSetId", refSetId);
 		}
+		
+		final BulkRequestBuilder<TransactionContext> updateRequestBuilder = BulkRequest.create();
+		bulkRequest.resolve(resolver).forEach(updateRequestBuilder::add);
+		
 		SnomedRequests
 			.prepareCommit()
-			.setBody(bulkRequest.resolve(resolver))
+			.setBody(updateRequestBuilder.build())
 			.setUserId(principal.getName())
 			.setCommitComment(request.getCommitComment())
 			.build(repositoryId, branchPath)

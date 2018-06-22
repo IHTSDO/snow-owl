@@ -105,6 +105,7 @@ import com.b2international.snowowl.snomed.reasoner.classification.GetResultRespo
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedExternalReasonerService;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -371,13 +372,16 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	@Resource
 	private IEventBus bus;
 	
+	private ObjectMapper mapper;
+	
 	@PostConstruct
 	protected void init() {
 		
 		LOG.info("Initializing classification service; keeping indexed data for {} recent run(s).", getMaxReasonerRuns()); 
+		this.mapper = new ObjectMapper();
 		
 		final File dir = new File(new File(SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory(), "indexes"), "classification_runs");
-		indexService = new ClassificationRunIndex(dir);
+		indexService = new ClassificationRunIndex(dir, mapper);
 		ApplicationContext.getInstance().getServiceChecked(SingleDirectoryIndexManager.class).registerIndex(indexService);
 
 		try {
@@ -422,8 +426,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	private void onRemoteJobChanged(RemoteJobEntry remoteJob) {
-		
-		String type = (String) remoteJob.getParameters().get("type");
+		String type = (String) remoteJob.getParameters(mapper).get("type");
 		
 		switch (type) {
 			case "ExternalClassifyRequest": // fall through
@@ -482,9 +485,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 						case NOT_AVAILABLE: 
 							indexService.updateClassificationRunStatus(remoteJob.getId(), ClassificationStatus.FAILED);
 							break;
-						case STALE: 
-							indexService.updateClassificationRunStatus(remoteJob.getId(), ClassificationStatus.STALE);
-							break;
 						case SUCCESS:
 							indexService.updateClassificationRunStatus(remoteJob.getId(), ClassificationStatus.COMPLETED, result.getChanges());
 							break;
@@ -507,6 +507,33 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	private boolean isExternalClassificationRequest(RemoteJobEntry remoteJobEntry) {
 		Map<String, Object> settings = (Map<String, Object>) remoteJobEntry.getParameters().get("settings");
 		return (Boolean) settings.get("useExternalService");
+	}
+
+	private void onPersistJobChanged(RemoteJobEntry remoteJob) {
+		try {
+
+			String classificationJobId = (String) remoteJob.getParameters(mapper).get("classificationId");
+			
+			switch (remoteJob.getState()) {
+			case CANCELED: //$FALL-THROUGH$
+			case FAILED:
+				indexService.updateClassificationRunStatus(classificationJobId, ClassificationStatus.SAVE_FAILED);
+				break;
+			case FINISHED: 
+				indexService.updateClassificationRunStatus(classificationJobId, ClassificationStatus.SAVED);
+				break;
+			case RUNNING: //$FALL-THROUGH$
+			case SCHEDULED: //$FALL-THROUGH$
+			case CANCEL_REQUESTED:
+				// Nothing to do for these state changes
+				break;
+			default:
+				throw new IllegalStateException(MessageFormat.format("Unexpected remote job state ''{0}''.", remoteJob.getState()));
+			}
+
+		} catch (final IOException e) {
+			LOG.error("Caught IOException while updating classification status after save.", e);
+		}
 	}
 
 	@PreDestroy
@@ -690,7 +717,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		 * XXX: We don't want to match anything that is part of the inferred set below, so we remove relationships from the existing list, 
 		 * all in advance. (Revisit should this assumption prove to be incorrect.)
 		 */
-		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
+		for (IRelationshipChange relationshipChange : relationshipChanges.getItems()) {
 			switch (relationshipChange.getChangeNature()) {
 				case REDUNDANT:
 					relationships.remove(findRelationship(relationships, relationshipChange));
@@ -702,7 +729,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		
 		// Collect all concept representations that will be required for the conversion
 		final Set<String> relatedIds = Sets.newHashSet();
-		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
+		for (IRelationshipChange relationshipChange : relationshipChanges.getItems()) {
 			switch (relationshipChange.getChangeNature()) {
 				case INFERRED:
 					relatedIds.add(relationshipChange.getDestinationId());
@@ -738,7 +765,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			}
 		});
 		
-		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
+		for (IRelationshipChange relationshipChange : relationshipChanges.getItems()) {
 			switch (relationshipChange.getChangeNature()) {
 				case INFERRED:
 					final SnomedBrowserRelationship inferred = new SnomedBrowserRelationship();

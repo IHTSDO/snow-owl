@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -176,12 +176,12 @@ public class SnomedComponents {
 	}
 
 	/**
-	 * Creates and returns a new {@link SnomedOWLAxiomReferenceSetMemberBuilder SNOMED CT OWL Axiom Reference set member builder}.
+	 * Creates and returns a new {@link SnomedOWLExpressionReferenceSetMemberBuilder SNOMED CT OWL Expression Reference set member builder}.
 	 * 
 	 * @return
 	 */
-	public static SnomedOWLAxiomReferenceSetMemberBuilder newOWLAxiomReferenceSetMember() {
-		return new SnomedOWLAxiomReferenceSetMemberBuilder();
+	public static SnomedOWLExpressionReferenceSetMemberBuilder newOWLExpressionReferenceSetMember() {
+		return new SnomedOWLExpressionReferenceSetMemberBuilder();
 	}
 	
 	/**

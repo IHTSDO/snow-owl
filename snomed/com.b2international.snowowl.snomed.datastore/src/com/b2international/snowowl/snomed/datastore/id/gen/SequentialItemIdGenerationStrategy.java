@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,24 +15,17 @@
  */
 package com.b2international.snowowl.snomed.datastore.id.gen;
 
-import java.io.IOException;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.Sets.newLinkedHashSetWithExpectedSize;
+
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.b2international.commons.CompareUtils;
 import com.b2international.commons.Pair;
-import com.b2international.index.Hits;
-import com.b2international.index.Index;
-import com.b2international.index.IndexRead;
-import com.b2international.index.Searcher;
-import com.b2international.index.query.Expression;
-import com.b2international.index.query.Expressions;
-import com.b2international.index.query.Query;
-import com.b2international.index.query.SortBy;
-import com.b2international.index.query.SortBy.Order;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
-import com.b2international.snowowl.snomed.datastore.id.domain.SctId;
-import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdentiferReservationService;
+import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdentifierReservationService;
 import com.b2international.snowowl.snomed.datastore.internal.id.reservations.ReservationRangeImpl;
 import com.google.common.base.Strings;
 import com.google.common.cache.CacheBuilder;
@@ -41,9 +34,9 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableRangeSet;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
+import com.google.common.primitives.Ints;
 
 /**
  * An item identifier generation strategy that assigns item identifiers to components in a sequential
@@ -51,27 +44,22 @@ import com.google.common.collect.RangeSet;
  * 
  * @since 5.4
  */
-public class SequentialItemIdGenerationStrategy implements ItemIdGenerationStrategy {
+public final class SequentialItemIdGenerationStrategy implements ItemIdGenerationStrategy {
 
-	private class ItemIdCounter {
+	private static final int MAX_ATTEMPT = 10;
+	
+	public final class ItemIdCounter {
 
 		private final Range<Long> allowedRange;
 		private final RangeSet<Long> excludedRanges;
 		private final AtomicLong counter;
 		
 		public ItemIdCounter(final String namespace, final ComponentCategory category) {
-			this.allowedRange = Range.closed(getLowerInclusiveId(namespace), getUpperExclusiveId(namespace));
-			
-			final SctId lastSctId = getLastSctId(namespace, category);
-			if (lastSctId != null) {
-				this.counter = new AtomicLong(lastSctId.getSequence());
-			} else {
-				// getNextItemId() will add 1 to this value immediately
-				this.counter = new AtomicLong(allowedRange.lowerEndpoint() - 1L);
-			}
+			this.allowedRange = Range.closedOpen(getLowerInclusiveId(namespace), getUpperExclusiveId(namespace));
+			this.counter = new AtomicLong(allowedRange.lowerEndpoint());
 			
 			final ImmutableRangeSet.Builder<Long> excludedRangesBuilder = ImmutableRangeSet.builder();
-			FluentIterable.from(reservationService.getReservations())
+			FluentIterable.from(reservations.getReservations())
 				.filter(ReservationRangeImpl.class)
 				.filter(rangeReservation -> rangeReservation.affects(namespace, category))
 				.transform(ReservationRangeImpl::getItemIdRange)
@@ -89,58 +77,45 @@ public class SequentialItemIdGenerationStrategy implements ItemIdGenerationStrat
 				}
 			}
 		}
-
-		private SctId getLastSctId(final String namespace, final ComponentCategory category) {
-			return store.read(new IndexRead<SctId>() {
-				@Override
-				public SctId execute(final Searcher index) throws IOException {
-					
-					final Expression idsByNamespaceAndType = Expressions.builder()
-							.filter(SctId.Expressions.namespace(namespace))
-							.filter(SctId.Expressions.partitionId(namespace, category))
-							.build();
-					
-					final Hits<SctId> hits = index.search(Query.select(SctId.class)
-							.where(idsByNamespaceAndType)
-							.sortBy(SortBy.field(SctId.Fields.SEQUENCE, Order.DESC))
-							.offset(0)
-							.limit(1)
-							.build());
-
-					return Iterables.getOnlyElement(hits, null);
-				}
-			});
-		}
 		
-		public long getNextItemId() {
-			return counter.updateAndGet(current -> {
-				long next = snapToLowerBound(current + 1L);
-				
-				Range<Long> firstRange = null;
-				while (excludedRanges.contains(next)) {
-				
-					final Range<Long> container = excludedRanges.rangeContaining(next);
-					if (firstRange == null) {
-						firstRange = container;
-					} else if (firstRange.equals(container)) {
-						throw new IllegalStateException("Range visited twice while generating next item identifier: " + container);
-					}
-					
-					// Step over this exclusion range and try again
-					next = snapToLowerBound(container.upperEndpoint() + 1L);
-					
-					// "current" should also be skipped, so we eventually try to visit the first exclusion range seen, and throw an exception above
-					if (next == current) {
-						next = snapToLowerBound(next + 1L);
-					}
-				}
-				
-				return next;
-			});
+		public void setCounter(long newCounter) {
+			this.counter.set(newCounter);
+		}
+
+		private synchronized Set<String> getNextItemIds(int quantity, int stepSize) {
+			
+			long current = counter.get();
+			final long oldCurrent = current;
+
+	        final Set<String> generatedItemIds = newLinkedHashSetWithExpectedSize(quantity);
+	        while (quantity > 0) {
+	        	final Range<Long> containingRange = excludedRanges.rangeContaining(current);
+	        	if (containingRange != null) {
+	        		current = snapToLowerBound(containingRange.upperEndpoint() + 1L);
+	        	} else {
+	        		generatedItemIds.add(Long.toString(current));
+	        		quantity--;
+	        		current = snapToLowerBound(current + stepSize + 1L);
+	        	}
+	        	if (oldCurrent == current) {
+	        		throw new IllegalArgumentException("No more itemIds are available in this counter");
+	        	}
+	        }
+		
+	        // set the currently available itemId for the next generation
+	        counter.set(current);
+	        
+	        return generatedItemIds;
 		}
 		
 		private long snapToLowerBound(final long value) {
-			return allowedRange.contains(value) ? value : allowedRange.lowerEndpoint();
+			if (value < allowedRange.lowerEndpoint()) { // inclusive
+				return allowedRange.upperEndpoint() - (allowedRange.lowerEndpoint() - value);
+			} else if (value >= allowedRange.upperEndpoint()) { // exclusive
+				return allowedRange.lowerEndpoint() + (value - allowedRange.upperEndpoint());
+			} else {
+				return value;
+			}
 		}
 	}
 	
@@ -152,20 +127,23 @@ public class SequentialItemIdGenerationStrategy implements ItemIdGenerationStrat
 		return CompareUtils.isEmpty(namespace) ? SnomedIdentifiers.MAX_INT_ITEMID : SnomedIdentifiers.MAX_NAMESPACE_ITEMID;
 	}
 	
-	private final Index store;
-	private final ISnomedIdentiferReservationService reservationService;
+	private final ISnomedIdentifierReservationService reservations;
 	private final LoadingCache<Pair<String, ComponentCategory>, ItemIdCounter> lastItemIds;
 	
-	public SequentialItemIdGenerationStrategy(final Index store, final ISnomedIdentiferReservationService reservationService) {
-		this.store = store;
-		this.reservationService = reservationService;
+	public SequentialItemIdGenerationStrategy(ISnomedIdentifierReservationService reservations) {
+		this.reservations = reservations;
 		this.lastItemIds = CacheBuilder.newBuilder().build(CacheLoader.from(namespaceCategoryPair -> new ItemIdCounter(namespaceCategoryPair.getA(), namespaceCategoryPair.getB())));
 	}
-
+	
+	public ItemIdCounter getOrCreateCounter(String namespace, ComponentCategory category) {
+		return lastItemIds.getUnchecked(Pair.identicalPairOf(Strings.nullToEmpty(namespace), category));
+	}
+	
 	@Override
-	public String generateItemId(final String namespace, final ComponentCategory category) {
-		final Pair<String, ComponentCategory> key = Pair.identicalPairOf(Strings.emptyToNull(namespace), category);
-		final long nextItemId = lastItemIds.getUnchecked(key).getNextItemId();
-		return Long.toString(nextItemId);
+	public Set<String> generateItemIds(final String namespace, final ComponentCategory category, int quantity, int attempt) {
+		checkArgument(quantity > 0, "At least 1 quantity must be generated");
+		final int limitedAttempt = Ints.min(attempt - 1, MAX_ATTEMPT);
+		final int stepSize = (1 << limitedAttempt) - 1; 
+		return getOrCreateCounter(namespace, category).getNextItemIds(quantity, stepSize);
 	}
 }

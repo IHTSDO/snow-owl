@@ -18,7 +18,6 @@ package com.b2international.snowowl.snomed.core.ecl;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Set;
 
 import com.b2international.index.query.Expression;
@@ -40,7 +39,6 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.ecl.Ecl;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
-import com.google.common.collect.ImmutableSet;
 
 /**
  * @since 5.4
@@ -82,12 +80,12 @@ public final class EclExpression {
 			promise = resolveToExpression(context)
 				.then(expression -> {
 					try {
-						Query<String> query = Query.selectPartial(String.class, SnomedConceptDocument.class, Collections.singleton(SnomedConceptDocument.Fields.ID))
+						return newHashSet(searcher.search(Query.select(String.class)
+								.from(SnomedConceptDocument.class)
+								.fields(SnomedConceptDocument.Fields.ID)
 								.where(expression)
 								.limit(Integer.MAX_VALUE)
-								.build();
-						
-						return newHashSet(searcher.search(query));
+								.build()));
 					} catch (IOException e) {
 						throw new SnowowlRuntimeException(e);
 					}
@@ -110,7 +108,6 @@ public final class EclExpression {
 	public Promise<Expression> resolveToExpression(final BranchContext context) {
 		if (expressionPromise == null) {
 			expressionPromise = SnomedRequests.prepareEclEvaluation(ecl)
-					.setExpressionForm(expressionForm)
 					.build()
 					.execute(context);
 		}
@@ -146,7 +143,7 @@ public final class EclExpression {
 					.filterByCharacteristicTypes(characteristicTypes)
 					.filterBySource(ecl)
 					.filterByGroup(1, Integer.MAX_VALUE)
-					.setFields(ImmutableSet.of(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID))
+					.setFields(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID)
 					.build(context.id(), context.branchPath())
 					.execute(context.service(IEventBus.class))
 					.then(new Function<SnomedRelationships, Set<String>>() {

@@ -182,7 +182,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 404, message = "Branch or classification not found", response=RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/classifications/{classificationId}/relationship-changes", method=RequestMethod.GET, produces={"application/json", "text/csv"})
-	public @ResponseBody PageableCollectionResource<IRelationshipChange> getRelationshipChanges(
+	public @ResponseBody IRelationshipChangeList getRelationshipChanges(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path") 
 			final String branchPath,
@@ -208,7 +208,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			final String acceptLanguage) {
 
 		final IRelationshipChangeList relationshipChangeList = delegate.getRelationshipChanges(branchPath, classificationId, offset, limit);
-		List<IRelationshipChange> changes = relationshipChangeList.getChanges();
+		List<IRelationshipChange> changes = relationshipChangeList.getItems();
 		if (!changes.isEmpty()) {
 			changes = resourceExpander.expandRelationshipChanges(branchPath, changes, getExtendedLocales(acceptLanguage), expand);
 		}

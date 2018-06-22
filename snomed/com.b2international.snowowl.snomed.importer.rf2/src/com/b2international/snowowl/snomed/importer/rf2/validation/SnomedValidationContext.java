@@ -44,12 +44,12 @@ import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.importer.ImportException;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifierValidator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
+import com.b2international.snowowl.snomed.importer.ImportException;
 import com.b2international.snowowl.snomed.importer.net4j.DefectType;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedValidationDefect;
@@ -194,7 +194,7 @@ public final class SnomedValidationContext {
 			} else if (lastColumn.equalsIgnoreCase(SnomedRf2Headers.FIELD_VALUE)) { // AU CDT refset
 				releaseFileValidators.add(new SnomedConcreteDataTypeRefSetValidator(configuration, url, this, false));
 			} else if (lastColumn.equalsIgnoreCase(SnomedRf2Headers.FIELD_MAP_TARGET)) {
-				releaseFileValidators.add(new SnomedSimpleMapTypeRefSetValidator(configuration, url, this, false));
+				releaseFileValidators.add(new SnomedSimpleMapTypeRefSetValidator(configuration, url, this));
 			} else if (lastColumn.equalsIgnoreCase(SnomedRf2Headers.FIELD_CORRELATION_ID)) {
 				releaseFileValidators.add(new SnomedComplexMapTypeRefSetValidator(configuration, url, this));
 			} else if (lastColumn.equalsIgnoreCase(SnomedRf2Headers.FIELD_DESCRIPTION_LENGTH)) {
@@ -208,9 +208,9 @@ public final class SnomedValidationContext {
 			} else if (lastColumn.equals(SnomedRf2Headers.FIELD_MAP_CATEGORY_ID)) {
 				releaseFileValidators.add(new SnomedExtendedMapTypeRefSetValidator(configuration, url, this));
 			} else if (lastColumn.equalsIgnoreCase(SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION)) {
-				releaseFileValidators.add(new SnomedSimpleMapTypeRefSetValidator(configuration, url, this, true));
+				releaseFileValidators.add(new SnomedSimpleMapWithDescriptionRefSetValidator(configuration, url, this));	
 			} else if (lastColumn.equalsIgnoreCase(SnomedRf2Headers.FIELD_OWL_EXPRESSION)) {
-				releaseFileValidators.add(new SnomedOWLAxiomRefSetValidator(configuration, url, this));
+				releaseFileValidators.add(new SnomedOWLExpressionRefSetValidator(configuration, url, this));
 			} else if (lastColumn.equalsIgnoreCase(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE)) {
 				releaseFileValidators.add(new SnomedMRCMDomainRefSetValidator(configuration, url, this));
 			} else if (lastColumn.equalsIgnoreCase(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID)) {
@@ -245,13 +245,11 @@ public final class SnomedValidationContext {
 		validationResult.addAll(new SnomedTaxonomyValidator(configuration, repositoryState, Concepts.STATED_RELATIONSHIP).validate());
 		validationResult.addAll(new SnomedTaxonomyValidator(configuration, repositoryState, Concepts.INFERRED_RELATIONSHIP).validate());
 		
-		for (String file : this.defects.keySet()) {
-			final Multimap<DefectType, String> fileDefects = this.defects.get(file);
-			for (DefectType type : fileDefects.keySet()) {
-				final Collection<String> messages = fileDefects.get(type);
+		this.defects.forEach((file, defects) -> {
+			defects.asMap().forEach((type, messages) -> {
 				validationResult.add(new SnomedValidationDefect(file, type, messages));
-			}
-		}
+			});
+		});
 
 		return validationResult;
 	}

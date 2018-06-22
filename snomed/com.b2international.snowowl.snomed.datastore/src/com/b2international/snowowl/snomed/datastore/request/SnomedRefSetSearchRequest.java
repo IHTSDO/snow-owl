@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,22 @@ package com.b2international.snowowl.snomed.datastore.request;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.refSetTypes;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.referencedComponentTypes;
 
-import java.io.IOException;
-
 import com.b2international.index.Hits;
+import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.query.Query;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSets;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 
 /**
  * @since 4.5
  */
-final class SnomedRefSetSearchRequest extends SnomedSearchRequest<SnomedReferenceSets> {
+final class SnomedRefSetSearchRequest extends SnomedSearchRequest<SnomedReferenceSets, SnomedConceptDocument> {
 
 	enum OptionKey {
 		/**
@@ -50,12 +48,18 @@ final class SnomedRefSetSearchRequest extends SnomedSearchRequest<SnomedReferenc
 	};
 
 	@Override
-	protected SnomedReferenceSets doExecute(BranchContext context) throws IOException {
-		final RevisionSearcher searcher = context.service(RevisionSearcher.class);
+	protected Class<SnomedConceptDocument> getDocumentType() {
+		return SnomedConceptDocument.class;
+	}
+	
+	@Override
+	protected Expression prepareQuery(BranchContext context) {
 		final ExpressionBuilder queryBuilder = Expressions.builder();
-		
+
+		addActiveClause(queryBuilder);
+		addReleasedClause(queryBuilder);
 		addIdFilter(queryBuilder, RevisionDocument.Expressions::ids);
-		addModuleClause(queryBuilder);
+		addEclFilter(context, queryBuilder, SnomedSearchRequest.OptionKey.MODULE, SnomedDocument.Expressions::modules);
 		addEffectiveTimeClause(queryBuilder);
 		
 		if (containsKey(OptionKey.TYPE)) {
@@ -69,25 +73,21 @@ final class SnomedRefSetSearchRequest extends SnomedSearchRequest<SnomedReferenc
 			queryBuilder.filter(referencedComponentTypes(getCollection(OptionKey.REFERENCED_COMPONENT_TYPE, Integer.class)));
 		}
 		
-		final Query<SnomedConceptDocument> query = select(SnomedConceptDocument.class)
-				.where(queryBuilder.build())
-				.sortBy(sortBy())
-				.offset(offset())
-				.limit(limit())
-				.build();
-		
-		final Hits<SnomedConceptDocument> hits = searcher.search(query);
-		
+		return queryBuilder.build();
+	}
+	
+	@Override
+	protected SnomedReferenceSets toCollectionResource(BranchContext context, Hits<SnomedConceptDocument> hits) {
 		if (limit() < 1 || hits.getTotal() < 1) {
-			return new SnomedReferenceSets(offset(), limit(), hits.getTotal());
+			return new SnomedReferenceSets(limit(), hits.getTotal());
 		} else {
-			return SnomedConverters.newRefSetConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
+			return SnomedConverters.newRefSetConverter(context, expand(), locales()).convert(hits.getHits(), hits.getScrollId(), hits.getSearchAfter(), limit(), hits.getTotal());
 		}
 	}
 	
 	@Override
-	protected SnomedReferenceSets createEmptyResult(int offset, int limit) {
-		return new SnomedReferenceSets(offset, limit, 0);
+	protected SnomedReferenceSets createEmptyResult(int limit) {
+		return new SnomedReferenceSets(limit, 0);
 	}
 	
 }

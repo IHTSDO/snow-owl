@@ -29,9 +29,9 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.exceptions.NotImplementedException;
+import com.b2international.snowowl.core.request.SearchResourceRequestBuilder;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.request.BaseRevisionResourceConverter;
-import com.b2international.snowowl.datastore.request.SearchResourceRequestBuilder;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
@@ -62,8 +62,8 @@ final class SnomedReferenceSetMemberConverter extends BaseRevisionResourceConver
 	}
 
 	@Override
-	protected SnomedReferenceSetMembers createCollectionResource(List<SnomedReferenceSetMember> results, int offset, int limit, int total) {
-		return new SnomedReferenceSetMembers(results, offset, limit, total);
+	protected SnomedReferenceSetMembers createCollectionResource(List<SnomedReferenceSetMember> results, String scrollId, Object[] searchAfter, int limit, int total) {
+		return new SnomedReferenceSetMembers(results, scrollId, searchAfter, limit, total);
 	}
 	
 	@Override
@@ -204,7 +204,9 @@ final class SnomedReferenceSetMemberConverter extends BaseRevisionResourceConver
 		member.setScore(entry.getScore());
 
 		final Map<String, Object> props = newHashMap(entry.getAdditionalFields());
-		switch (entry.getReferenceSetType()) {
+		// XXX refset type can be null if the document was loaded partially
+		if (entry.getReferenceSetType() != null) {
+			switch (entry.getReferenceSetType()) {
 			case ASSOCIATION:
 				// convert ID to resources where possible to override value with nested object in JSON
 				props.put(SnomedRf2Headers.FIELD_TARGET_COMPONENT, convertToResource(entry.getTargetComponent()));
@@ -220,9 +222,10 @@ final class SnomedReferenceSetMemberConverter extends BaseRevisionResourceConver
 				break;
 			default:
 				break;
+			}
+			
+			member.setProperties(props);
 		}
-
-		member.setProperties(props);
 		
 		setReferencedComponent(member, entry.getReferencedComponentId(), entry.getReferencedComponentType());
 		return member;
@@ -253,6 +256,10 @@ final class SnomedReferenceSetMemberConverter extends BaseRevisionResourceConver
 		case SnomedTerminologyComponentConstants.RELATIONSHIP_NUMBER:
 			component = new SnomedRelationship();
 			((SnomedRelationship) component).setId(referencedComponentId);
+			break;
+		// XXX partial field loading support
+		case 0:
+			component = null;
 			break;
 		default: throw new UnsupportedOperationException("UnsupportedReferencedComponentType: " + referencedComponentType);
 		}

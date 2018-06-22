@@ -100,13 +100,18 @@ public class SnomedBranchingController extends AbstractRestService {
 			
 			@ApiParam("name")
 			@RequestParam(value="name", required=false)
-			final String[] names) {
+			final String[] names,
+			
+			@ApiParam(value="The maximum number of items to return")
+			@RequestParam(value="limit", defaultValue="50", required=false) 
+			final int limit) {
 		return DeferredResults.wrap(
 				RepositoryRequests
 					.branching()
 					.prepareSearch()
-					.filterByParent(parents == null ? ImmutableList.of() : ImmutableList.copyOf(parents))
-					.filterByName(names == null ? ImmutableList.of() : ImmutableList.copyOf(names))
+					.setLimit(limit)
+					.filterByParent(parents == null ? null : ImmutableList.copyOf(parents))
+					.filterByName(names == null ? null : ImmutableList.copyOf(names))
 					.build(repositoryId)
 					.execute(bus));
 	}

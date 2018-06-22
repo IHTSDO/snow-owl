@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,25 +30,24 @@ import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
-import com.b2international.snowowl.snomed.exporter.server.AbstractFilteredSnomedCoreExporter;
+import com.b2international.snowowl.snomed.exporter.server.AbstractSnomedCoreExporter;
 import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
 import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
 import com.b2international.snowowl.snomed.exporter.server.SnomedRfFileNameBuilder;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
-import com.google.common.base.Strings;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
 /**
  * Exporter for language type reference sets.
  */
-public class SnomedLanguageRefSetExporter extends AbstractFilteredSnomedCoreExporter<SnomedRefSetMemberIndexEntry> {
+public class SnomedLanguageRefSetExporter extends AbstractSnomedCoreExporter<SnomedRefSetMemberIndexEntry> {
 
 	private String languageCode;
 
 	public SnomedLanguageRefSetExporter(SnomedExportContext exportContext, RevisionSearcher revisionSearcher, String languageCode) {
 		super(exportContext, SnomedRefSetMemberIndexEntry.class, revisionSearcher);
-		this.languageCode = languageCode;
+		this.languageCode = checkNotNull(languageCode, "languageCode");
 	}
 
 	@Override
@@ -92,25 +91,21 @@ public class SnomedLanguageRefSetExporter extends AbstractFilteredSnomedCoreExpo
 
 	@Override
 	public String getFileName() {
-		StringBuilder builder = new StringBuilder("der2");
-		builder.append('_');
-		builder.append(SnomedRfFileNameBuilder.getPrefix(SnomedRefSetType.LANGUAGE, false));
-		builder.append("Refset");
-		builder.append('_');
-		builder.append("Language");
-		builder.append(String.valueOf(getExportContext().getContentSubType()));
-
-		if (!Strings.isNullOrEmpty(getLanguageCode())) {
-			builder.append('-');
-			builder.append(getLanguageCode());
-		}
-		
-		builder.append('_');
-		builder.append(getExportContext().getNamespaceId());
-		builder.append('_');
-		builder.append(SnomedRfFileNameBuilder.getReleaseDate(getExportContext()));
-		builder.append(".txt");
-		return builder.toString();
+		return new StringBuilder("der2")
+				.append('_')
+				.append(SnomedRfFileNameBuilder.getPrefix(SnomedRefSetType.LANGUAGE))
+				.append("Refset")
+				.append('_')
+				.append("Language")
+				.append(String.valueOf(getExportContext().getContentSubType()))
+				.append('-')
+				.append(getLanguageCode())
+				.append('_')
+				.append(getExportContext().getNamespaceId())
+				.append('_')
+				.append(SnomedRfFileNameBuilder.getReleaseDate(getExportContext()))
+				.append(".txt")
+				.toString();
 	}
 	
 	protected String getLanguageCode() {
@@ -123,21 +118,23 @@ public class SnomedLanguageRefSetExporter extends AbstractFilteredSnomedCoreExpo
 		Multimap<String, SnomedRefSetMemberIndexEntry> referencedComponentToMemberMap = ArrayListMultimap.create();
 		allResults.getHits().forEach(m -> referencedComponentToMemberMap.put(m.getReferencedComponentId(), m));
 		
-		Query<String> query = Query.selectPartial(String.class, SnomedDescriptionIndexEntry.class, singleton(SnomedDescriptionIndexEntry.Fields.ID))
-			.where(Expressions.builder()
-				.must(SnomedDescriptionIndexEntry.Expressions.ids(referencedComponentToMemberMap.keySet()))
-				.filter(SnomedDescriptionIndexEntry.Expressions.languageCode(checkNotNull(getLanguageCode())))
-				.build())
-			.limit(referencedComponentToMemberMap.keySet().size())
-			.build();
+		Query<String> query = Query.select(String.class)
+				.from(SnomedDescriptionIndexEntry.class)
+				.fields(SnomedDescriptionIndexEntry.Fields.ID)
+				.where(Expressions.builder()
+					.filter(SnomedDescriptionIndexEntry.Expressions.ids(referencedComponentToMemberMap.keySet()))
+					.filter(SnomedDescriptionIndexEntry.Expressions.languageCode(languageCode))
+					.build())
+				.limit(referencedComponentToMemberMap.keySet().size())
+				.build();
 				
-		List<String> descriptionIdsWithLanguageCode = getRevisionSearcher().search(query).getHits();
+		List<String> descriptionIdsWithLanguageCode = getSearcher().search(query).getHits();
 		
 		List<SnomedRefSetMemberIndexEntry> filteredMembers = descriptionIdsWithLanguageCode.stream()
 				.flatMap(id -> referencedComponentToMemberMap.get(id).stream())
 				.collect(toList());
 
-		return new Hits<SnomedRefSetMemberIndexEntry>(filteredMembers, allResults.getOffset(), allResults.getLimit(), allResults.getTotal());
+		return new Hits<SnomedRefSetMemberIndexEntry>(filteredMembers, null, null, allResults.getLimit(), allResults.getTotal());
 	}
 
 }

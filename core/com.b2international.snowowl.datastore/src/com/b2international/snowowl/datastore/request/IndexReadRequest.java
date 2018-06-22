@@ -17,11 +17,11 @@ package com.b2international.snowowl.datastore.request;
 
 import java.io.IOException;
 
+import com.b2international.index.DocSearcher;
 import com.b2international.index.Index;
 import com.b2international.index.IndexRead;
 import com.b2international.index.Searcher;
 import com.b2international.index.query.QueryParseException;
-import com.b2international.snowowl.core.domain.DelegatingRepositoryContext;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.DelegatingRequest;
 import com.b2international.snowowl.core.events.Request;
@@ -46,11 +46,11 @@ public final class IndexReadRequest<R> extends DelegatingRequest<RepositoryConte
 	public R execute(final RepositoryContext context) {
 		return context.service(Index.class).read(new IndexRead<R>() {
 			@Override
-			public R execute(Searcher index) throws IOException {
+			public R execute(DocSearcher index) throws IOException {
 				try {
-					return next(DelegatingRepositoryContext
-							.basedOn(context)
+					return next(context.inject()
 							.bind(Searcher.class, index)
+							.bind(DocSearcher.class, index)
 							.build());
 				} catch (QueryParseException e) {
 					throw new IllegalQueryParameterException(e.getMessage());

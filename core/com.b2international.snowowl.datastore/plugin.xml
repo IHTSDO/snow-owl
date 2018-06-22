@@ -6,41 +6,15 @@
    <extension-point id="connectionFactory" name="connectionFactory" schema="schema/connectionFactory.exsd"/>
    <extension-point id="protocolFactory" name="Net4j Client Protocol Factory" schema="schema/protocolFactory.exsd"/>
    <extension-point id="repository" name="Repository" schema="schema/repository.exsd"/>
-   <extension-point id="taskContext" name="Task Context" schema="schema/taskContext.exsd"/>
    <extension-point id="versioningManager" name="versioningManager" schema="schema/versioningManager.exsd"/>
-   <extension-point id="nodeTransformer" name="nodeTransformer" schema="schema/nodeTransformer.exsd"/>
    <extension-point id="contentAvailabilityInfoProvider" name="Content Availability Info Provider" schema="schema/contentAvailabilityInfoProvider.exsd"/>
    <extension-point id="mappingProvider" name="mappingProvider" schema="schema/mappingProvider.exsd"/>
+   <extension-point id="validationIssueDetailExtension" name="validationIssueDetailExtension" schema="schema/validationDetailExtension.exsd"/>
    <extension
          point="com.b2international.snowowl.datastore.serviceConfigJob">
       <serviceConfigJob
-            class="com.b2international.snowowl.datastore.CDOBranchManagerConfigJob"
-            id="com.b2international.snowowl.datastore.CDOBranchManagerConfigJob"
-            terminologyId="UNSPECIFIED">
-      </serviceConfigJob>
-      <serviceConfigJob
-            class="com.b2international.snowowl.datastore.version.TagServiceClientConfigJob"
-            id="com.b2international.snowowl.datastore.version.TagServiceClientConfigJob"
-            terminologyId="UNSPECIFIED">
-      </serviceConfigJob>
-      <serviceConfigJob
             class="com.b2international.snowowl.datastore.oplock.impl.DatastoreLockManagerClientConfigJob"
             id="com.b2international.snowowl.datastore.oplock.impl.DatastoreLockManagerClientConfigJob"
-            terminologyId="UNSPECIFIED">
-      </serviceConfigJob>
-      <serviceConfigJob
-            class="com.b2international.snowowl.datastore.version.VersionCompareServiceClientConfigJob"
-            id="com.b2international.snowowl.datastore.version.VersionCompareServiceClientConfigJob"
-            terminologyId="UNSPECIFIED">
-      </serviceConfigJob>
-      <serviceConfigJob
-            class="com.b2international.snowowl.datastore.serviceconfig.CodeSystemServiceClientConfigJob"
-            id="com.b2international.snowowl.datastore.serviceconfig.CodeSystemServiceClientConfigJob"
-            terminologyId="UNSPECIFIED">
-      </serviceConfigJob>
-      <serviceConfigJob
-            class="com.b2international.snowowl.datastore.version.VersionCompareExporterServiceClientConfigJob"
-            id="com.b2international.snowowl.datastore.version.VersionCompareExporterServiceClientConfigJob"
             terminologyId="UNSPECIFIED">
       </serviceConfigJob>
       <serviceConfigJob
@@ -67,13 +41,6 @@
       </connectionFactory>
    </extension>
    <extension
-         point="com.b2international.snowowl.datastore.protocolFactory">
-      <protocolFactory
-            class="com.b2international.snowowl.datastore.net4j.push.PushClientProtocol$Factory"
-            id="com.b2international.snowowl.datastore.net4j.push.PushClientProtocol$Factory">
-      </protocolFactory>
-   </extension>
-      <extension
          point="org.eclipse.core.expressions.propertyTesters">
       <propertyTester
             class="com.b2international.snowowl.datastore.propertytester.OsPropertyTester"
@@ -90,6 +57,9 @@
          </bootstrapFragment>
          <bootstrapFragment
                class="com.b2international.snowowl.datastore.connection.RepositoryConnectionBootstrap">
+         </bootstrapFragment>
+         <bootstrapFragment
+               class="com.b2international.snowowl.core.internal.validation.ValidationBootstrap">
          </bootstrapFragment>
       </extension>
 

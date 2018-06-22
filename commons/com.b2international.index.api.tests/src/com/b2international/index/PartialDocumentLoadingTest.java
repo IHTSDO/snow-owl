@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Map;
 
 import org.junit.Test;
 
@@ -44,12 +45,64 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		return ImmutableSet.<Class<?>>of(Data.class);
 	}
 	
-	private void checkHits(final Hits<?> hits, int offset, int limit, int total, int returned) {
-		assertEquals(offset, hits.getOffset());
+	private void checkHits(final Hits<?> hits, int limit, int total, int returned) {
 		assertEquals(limit, hits.getLimit());
 		assertEquals(total, hits.getTotal());
 		assertEquals(returned, Iterables.size(hits));
 		assertEquals(returned, hits.getHits().size());
+	}
+	
+	@Test
+	public void selectPartialWithMap() throws Exception {
+		final Data data1 = new Data();
+		data1.setField1("field1_1"); 
+		data1.setField2("field2_1");
+		indexDocument(KEY1, data1);
+		
+		final Data data2 = new Data();
+		data2.setField1("field1_2"); 
+		data2.setField2("field2_2");
+		indexDocument(KEY2, data2);
+		
+		final Query<Map> query = Query.select(Map.class)
+				.from(Data.class)
+				.where(Expressions.matchAll())
+				.build();
+
+		final Hits<Map> hits = search(query);
+		
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
+		assertEquals(data1.getField1(), hits.getHits().get(0).get("field1"));
+		assertEquals(data1.getField2(), hits.getHits().get(0).get("field2"));
+		assertEquals(data2.getField1(), hits.getHits().get(1).get("field1"));
+		assertEquals(data2.getField2(), hits.getHits().get(1).get("field2"));
+	}
+	
+	@Test
+	public void selectPartialWithStringArray() throws Exception {
+		final Data data1 = new Data();
+		data1.setField1("field1_1"); 
+		data1.setField2("field2_1");
+		indexDocument(KEY1, data1);
+		
+		final Data data2 = new Data();
+		data2.setField1("field1_2"); 
+		data2.setField2("field2_2");
+		indexDocument(KEY2, data2);
+		
+		final Query<String[]> query = Query.select(String[].class)
+				.from(Data.class)
+				.fields("field1", "field2")
+				.where(Expressions.matchAll())
+				.build();
+
+		final Hits<String[]> hits = search(query);
+		
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
+		assertEquals(data1.getField1(), hits.getHits().get(0)[0]);
+		assertEquals(data1.getField2(), hits.getHits().get(0)[1]);
+		assertEquals(data2.getField1(), hits.getHits().get(1)[0]);
+		assertEquals(data2.getField2(), hits.getHits().get(1)[1]);
 	}
 
 	@Test
@@ -60,17 +113,18 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		indexDocument(KEY1, data1);
 		
 		final Data data2 = new Data();
-		data2.setField2("field1_2"); 
+		data2.setField1("field1_2"); 
 		data2.setField2("field2_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<PartialData> query = Query.selectPartial(PartialData.class, Data.class)
+		final Query<PartialData> query = Query.select(PartialData.class)
+				.from(Data.class)
 				.where(Expressions.matchAll())
 				.build();
 
 		final Hits<PartialData> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(data1.getField1(), hits.getHits().get(0).getField1());
 		assertEquals(data2.getField1(), hits.getHits().get(1).getField1());
 	}
@@ -87,13 +141,14 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField2("field2_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Data> query = Query.selectPartial(Data.class, "field1")
+		final Query<Data> query = Query.select(Data.class)
+				.fields("field1")
 				.where(Expressions.matchAll())
 				.build();
 		
 		final Hits<Data> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(data1.getField1(), hits.getHits().get(0).getField1());
 		assertEquals(data2.getField1(), hits.getHits().get(1).getField1());
 		
@@ -113,13 +168,14 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField1("field1_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Data> query = Query.selectPartial(Data.class, "analyzedField")
+		final Query<Data> query = Query.select(Data.class)
+				.fields("analyzedField")
 				.where(Expressions.matchAll())
 				.build();
 		
 		final Hits<Data> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(data1.getAnalyzedField(), hits.getHits().get(0).getAnalyzedField());
 		assertEquals(data2.getAnalyzedField(), hits.getHits().get(1).getAnalyzedField());
 		
@@ -139,13 +195,14 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField1("field1_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Data> query = Query.selectPartial(Data.class, "bigDecimalField")
+		final Query<Data> query = Query.select(Data.class)
+				.fields("bigDecimalField")
 				.where(Expressions.matchAll())
 				.build();
 		
 		final Hits<Data> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(data1.getBigDecimalField(), hits.getHits().get(0).getBigDecimalField());
 		assertEquals(data2.getBigDecimalField(), hits.getHits().get(1).getBigDecimalField());
 		
@@ -167,13 +224,14 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField1("field1_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Data> query = Query.selectPartial(Data.class, "floatField", "floatWrapper")
+		final Query<Data> query = Query.select(Data.class)
+				.fields("floatField", "floatWrapper")
 				.where(Expressions.matchAll())
 				.build();
 		
 		final Hits<Data> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(Float.floatToRawIntBits(data1.getFloatField()), Float.floatToRawIntBits(hits.getHits().get(0).getFloatField()));
 		assertEquals(Float.floatToRawIntBits(data2.getFloatField()), Float.floatToRawIntBits(hits.getHits().get(1).getFloatField()));
 		assertEquals(data1.getFloatWrapper(), hits.getHits().get(0).getFloatWrapper()); // Float is already doing bitwise comparison in equals
@@ -197,13 +255,14 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField1("field1_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Data> query = Query.selectPartial(Data.class, "longField", "longWrapper")
+		final Query<Data> query = Query.select(Data.class)
+				.fields("longField", "longWrapper")
 				.where(Expressions.matchAll())
 				.build();
 		
 		final Hits<Data> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(data1.getLongField(), hits.getHits().get(0).getLongField());
 		assertEquals(data2.getLongField(), hits.getHits().get(1).getLongField());
 		assertEquals(data1.getLongWrapper(), hits.getHits().get(0).getLongWrapper());
@@ -227,13 +286,14 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField1("field1_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Data> query = Query.selectPartial(Data.class, "intField", "intWrapper")
+		final Query<Data> query = Query.select(Data.class)
+				.fields("intField", "intWrapper")
 				.where(Expressions.matchAll())
 				.build();
 		
 		final Hits<Data> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(data1.getIntField(), hits.getHits().get(0).getIntField());
 		assertEquals(data2.getIntField(), hits.getHits().get(1).getIntField());
 		assertEquals(data1.getIntWrapper(), hits.getHits().get(0).getIntWrapper());
@@ -257,13 +317,14 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField1("field1_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Data> query = Query.selectPartial(Data.class, "shortField", "shortWrapper")
+		final Query<Data> query = Query.select(Data.class)
+				.fields("shortField", "shortWrapper")
 				.where(Expressions.matchAll())
 				.build();
 		
 		final Hits<Data> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(data1.getShortField(), hits.getHits().get(0).getShortField());
 		assertEquals(data2.getShortField(), hits.getHits().get(1).getShortField());
 		assertEquals(data1.getShortWrapper(), hits.getHits().get(0).getShortWrapper());
@@ -288,14 +349,15 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField1("field1_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Data> query = Query.selectPartial(Data.class, "intField", "intWrapper")
+		final Query<Data> query = Query.select(Data.class)
+				.fields("intField", "intWrapper")
 				.where(Expressions.matchAll())
 				.sortBy(SortBy.field("field1", Order.DESC))
 				.build();
 		
 		final Hits<Data> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		
 		// Results are now inverted: the second document should appear first
 		assertEquals(data2.getIntField(), hits.getHits().get(0).getIntField());
@@ -320,13 +382,15 @@ public class PartialDocumentLoadingTest extends BaseIndexTest {
 		data2.setField1("field1_2");
 		indexDocument(KEY2, data2);
 		
-		final Query<Integer> query = Query.selectPartial(Integer.class, Data.class, ImmutableSet.of("intField"))
+		final Query<Integer> query = Query.select(Integer.class)
+				.from(Data.class)
+				.fields("intField")
 				.where(Expressions.matchAll())
 				.build();
 		
 		final Hits<Integer> hits = search(query);
 		
-		checkHits(hits, 0, DEFAULT_LIMIT, 2, 2);
+		checkHits(hits, DEFAULT_LIMIT, 2, 2);
 		assertEquals(data1.getIntField(), hits.getHits().get(0).intValue());
 		assertEquals(data2.getIntField(), hits.getHits().get(1).intValue());
 	}

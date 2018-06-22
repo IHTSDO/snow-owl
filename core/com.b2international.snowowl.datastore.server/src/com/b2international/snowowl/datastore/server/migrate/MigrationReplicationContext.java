@@ -44,6 +44,7 @@ import org.eclipse.net4j.util.om.monitor.Monitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.index.Script;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.domain.RepositoryContext;
@@ -51,18 +52,16 @@ import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
 import com.b2international.snowowl.datastore.cdo.DelegatingTransaction;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator.SkipBranchException;
-import com.b2international.snowowl.datastore.server.reindex.OptimizeRequest;
-import com.b2international.snowowl.datastore.server.reindex.PurgeRequest;
+import com.b2international.snowowl.datastore.request.repository.OptimizeRequest;
+import com.b2international.snowowl.datastore.request.repository.PurgeRequest;
 import com.b2international.snowowl.terminologymetadata.TerminologymetadataPackage;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 
-import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
-import groovy.lang.Script;
 
 /**
- * @since 5.10.12
+ * @since 5.11
  */
 @SuppressWarnings("restriction")
 class MigrationReplicationContext implements CDOReplicationContext {
@@ -135,7 +134,7 @@ class MigrationReplicationContext implements CDOReplicationContext {
 				final CDOBranch branch = currentBranchToReplicate.getValue();
 				LOGGER.info("Replicating branch: " + branch.getName() + " at " + branch.getBase().getTimeStamp());
 
-				com.b2international.snowowl.datastore.server.internal.InternalRepository internalRepository = (com.b2international.snowowl.datastore.server.internal.InternalRepository) context
+				com.b2international.snowowl.datastore.internal.InternalRepository internalRepository = (com.b2international.snowowl.datastore.internal.InternalRepository) context
 						.service(Repository.class);
 				InternalCDOBranchManager cdoBranchManager = (InternalCDOBranchManager) internalRepository
 						.getCdoBranchManager();				

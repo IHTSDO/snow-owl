@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nullable;
 
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
-import org.eclipse.emf.cdo.common.branch.CDOBranchPoint;
 import org.eclipse.emf.cdo.common.revision.CDORevision;
 import org.eclipse.emf.cdo.common.revision.CDORevisionCache;
 import org.eclipse.emf.cdo.common.revision.CDORevisionUtil;
@@ -55,22 +54,17 @@ import org.eclipse.spi.net4j.ClientProtocolFactory;
 
 import com.b2international.commons.StringUtils;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.api.IBranchPoint;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.config.ClientPreferences;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
-import com.b2international.snowowl.core.users.SpecialUserStore;
-import com.b2international.snowowl.core.users.User;
-import com.b2international.snowowl.datastore.Authenticator;
 import com.b2international.snowowl.datastore.ClientProtocolFactoryRegistry;
 import com.b2international.snowowl.datastore.DatastoreActivator;
-import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.connection.RepositoryConnectionConfiguration;
-import com.b2international.snowowl.datastore.delta.IBranchPointCalculationStrategy;
 import com.b2international.snowowl.datastore.net4j.Net4jUtils;
 import com.b2international.snowowl.datastore.session.IApplicationSessionManager;
 import com.b2international.snowowl.eventbus.net4j.EventBusNet4jUtil;
 import com.b2international.snowowl.eventbus.net4j.IEventBusProtocol;
+import com.b2international.snowowl.identity.domain.User;
 import com.b2international.snowowl.rpc.RpcProtocol;
 import com.b2international.snowowl.rpc.RpcUtil;
 import com.google.common.base.Preconditions;
@@ -91,18 +85,10 @@ import com.google.common.collect.Maps;
 	@Nullable private Authenticator authenticator;
 	@Nullable private IConnector connector;
 
-	static CDOConnectionManager create(final User user) {
-		return new CDOConnectionManager(user.getUserName(), user.getPassword(), user);
-	}
-
-	static CDOConnectionManager create(final String username, final String password) {
-		return new CDOConnectionManager(username, password, /*intentionally null. authentication is required.*/ null);
-	}
-	
-	CDOConnectionManager(final String username, final String password, @Nullable final User user) {
+	CDOConnectionManager(final String username, final String password) {
 		this.username = Preconditions.checkNotNull(username, "Username argument cannot be null.");
 		this.password = Preconditions.checkNotNull(password, "Password argument cannot be null.");
-		this.user = user;
+		this.user = User.SYSTEM.getUsername().equals(username) ? User.SYSTEM : null;
 		repositoryNameToConfiguration = Maps.newHashMap();
 	}
 
@@ -119,7 +105,12 @@ import com.google.common.collect.Maps;
 	 */
 	@Override
 	public String getUserId() {
-		return getUser().getUserName();
+		return getUser().getUsername();
+	}
+	
+	@Override
+	public String getPassword() {
+		return password;
 	}
 
 	/* (non-Javadoc)
@@ -169,39 +160,6 @@ import com.google.common.collect.Maps;
 	}
 
 	/* (non-Javadoc)
-	 * @see com.b2international.snowowl.datastore.cdo.ICDOConnectionManager#get(org.eclipse.emf.cdo.common.branch.CDOBranchPoint)
-	 */
-	@Override
-	public ICDOConnection get(final CDOBranchPoint branchPoint) {
-
-		Preconditions.checkNotNull(branchPoint, "CDO branch point argument cannot be null.");
-		return get(branchPoint.getBranch());
-
-	}
-
-	/* (non-Javadoc)
-	 * @see com.b2international.snowowl.datastore.cdo.ICDOConnectionManager#get(com.b2international.snowowl.core.api.IBranchPoint)
-	 */
-	@Override
-	public ICDOConnection get(final IBranchPoint branchPoint) {
-
-		Preconditions.checkNotNull(branchPoint, "Branch point argument cannot be null.");
-		return getByUuid(Preconditions.checkNotNull(branchPoint.getUuid()));
-
-	}
-
-	/* (non-Javadoc)
-	 * @see com.b2international.snowowl.datastore.cdo.ICDOConnectionManager#get(com.b2international.snowowl.datastore.delta.IBranchPointCalculationStrategy)
-	 */
-	@Override
-	public ICDOConnection get(final IBranchPointCalculationStrategy strategy) {
-
-		Preconditions.checkNotNull(strategy, "Branch point calculation strategy argument cannot be null.");
-		return get(strategy.getSourceBranchPoint());
-
-	}
-
-	/* (non-Javadoc)
 	 * @see com.b2international.snowowl.datastore.cdo.ICDOConnectionManager#get(org.eclipse.emf.cdo.common.revision.CDORevision)
 	 */
 	@Override
@@ -235,8 +193,7 @@ import com.google.common.collect.Maps;
 	/* (non-Javadoc)
 	 * @see com.b2international.snowowl.datastore.cdo.ICDOConnectionManager#getAuthenticator()
 	 */
-	@Override
-	public Authenticator getAuthenticator() {
+	Authenticator getAuthenticator() {
 		return authenticator;
 	}
 
@@ -313,9 +270,8 @@ import com.google.common.collect.Maps;
 		try {			
 			
 			final ClientPreferences clientConfiguration = getClientConfiguration();
-			final RepositoryConfiguration repositoryConfiguration = getRepositoryConfiguration();
 			final RepositoryConnectionConfiguration connectionConfiguration = getRepositoryConnectionConfiguration();
-			final boolean embedded = clientConfiguration.isClientEmbedded() || SpecialUserStore.SYSTEM_USER.equals(user);
+			final boolean embedded = clientConfiguration.isClientEmbedded() || User.isSystem(username);
 			
 			final PasswordCredentialsProvider credentials = new PasswordCredentialsProvider(new PasswordCredentials(username, password.toCharArray()));
 
@@ -386,10 +342,6 @@ import com.google.common.collect.Maps;
 
 	private RepositoryConnectionConfiguration getRepositoryConnectionConfiguration() {
 		return getSnowOwlConfiguration().getModuleConfig(RepositoryConnectionConfiguration.class);
-	}
-
-	private RepositoryConfiguration getRepositoryConfiguration() {
-		return getSnowOwlConfiguration().getModuleConfig(RepositoryConfiguration.class);
 	}
 
 	private SnowOwlConfiguration getSnowOwlConfiguration() {

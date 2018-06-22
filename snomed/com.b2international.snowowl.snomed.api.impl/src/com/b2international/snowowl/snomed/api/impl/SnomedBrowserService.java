@@ -50,8 +50,6 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.IComponent;
-import com.b2international.snowowl.core.domain.IComponentRef;
-import com.b2international.snowowl.core.domain.IStorageRef;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
@@ -59,12 +57,11 @@ import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.core.events.bulk.BulkResponse;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.core.request.SearchResourceRequest;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.request.RepositoryCommitRequestBuilder;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
 import com.b2international.snowowl.datastore.server.domain.InternalComponentRef;
-import com.b2international.snowowl.datastore.server.domain.InternalStorageRef;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
@@ -294,7 +291,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.execute(bus())
 				.getSync()
 				.getResultAs(String.class);
-		
 		return getConceptDetails(branchPath, createdConceptId, locales);
 	}
 
@@ -661,7 +657,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private SnomedConcepts getConcepts(final IBranchPath branchPath, final Set<String> destinationConceptIds) {
 		if (destinationConceptIds.isEmpty()) {
-			return new SnomedConcepts(0, 0, 0);
+			return new SnomedConcepts(0, 0);
 		}
 		return SnomedRequests.prepareSearchConcept()
 				.all()
@@ -808,14 +804,11 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		checkNotNull(query, "Query may not be null.");
 		checkArgument(query.length() >= 3, "Query must be at least 3 characters long.");
 
-		final InternalStorageRef internalStorageRef = ClassUtils.checkAndCast(storageRef, InternalStorageRef.class);
-		internalStorageRef.checkStorageExists();
-
-		final IBranchPath branchPath = internalStorageRef.getBranch().branchPath();
-		final DescriptionService descriptionService = new DescriptionService(bus, storageRef.getBranchPath());
+		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 		
 		final Collection<SnomedDescription> descriptions = SnomedRequests.prepareSearchDescription()
-			.setOffset(offset)
+			.setScroll(scrollKeepAlive)
+			.setScrollId(scrollId)
 			.setLimit(limit)
 			.filterByTerm(query)
 			.sortBy(SearchResourceRequest.SCORE)

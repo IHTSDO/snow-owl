@@ -116,11 +116,27 @@ public class Bootstrap {
 	 * 
 	 * @param configuration
 	 * @param environment
+	 * @throws Exception 
 	 */
-	public void preRun(SnowOwlConfiguration configuration, Environment environment) {
+	public void preRun(SnowOwlConfiguration configuration, Environment environment) throws Exception {
 		for (BootstrapFragment fragment : extensions) {
 			if (fragment instanceof PreRunCapableBootstrapFragment) {
 				((PreRunCapableBootstrapFragment) fragment).preRun(configuration, environment);
+			}
+		}
+	}
+	
+	/**
+	 * Executes {@link PostRunCapableBootstrapFragment#postRun(SnowOwlConfiguration, Environment)} methods in the currently registered
+	 * {@link BootstrapFragment}s.
+	 * 
+	 * @param configuration
+	 * @param environment
+	 */
+	public void postRun(SnowOwlConfiguration configuration, Environment environment) {
+		for (BootstrapFragment fragment : extensions) {
+			if (fragment instanceof PostRunCapableBootstrapFragment) {
+				((PostRunCapableBootstrapFragment) fragment).postRun(configuration, environment);
 			}
 		}
 	}

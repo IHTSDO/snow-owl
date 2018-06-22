@@ -20,7 +20,6 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.google.common.collect.Sets.newHashSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Map;
 import java.util.Set;
 
 import org.junit.Before;
@@ -221,7 +220,7 @@ public class BranchCompareRequestTest {
 		return newIds;
 	}
 	
-	private CompareResult compareOnJob(String base, String compare) throws InterruptedException {
+	private CompareResult compareOnJob(String base, String compare) throws Exception {
 		final String compareJobId = JobRequests.prepareSchedule()
 			.setRequest(prepareCompare(base, compare).getRequest())
 			.setUser("test@b2i.sg")
@@ -232,7 +231,7 @@ public class BranchCompareRequestTest {
 		
 		final RemoteJobEntry job = waitDone(compareJobId);
 		
- 		return JsonSupport.getDefaultObjectMapper().convertValue(job.getResultAs(Map.class), CompareResult.class);
+ 		return job.getResultAs(JsonSupport.getDefaultObjectMapper(), CompareResult.class);
 	}
 	
 }

@@ -18,12 +18,12 @@ package com.b2international.snowowl.datastore.request.job;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
-import com.b2international.snowowl.datastore.request.SystemRequestBuilder;
+import com.b2international.snowowl.core.request.SystemRequestBuilder;
 
 /**
  * @since 5.7
  */
-public final class CancelJobRequestBuilder extends BaseRequestBuilder<CancelJobRequestBuilder, ServiceProvider, Void> implements SystemRequestBuilder<Void> {
+public final class CancelJobRequestBuilder extends BaseRequestBuilder<CancelJobRequestBuilder, ServiceProvider, Boolean> implements SystemRequestBuilder<Boolean> {
 
 	private final String jobId;
 	
@@ -32,7 +32,7 @@ public final class CancelJobRequestBuilder extends BaseRequestBuilder<CancelJobR
 	}
 
 	@Override
-	protected Request<ServiceProvider, Void> doBuild() {
+	protected Request<ServiceProvider, Boolean> doBuild() {
 		return new CancelJobRequest(jobId);
 	}
 

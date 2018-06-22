@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 import static com.google.common.collect.Maps.newHashMap;
 
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 
@@ -25,16 +26,18 @@ import org.hibernate.validator.constraints.NotEmpty;
 
 import com.b2international.commons.ClassUtils;
 import com.b2international.snowowl.core.domain.TransactionContext;
-import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSet.Builder;
 
 /**
  * @since 4.5
  */
-final class SnomedRefSetMemberCreateRequest implements Request<TransactionContext, String> {
+final class SnomedRefSetMemberCreateRequest implements SnomedComponentCreateRequest {
 
 	@Nonnull
 	private String id;
@@ -59,11 +62,13 @@ final class SnomedRefSetMemberCreateRequest implements Request<TransactionContex
 		return id;
 	}
 
-	Boolean isActive() {
+	@Override
+	public Boolean isActive() {
 		return active;
 	}
 	
-	String getModuleId() {
+	@Override
+	public String getModuleId() {
 		return moduleId;
 	}
 	
@@ -126,6 +131,28 @@ final class SnomedRefSetMemberCreateRequest implements Request<TransactionContex
 	void setId(String id) {
 		this.id = id;
 	}
+	
+	/**
+	 * @return the set of core component SCTIDs mentioned in any reference set member property
+	 */
+	@Override
+	public Set<String> getRequiredComponentIds(TransactionContext context) {
+		try {
+			SnomedRefSet refSet = context.lookup(referenceSetId, SnomedRefSet.class);
+			SnomedRefSetMemberCreateDelegate delegate = getDelegate(refSet.getType());
+			Builder<String> requiredComponentIds = ImmutableSet.<String>builder().addAll(delegate.getRequiredComponentIds());
+			requiredComponentIds.add(referenceSetId);
+			if (!Strings.isNullOrEmpty(referencedComponentId)) {
+				requiredComponentIds.add(referencedComponentId);
+			}
+			if (!Strings.isNullOrEmpty(moduleId)) {
+				requiredComponentIds.add(moduleId);
+			}
+			return requiredComponentIds.build();
+		} catch (ComponentNotFoundException e) {
+			throw e.toBadRequestException();
+		}
+	}
 
 	@Override
 	public String execute(TransactionContext context) {
@@ -166,8 +193,12 @@ final class SnomedRefSetMemberCreateRequest implements Request<TransactionContex
 				return new SnomedSimpleMemberCreateDelegate(this);
 			case SIMPLE_MAP:
 				return new SnomedSimpleMapMemberCreateDelegate(this);
+			case SIMPLE_MAP_WITH_DESCRIPTION:
+				return new SnomedSimpleMapMemberWithDescriptionCreateDelegate(this);
 			case OWL_AXIOM:
 				return new SnomedOWLAxiomMemberCreateDelegate(this);
+			case OWL_ONTOLOGY:
+				return new SnomedOWLOntologyMemberCreateDelegate(this);
 			case MRCM_DOMAIN:
 				return new SnomedMRCMDomainMemberCreateDelegate(this);
 			case MRCM_ATTRIBUTE_DOMAIN:

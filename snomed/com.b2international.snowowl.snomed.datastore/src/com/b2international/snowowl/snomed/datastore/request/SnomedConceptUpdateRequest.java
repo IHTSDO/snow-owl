@@ -20,11 +20,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.eclipse.emf.ecore.EObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.commons.CompareUtils;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
@@ -36,6 +38,7 @@ import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
@@ -55,6 +58,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSet.Builder;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
@@ -127,19 +131,19 @@ public final class SnomedConceptUpdateRequest extends SnomedComponentUpdateReque
 		changed |= updateSubclassDefinitionStatus(context, concept);
 		
 		if (descriptions != null) {
-			changed |= updateComponents(context, concept, 
+			updateComponents(context, concept, 
 					getComponentIds(concept.getDescriptions()), descriptions, 
 					id -> SnomedRequests.prepareDeleteDescription(id).build());
 		}
 		
 		if (relationships != null) {
-			changed |= updateComponents(context, concept, 
+			updateComponents(context, concept, 
 					getComponentIds(concept.getOutboundRelationships()), relationships, 
 					id -> SnomedRequests.prepareDeleteRelationship(id).build());
 		}
 		
 		if (members != null) {
-			changed |= updateComponents(context, concept, 
+			updateComponents(context, concept, 
 					getPreviousMemberIds(concept, context), members, 
 					id -> SnomedRequests.prepareDeleteMember(id).build());
 		}
@@ -263,16 +267,16 @@ public final class SnomedConceptUpdateRequest extends SnomedComponentUpdateReque
 			updateAssociationTargets(context, newAssociationTargets);
 			return true;
 			
-		} else if (!currentStatus && !newStatus) {
+		} else if (currentStatus == newStatus) {
 			
-			// Inactive --> Inactive: update indicator and/or association targets if required
+			// Same status, allow indicator and/or association targets to be updated if required
 			// (using original values that can be null)
 			
 			updateInactivationIndicator(context, inactivationIndicator);
 			updateAssociationTargets(context, associationTargets);
 			return false;
-
-		} else /* if (currentStatus && newStatus) */ {
+			
+		} else {
 			return false;
 		}
 	}
@@ -352,7 +356,7 @@ public final class SnomedConceptUpdateRequest extends SnomedComponentUpdateReque
 			final Concept concept, 
 			final Set<String> previousComponentIds,
 			final Iterable<U> currentComponents, 
-			final Function<String, Request<TransactionContext, Void>> toDeleteRequest) {
+			final Function<String, Request<TransactionContext, ?>> toDeleteRequest) {
 
 		// pre process all incoming components
 		currentComponents.forEach(component -> {
@@ -389,6 +393,53 @@ public final class SnomedConceptUpdateRequest extends SnomedComponentUpdateReque
 			.filter(Boolean.class::isInstance)
 			.map(Boolean.class::cast)
 			.reduce(Boolean.FALSE, (r1, r2) -> r1 || r2);
+	}
+	
+	@Override
+	public Set<String> getRequiredComponentIds(TransactionContext context) {
+		final Builder<String> ids = ImmutableSet.<String>builder();
+		ids.add(getComponentId());
+		if (getModuleId() != null) {
+			ids.add(getModuleId());
+		}
+		if (definitionStatus != null) {
+			ids.add(definitionStatus.getConceptId());
+		}
+		if (inactivationIndicator != null) {
+			ids.add(inactivationIndicator.getConceptId());
+		}
+		if (associationTargets != null && !associationTargets.isEmpty()) {
+			associationTargets.entries().forEach(entry -> {
+				ids.add(entry.getKey().getConceptId());
+				ids.add(entry.getValue());
+			});
+		}
+		if (!CompareUtils.isEmpty(descriptions)) {
+			descriptions.forEach(description -> {
+				ids.add(description.getModuleId());
+				ids.add(description.getTypeId());
+				ids.addAll(description.getAcceptabilityMap().keySet());
+				ids.addAll(description.getAcceptabilityMap().values().stream().map(Acceptability::getConceptId).collect(Collectors.toSet()));
+				ids.add(description.getCaseSignificance().getConceptId());
+			});
+		}
+		if (!CompareUtils.isEmpty(relationships)) {
+			relationships.forEach(relationship -> {
+				ids.add(relationship.getModuleId());
+				ids.add(relationship.getTypeId());
+				ids.add(relationship.getDestinationId());
+				ids.add(relationship.getCharacteristicType().getConceptId());
+				ids.add(relationship.getModifier().getConceptId());
+			});
+		}
+		if (!CompareUtils.isEmpty(members)) {
+			members.forEach(member -> {
+				ids.add(member.getModuleId());
+				ids.add(member.getReferenceSetId());
+				// TODO add specific props?
+			});
+		}
+		return ids.build();
 	}
 	
 }

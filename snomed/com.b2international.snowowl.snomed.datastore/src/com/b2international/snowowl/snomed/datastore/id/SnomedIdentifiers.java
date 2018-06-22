@@ -37,13 +37,26 @@ public class SnomedIdentifiers {
 	
 	public static final String INT_NAMESPACE = "INT";
 	
-	public static final long MIN_INT_ITEMID = 100L;
-	public static final long MIN_INT_METADATA_ITEMID = 9000_0000_0000_000L; // SNOMED CT Model Component IDs are placed at the end of the range
-	public static final long MAX_INT_ITEMID = 9999_9999_9999_999L; // 8 + 7 = 15 digits for itemId
+	public static final long MIN_INT_ITEMID = 100L; // inclusive
+	public static final long MAX_INT_ITEMID = 9999_9999_9999_999L + 1L; // 15 digits for itemId, exclusive
 	
-	public static final long MAX_NAMESPACE_ITEMID = 9999_9999L; // 8 digits for itemId, 7 digits for namespaceId
-	public static final long MIN_NAMESPACE_ITEMID = 1L;
+	public static final long MIN_NAMESPACE_ITEMID = 1L; // inclusive
+	public static final long MAX_NAMESPACE_ITEMID = 9999_9999L + 1L; // 8 digits for itemId, exclusive
 
+	/**
+	 * @param componentId - the ID to check
+	 * @return <code>true</code> if the given componentId is a valid SNOMED CT core component identifier, <code>false</code> otherwise.
+	 * @see #validate(String)
+	 */
+	public static boolean isValid(String componentId) {
+		try {
+			validate(componentId);
+			return true;
+		} catch (final IllegalArgumentException e) {
+			return false;
+		}
+	}
+	
 	/**
 	 * Validates the given componentId by using the rules defined in the latest
 	 * SNOMED CT Identifier specification, which are the following constraints:
@@ -73,8 +86,11 @@ public class SnomedIdentifiers {
 				throw new IllegalArgumentException("SCTID should be parseable to a long value");
 			}
 			
-			checkArgument(VerhoeffCheck.validateLastChecksumDigit(componentId), "ComponentId should pass Verhoeff check-digit test");
+			final CharSequence idHead = componentId.subSequence(0, componentId.length() - 1);
+			final char originalChecksum = componentId.charAt(componentId.length() - 1);
+			final char checksum = VerhoeffCheck.calculateChecksum(idHead, false);
 			
+			checkArgument(VerhoeffCheck.validateLastChecksumDigit(componentId), "%s has incorrect Verhoeff check-digit; expected %s, was %s", componentId, checksum, originalChecksum);
 		}
 	}
 	
@@ -109,9 +125,8 @@ public class SnomedIdentifiers {
 
 	public static String getNamespace(final String componentId) {
 		final boolean shortForm = isShortForm(componentId);
-		
 		if (shortForm) {
-			return null;
+			return "";
 		} else {
 			return componentId.substring(componentId.length() - 10, componentId.length() - 3);
 		}

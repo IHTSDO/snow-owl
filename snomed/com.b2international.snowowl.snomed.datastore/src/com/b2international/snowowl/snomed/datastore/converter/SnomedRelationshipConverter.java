@@ -45,8 +45,8 @@ final class SnomedRelationshipConverter extends BaseRevisionResourceConverter<Sn
 	}
 
 	@Override
-	protected SnomedRelationships createCollectionResource(List<SnomedRelationship> results, int offset, int limit, int total) {
-		return new SnomedRelationships(results, offset, limit, total);
+	protected SnomedRelationships createCollectionResource(List<SnomedRelationship> results, String scrollId, Object[] searchAfter, int limit, int total) {
+		return new SnomedRelationships(results, scrollId, searchAfter, limit, total);
 	}
 	
 	@Override
@@ -73,12 +73,11 @@ final class SnomedRelationshipConverter extends BaseRevisionResourceConverter<Sn
 	
 	@Override
 	protected void expand(List<SnomedRelationship> results) {
-		final Set<String> relationshipIds = FluentIterable.from(results).transform(ID_FUNCTION).toSet();
-		
 		if (expand().isEmpty()) {
 			return;
 		}
 		
+		final Set<String> relationshipIds = FluentIterable.from(results).transform(ID_FUNCTION).toSet();
 		new MembersExpander(context(), expand(), locales()).expand(results, relationshipIds);
 		if (expand().containsKey("source")) {
 			final Options sourceOptions = expand().get("source", Options.class);

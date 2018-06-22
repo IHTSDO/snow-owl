@@ -64,8 +64,6 @@ import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionIndex;
-import com.b2international.index.revision.RevisionIndexRead;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.LogUtils;
 import com.b2international.snowowl.core.RepositoryManager;
@@ -84,16 +82,16 @@ import com.b2international.snowowl.datastore.cdo.ICDOTransactionAggregator;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
-import com.b2international.snowowl.importer.AbstractImportUnit;
-import com.b2international.snowowl.importer.AbstractLoggingImporter;
-import com.b2international.snowowl.importer.ImportAction;
-import com.b2international.snowowl.importer.ImportException;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
+import com.b2international.snowowl.snomed.importer.AbstractImportUnit;
+import com.b2international.snowowl.snomed.importer.AbstractLoggingImporter;
+import com.b2international.snowowl.snomed.importer.ImportAction;
+import com.b2international.snowowl.snomed.importer.ImportException;
 import com.b2international.snowowl.snomed.importer.rf2.CsvConstants;
 import com.b2international.snowowl.snomed.importer.rf2.csv.AbstractComponentRow;
 import com.b2international.snowowl.snomed.importer.rf2.csv.cellprocessor.ValidatingCellProcessor;
@@ -127,7 +125,7 @@ public abstract class AbstractSnomedImporter<T extends AbstractComponentRow, C e
 	protected static final int COMMIT_WORK_UNITS = 50;
 
 	/** A CDO transaction is committed when the number of processed elements % this value == 0. */
-	protected static final int COMMIT_EVERY_NUM_ELEMENTS = 50000;
+	protected static final int COMMIT_EVERY_NUM_ELEMENTS = 100_000;
 
 	private static final int ID_IDX = 0;
 	/** 0-based index of the {@code effectiveTime} column in release files. */
@@ -357,25 +355,20 @@ public abstract class AbstractSnomedImporter<T extends AbstractComponentRow, C e
 
 	protected final LongValueMap<String> getAvailableComponents() {
 		final String branch = getImportContext().getEditingContext().getBranch();
-		return getIndex().read(branch, new RevisionIndexRead<LongValueMap<String>>() {
-			@Override
-			public LongValueMap<String> execute(RevisionSearcher index) throws IOException {
-				final Query<? extends SnomedDocument> query = Query.selectPartial(getType(), SnomedDocument.Fields.ID, SnomedDocument.Fields.EFFECTIVE_TIME)
-						.where(getAvailableComponentQuery())
-						.limit(Integer.MAX_VALUE)
-						.build();
-				final Hits<? extends SnomedDocument> hits = index.search(query);
-				final int totalHits = hits.getTotal();
-				if (totalHits <= 0) {
-					return PrimitiveMaps.newObjectKeyLongOpenHashMap();
-				} else {
-					final LongValueMap<String> result = PrimitiveMaps.newObjectKeyLongOpenHashMapWithExpectedSize(totalHits);
-					for (SnomedDocument hit : hits) {
-						result.put(hit.getId(), hit.getEffectiveTime());
-					}
-					return result;
+		return getIndex().read(branch, index -> {
+			final Query<String[]> query = Query.select(String[].class)
+					.from(getType())
+					.fields(SnomedDocument.Fields.ID, SnomedDocument.Fields.EFFECTIVE_TIME)
+					.where(getAvailableComponentQuery())
+					.limit(50000)
+					.build();
+			final LongValueMap<String> result = PrimitiveMaps.newObjectKeyLongOpenHashMap();
+			for (Hits<String[]> hits : index.scroll(query)) {
+				for (String[] hit : hits) {
+					result.put(hit[0], Long.parseLong(hit[1]));
 				}
 			}
+			return result;
 		});
 	}
 	

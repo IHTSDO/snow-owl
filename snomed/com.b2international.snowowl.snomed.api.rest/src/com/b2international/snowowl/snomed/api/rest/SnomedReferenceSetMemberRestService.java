@@ -96,13 +96,13 @@ public class SnomedReferenceSetMemberRestService extends AbstractSnomedRestServi
 			@PathVariable(value="path")
 			final String branchPath,
 
-			@ApiParam(value="The reference set identifier(s) to match, or a single escg expression")
+			@ApiParam(value="The reference set identifier(s) to match, or a single ECL expression")
 			@RequestParam(value="referenceSet", required=false) 
 			final List<String> referenceSetFilter,
 			
-			@ApiParam(value="The referenced component identifier to match")
+			@ApiParam(value="The referenced component identifier(s) to match")
 			@RequestParam(value="referencedComponentId", required=false) 
-			final String referencedComponentId,
+			final List<String> referencedComponentIdFilter,
 			
 			@ApiParam(value="The status to match")
 			@RequestParam(value="active", required=false) 
@@ -121,9 +121,13 @@ public class SnomedReferenceSetMemberRestService extends AbstractSnomedRestServi
 			// TODO figure out how to dynamically include query params with swagger, or just replace swagger with a better alternative???
 			final List<String> targetComponent,
 			
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
+			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
+			@RequestParam(value="scrollKeepAlive", required=false) 
+			final String scrollKeepAlive,
+			
+			@ApiParam(value="A scrollId to continue scrolling a previous query")
+			@RequestParam(value="scrollId", required=false) 
+			final String scrollId,
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
@@ -149,9 +153,10 @@ public class SnomedReferenceSetMemberRestService extends AbstractSnomedRestServi
 		
 		final SnomedRefSetMemberSearchRequestBuilder req = SnomedRequests.prepareSearchMember()
 				.setLimit(limit)
-				.setOffset(offset)
+				.setScroll(scrollKeepAlive)
+				.setScrollId(scrollId)
 				.filterByRefSet(referenceSetFilter)
-				.filterByReferencedComponent(referencedComponentId)
+				.filterByReferencedComponent(referencedComponentIdFilter)
 				.filterByActive(activeFilter)
 				.filterByModule(moduleFilter)
 				.filterByEffectiveTime(effectiveTimeFilter)

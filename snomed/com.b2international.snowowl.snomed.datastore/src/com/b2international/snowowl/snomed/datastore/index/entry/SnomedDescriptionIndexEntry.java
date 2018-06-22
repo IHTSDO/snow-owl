@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import static com.b2international.index.query.Expressions.matchAny;
 import static com.b2international.index.query.Expressions.matchTextAll;
 import static com.b2international.index.query.Expressions.matchTextFuzzy;
 import static com.b2international.index.query.Expressions.matchTextParsed;
+import static com.b2international.index.query.Expressions.matchTextRegexp;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.util.Collection;
@@ -28,11 +29,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import com.b2international.index.Analyzed;
 import com.b2international.index.Analyzers;
 import com.b2international.index.Doc;
+import com.b2international.index.Keyword;
+import com.b2international.index.Normalizers;
+import com.b2international.index.RevisionHash;
 import com.b2international.index.Script;
+import com.b2international.index.Text;
 import com.b2international.index.compat.TextConstants;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
@@ -43,6 +49,7 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -50,6 +57,7 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.base.Function;
 import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Maps;
 
@@ -59,18 +67,43 @@ import com.google.common.collect.Maps;
 @Doc
 @JsonDeserialize(builder = SnomedDescriptionIndexEntry.Builder.class)
 @Script(name="normalizeWithOffset", script="(_score / (_score + 1.0f)) + params.offset")
+@RevisionHash({ 
+	SnomedDocument.Fields.ACTIVE, 
+	SnomedDocument.Fields.EFFECTIVE_TIME, 
+	SnomedDocument.Fields.MODULE_ID, 
+	SnomedDescriptionIndexEntry.Fields.TYPE_ID,
+	SnomedDescriptionIndexEntry.Fields.TERM,
+	SnomedDescriptionIndexEntry.Fields.CASE_SIGNIFICANCE_ID
+})
 public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 
 	private static final long serialVersionUID = 301681633674309020L;
+	private static final Pattern SEM_TAG = Pattern.compile(".*\\((.*)\\)");
 
+	/**
+	 * Extracts the semantic tag from a given term. Returns empty {@link String} if there is no semantic tag.
+	 * @param term
+	 * @return the semantic tag or empty {@link String}, never <code>null</code>
+	 */
+	public static String extractSemanticTag(String term) {
+		final Matcher matcher = SEM_TAG.matcher(term);
+		if (matcher.matches()) {
+			return matcher.group(1);
+		} else {
+			return "";
+		}
+	}
+	
 	public static Builder builder() {
 		return new Builder();
 	}
 	
 	public static Builder builder(final SnomedDescription input) {
+		String id = input.getId();
 		final Builder builder = builder()
 				.storageKey(input.getStorageKey())
-				.id(input.getId())
+				.id(id)
+				.namespace(!Strings.isNullOrEmpty(id) ? SnomedIdentifiers.getNamespace(id) : null)
 				.term(input.getTerm()) 
 				.moduleId(input.getModuleId())
 				.languageCode(input.getLanguageCode())
@@ -98,9 +131,11 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 	}
 	
 	public static Builder builder(Description description) {
+		String id = description.getId();
 		return builder()
 				.storageKey(CDOIDUtils.asLong(description.cdoID()))
-				.id(description.getId()) 
+				.id(id) 
+				.namespace(!Strings.isNullOrEmpty(id) ? SnomedIdentifiers.getNamespace(id) : null)
 				.term(description.getTerm())
 				.moduleId(description.getModule().getId())
 				.released(description.isReleased()) 
@@ -120,9 +155,11 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 	 * @return
 	 */
 	public static Builder builder(SnomedDescriptionIndexEntry doc) {
+		String id = doc.getId();
 		return builder()
 				.storageKey(doc.getStorageKey())
-				.id(doc.getId())
+				.id(id)
+				.namespace(!Strings.isNullOrEmpty(id) ? SnomedIdentifiers.getNamespace(id) : null)
 				.term(doc.getTerm())
 				.moduleId(doc.getModuleId())
 				.released(doc.isReleased())
@@ -151,6 +188,9 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 		public static final String LANGUAGE_CODE = SnomedRf2Headers.FIELD_LANGUAGE_CODE;
 		public static final String PREFERRED_IN = "preferredIn";
 		public static final String ACCEPTABLE_IN = "acceptableIn";
+		public static final String SEMANTIC_TAG = "semanticTag";
+		public static final String ORIGINAL_TERM = Fields.TERM + ".original";
+		public static final String EXACT_TERM = Fields.TERM + ".exact";
 	}
 	
 	public final static class Expressions extends SnomedComponentDocument.Expressions {
@@ -174,8 +214,16 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 			return fuzzyQuery.build();
 		}
 		
-		public static Expression exactTerm(String term) {
-			return matchTextAll(Fields.TERM+".exact", term);
+		public static Expression matchEntireTerm(String term) {
+			return matchTextAll(Fields.TERM + ".exact", term);
+		}
+		
+		public static Expression matchTermOriginal(String term) {
+			return exactMatch(Fields.ORIGINAL_TERM, term);
+		}
+		
+		public static Expression matchTermRegex(String regex) {
+			return matchTextRegexp(Fields.TERM + ".original", regex);
 		}
 		
 		public static Expression allTermPrefixesPresent(String term) {
@@ -237,7 +285,15 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 		public static Expression languageCodes(Collection<String> languageCodes) {
 			return matchAny(Fields.LANGUAGE_CODE, languageCodes);
 		}
+
+		public static Expression semanticTags(Iterable<String> semanticTags) {
+			return matchAny(Fields.SEMANTIC_TAG, semanticTags);
+		}
 		
+		public static Expression semanticTagRegex(String regex) {
+			return matchTextRegexp(Fields.SEMANTIC_TAG, regex);
+		}
+
 	}
 	
 	@JsonPOJOBuilder(withPrefix="")
@@ -251,6 +307,7 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 		private String caseSignificanceId;
 		private Set<String> acceptableIn = newHashSet();
 		private Set<String> preferredIn = newHashSet();
+		private String semanticTag;
 
 		@JsonCreator
 		private Builder() {
@@ -264,6 +321,11 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 
 		public Builder term(final String term) {
 			this.term = term;
+			return getSelf();
+		}
+		
+		Builder semanticTag(final String semanticTag) {
+			this.semanticTag = semanticTag;
 			return getSelf();
 		}
 
@@ -328,6 +390,9 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 		}
 		
 		public SnomedDescriptionIndexEntry build() {
+			if (!Strings.isNullOrEmpty(term) && semanticTag == null) {
+				semanticTag = extractSemanticTag(term);
+			}
 			final SnomedDescriptionIndexEntry doc = new SnomedDescriptionIndexEntry(id,
 					term,
 					moduleId,
@@ -337,21 +402,21 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 					conceptId, 
 					languageCode,
 					term,
+					semanticTag,
 					typeId,
 					typeLabel == null ? typeId : typeLabel,
 					caseSignificanceId,
 					preferredIn, 
 					acceptableIn,
 					namespace,
-					referringRefSets,
-					referringMappingRefSets);
+					memberOf,
+					activeMemberOf);
 			doc.setScore(score);
 			doc.setBranchPath(branchPath);
 			doc.setCommitTimestamp(commitTimestamp);
 			doc.setStorageKey(storageKey);
 			doc.setReplacedIns(replacedIns);
 			doc.setSegmentId(segmentId);
-			
 			return doc;
 		}
 	}
@@ -359,16 +424,17 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 	private final String conceptId;
 	private final String languageCode;
 	
-	@Analyzed(analyzer=Analyzers.TOKENIZED)
-	@Analyzed(alias="prefix", analyzer=Analyzers.PREFIX, searchAnalyzer=Analyzers.TOKENIZED)
-	@Analyzed(alias="exact", analyzer=Analyzers.EXACT)
+	@Text(analyzer=Analyzers.TOKENIZED)
+	@Text(alias="prefix", analyzer=Analyzers.PREFIX, searchAnalyzer=Analyzers.TOKENIZED)
+	@Keyword(alias="exact", normalizer=Normalizers.LOWER_ASCII)
+	@Keyword(alias="original")
 	private final String term;
 	
+	private final String semanticTag;
 	private final String typeId;
 	private final String caseSignificanceId;
 	private final Set<String> acceptableIn;
 	private final Set<String> preferredIn;
-	private final String typeLabel;
 
 	private SnomedDescriptionIndexEntry(final String id,
 			final String label,
@@ -379,6 +445,7 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 			final String conceptId,
 			final String languageCode,
 			final String term,
+			final String semanticTag,
 			final String typeId,
 			final String typeLabel,
 			final String caseSignificanceId,
@@ -400,9 +467,9 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 		
 		this.conceptId = conceptId;
 		this.languageCode = languageCode;
-		this.term = term;
+		this.term = term == null ? term : term.trim();
+		this.semanticTag = semanticTag;
 		this.typeId = typeId;
-		this.typeLabel = typeLabel;
 		this.caseSignificanceId = caseSignificanceId;
 		this.preferredIn = preferredIn == null ? Collections.<String>emptySet() : preferredIn;
 		this.acceptableIn = acceptableIn == null ? Collections.<String>emptySet() : acceptableIn;
@@ -439,6 +506,15 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 	public String getTerm() {
 		return term;
 	}
+	
+	/**
+	 * The value is extracted from each (not just FSN values) description't term using {@link #extractSemanticTag(String)} function. 
+	 * 
+	 * @return the semantic tag of the description's term
+	 */
+	public String getSemanticTag() {
+		return semanticTag;
+	}
 
 	/**
 	 * @return the description type concept identifier
@@ -447,14 +523,6 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 		return typeId;
 	}
 	
-	/**
-	 * @return the label of the description type concept
-	 */
-	@JsonIgnore
-	public String getTypeLabel() {
-		return typeLabel;
-	}
-
 	/**
 	 * @return the case significance concept identifier
 	 */
@@ -511,8 +579,7 @@ public final class SnomedDescriptionIndexEntry extends SnomedComponentDocument {
 				.add("typeId", typeId)
 				.add("caseSignificanceId", caseSignificanceId)
 				.add("acceptableIn", acceptableIn)
-				.add("preferredIn", preferredIn)
-				.add("typeLabel", typeLabel);
+				.add("preferredIn", preferredIn);
 	}
 
 }

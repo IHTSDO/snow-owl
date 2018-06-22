@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,21 +23,16 @@ import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedCon
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedParents;
 import static com.google.common.collect.Maps.newHashMap;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.b2international.collections.longs.LongCollection;
-import com.b2international.commons.collect.LongSets;
 import com.b2international.index.Hits;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -47,22 +42,17 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.ecl.EclExpression;
 import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
-import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
-import com.b2international.snowowl.snomed.datastore.escg.EscgParseFailedException;
-import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
-import com.b2international.snowowl.snomed.datastore.escg.IndexQueryQueryEvaluator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.SearchProfileQueryProvider;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
-import com.b2international.snowowl.snomed.dsl.query.RValue;
-import com.b2international.snowowl.snomed.dsl.query.SyntaxErrorException;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.google.common.collect.ImmutableMap;
 
 /**
  * @since 4.5
  */
-final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<SnomedConcepts> {
+final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<SnomedConcepts, SnomedConceptDocument> {
 
 	private static final float MIN_DOI_VALUE = 1.05f;
 	private static final float MAX_DOI_VALUE = 10288.383f;
@@ -86,12 +76,6 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		 */
 		DESCRIPTION_TYPE,
 
-		/**
-		 * ESCG expression to match
-		 * @deprecated
-		 */
-		ESCG,
-		
 		/**
 		 * ECL expression to match in the inferred tree
 		 */
@@ -147,17 +131,17 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 	SnomedConceptSearchRequest() {}
 
 	@Override
-	protected SnomedConcepts doExecute(BranchContext context) throws IOException {
-		final RevisionSearcher searcher = context.service(RevisionSearcher.class);
-
+	protected Expression prepareQuery(BranchContext context) {
 		ExpressionBuilder queryBuilder = Expressions.builder();
 		
 		addActiveClause(queryBuilder);
+		addReleasedClause(queryBuilder);
 		addIdFilter(queryBuilder, RevisionDocument.Expressions::ids);
-		addModuleClause(queryBuilder);
+		addEclFilter(context, queryBuilder, SnomedSearchRequest.OptionKey.MODULE, SnomedDocument.Expressions::modules);
 		addNamespaceFilter(queryBuilder);
 		addEffectiveTimeClause(queryBuilder);
-		addActiveMemberOfClause(queryBuilder);
+		addActiveMemberOfClause(context, queryBuilder);
+		addMemberOfClause(context, queryBuilder);
 		
 		if (containsKey(OptionKey.DEFINITION_STATUS)) {
 			if (Concepts.PRIMITIVE.equals(getString(OptionKey.DEFINITION_STATUS))) {
@@ -191,21 +175,6 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 					.build());
 		}
 
-		if (containsKey(OptionKey.ESCG)) {
-			final String escg = getString(OptionKey.ESCG);
-			try {
-				final IndexQueryQueryEvaluator queryEvaluator = new IndexQueryQueryEvaluator();
-				final Expression escgQuery = queryEvaluator.evaluate(context.service(EscgRewriter.class).parseRewrite(escg));
-				queryBuilder.filter(escgQuery);
-			} catch (final SyntaxErrorException e) {
-				throw new IllegalQueryParameterException(e.getMessage());
-			} catch (EscgParseFailedException e) {
-				final RValue expression = context.service(EscgRewriter.class).parseRewrite(escg);
-				final LongCollection matchingConceptIds = new ConceptIdQueryEvaluator2(searcher).evaluate(expression);
-				queryBuilder.filter(RevisionDocument.Expressions.ids(LongSets.toStringSet(matchingConceptIds)));
-			}
-		}
-		
 		if (containsKey(OptionKey.ECL)) {
 			final String ecl = getString(OptionKey.ECL);
 			//XXX: ECL evaluation may fire sub requests that may be aimed at an already FULL event bus
@@ -250,7 +219,7 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 			}
 			
 			if (conceptScoreMap.isEmpty()) {
-				return new SnomedConcepts(offset(), limit(), 0);
+				throw new NoResultException();
 			}
 			
 			queryBuilder.filter(RevisionDocument.Expressions.ids(conceptScoreMap.keySet()));
@@ -263,24 +232,32 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		} else {
 			queryExpression = addSearchProfile(searchProfileQuery, queryBuilder.build());
 		}
+		
+		return queryExpression;
+	}
+	
+	@Override
+	protected boolean trackScores() {
+		return containsKey(OptionKey.TERM) || containsKey(OptionKey.USE_DOI);
+	}
 
-		final Hits<SnomedConceptDocument> hits = searcher.search(select(SnomedConceptDocument.class)
-				.where(queryExpression)
-				.offset(offset())
-				.limit(limit())
-				.sortBy(sortBy())
-				.withScores(containsKey(OptionKey.TERM) || containsKey(OptionKey.USE_DOI))
-				.build());
+	@Override
+	protected Class<SnomedConceptDocument> getDocumentType() {
+		return SnomedConceptDocument.class;
+	}
+	
+	@Override
+	protected SnomedConcepts toCollectionResource(BranchContext context, Hits<SnomedConceptDocument> hits) {
 		if (limit() < 1 || hits.getTotal() < 1) {
-			return new SnomedConcepts(offset(), limit(), hits.getTotal());
+			return new SnomedConcepts(limit(), hits.getTotal());
 		} else {
-			return SnomedConverters.newConceptConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
+			return SnomedConverters.newConceptConverter(context, expand(), locales()).convert(hits.getHits(), hits.getScrollId(), hits.getSearchAfter(), limit(), hits.getTotal());
 		}
 	}
 	
 	@Override
-	protected SnomedConcepts createEmptyResult(int offset, int limit) {
-		return new SnomedConcepts(offset, limit, 0);
+	protected SnomedConcepts createEmptyResult(int limit) {
+		return new SnomedConcepts(limit, 0);
 	}
 
 	private Expression addSearchProfile(final Expression searchProfileQuery, final Expression query) {
@@ -303,6 +280,10 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		
 		if (containsKey(OptionKey.DESCRIPTION_ACTIVE)) {
 			requestBuilder.filterByActive(getBoolean(OptionKey.DESCRIPTION_ACTIVE));
+		}
+		
+		if (containsKey(SnomedDescriptionSearchRequest.OptionKey.LANGUAGE_REFSET)) {
+			requestBuilder.filterByLanguageRefSets(getCollection(SnomedDescriptionSearchRequest.OptionKey.LANGUAGE_REFSET, String.class));
 		}
 			
 		applyIdFilter(requestBuilder, (rb, ids) -> rb.filterByConceptId(ids));

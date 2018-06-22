@@ -17,8 +17,11 @@ package com.b2international.index.revision;
 
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
+import java.beans.Visibility;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Collection;
@@ -33,16 +36,14 @@ import org.junit.After;
 import org.junit.Before;
 
 import com.b2international.index.DefaultIndex;
+import com.b2international.index.Hits;
 import com.b2international.index.Index;
 import com.b2international.index.IndexClient;
-import com.b2international.index.IndexRead;
 import com.b2international.index.Indexes;
-import com.b2international.index.Searcher;
 import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.index.query.Query;
 import com.b2international.index.util.Reflections;
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Ordering;
@@ -163,6 +164,14 @@ public abstract class BaseRevisionIndexTest {
 		return Indexes.createIndexClient(UUID.randomUUID().toString(), mapper, mappings);
 	}
 	
+	protected final void indexDocument(final String key, final Object doc) {
+		rawIndex().write(index -> {
+			index.put(key, doc);
+			index.commit();
+			return null;
+		});
+	}
+	
 	protected final <T extends Revision> T getRevision(final String branch, final Class<T> type, final long storageKey) {
 		return index().read(branch, new RevisionIndexRead<T>() {
 			@Override
@@ -196,22 +205,12 @@ public abstract class BaseRevisionIndexTest {
 		});
 	}
 	
-	protected final <T> Iterable<T> search(final String branchPath, final Query<T> query) {
-		return index().read(branchPath, new RevisionIndexRead<Iterable<T>>() {
-			@Override
-			public Iterable<T> execute(RevisionSearcher index) throws IOException {
-				return index.search(query);
-			}
-		});
+	protected final <T> Hits<T> search(final String branchPath, final Query<T> query) {
+		return index().read(branchPath, index -> index.search(query));
 	}
 	
-	protected final <T> Iterable<T> searchRaw(final Query<T> query) {
-		return rawIndex().read(new IndexRead<Iterable<T>>() {
-			@Override
-			public Iterable<T> execute(Searcher index) throws IOException {
-				return index.search(query);
-			}
-		});
+	protected final <T> Hits<T> searchRaw(final Query<T> query) {
+		return rawIndex().read(index -> index.search(query));
 	}
 	
 	protected void assertDocEquals(Object expected, Object actual) {
@@ -219,6 +218,7 @@ public abstract class BaseRevisionIndexTest {
 	}
 	
 	protected void assertDocEquals(Object expected, Object actual, boolean unordered) {
+		assertNotNull("Actual document is missing from index", actual);
 		for (Field f : mappings.getMapping(expected.getClass()).getFields()) {
 			if (Revision.REPLACED_INS.equals(f.getName()) 
 					|| Revision.SEGMENT_ID.equals(f.getName())

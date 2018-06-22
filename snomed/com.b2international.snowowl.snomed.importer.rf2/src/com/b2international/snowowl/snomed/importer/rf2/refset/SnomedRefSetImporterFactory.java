@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,9 +61,9 @@ public abstract class SnomedRefSetImporterFactory {
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_TARGET_COMPONENT) || lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_TARGET_COMPONENT_ID)) {
 			return new SnomedAssociationRefSetImporter(importContext, url.openStream(), urlIdentifier);
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_MAP_TARGET)) {
-			return new SnomedSimpleMapTypeRefSetImporter(importContext, url.openStream(), false, urlIdentifier);
+			return new SnomedSimpleMapTypeRefSetImporter(importContext, url.openStream(), urlIdentifier);
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION)) {
-			return new SnomedSimpleMapTypeRefSetImporter(importContext, url.openStream(), true, urlIdentifier);
+			return new SnomedSimpleMapWithDescriptionRefSetImporter(importContext, url.openStream(), urlIdentifier);
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID)) {
 			return new SnomedLanguageRefSetImporter(importContext, url.openStream(), urlIdentifier);
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID)) {
@@ -79,7 +79,11 @@ public abstract class SnomedRefSetImporterFactory {
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME)) {
 			return new SnomedModuleDependencyRefSetImporter(importContext, url.openStream(), urlIdentifier);
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_OWL_EXPRESSION)) {
-			return new SnomedOWLAxiomRefSetImporter(importContext, url.openStream(), urlIdentifier);
+			if (urlIdentifier.contains("Axiom")) {
+				return new SnomedOWLAxiomRefSetImporter(importContext, url.openStream(), urlIdentifier);
+			} else if (urlIdentifier.contains("Ontology")) {
+				return new SnomedOWLOntologyRefSetImporter(importContext, url.openStream(), urlIdentifier);
+			}
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE)) {
 			return new SnomedMRCMDomainRefSetImporter(importContext, url.openStream(), urlIdentifier);
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID)) {

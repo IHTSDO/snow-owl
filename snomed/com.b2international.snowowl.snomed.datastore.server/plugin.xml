@@ -3,46 +3,21 @@
 <plugin>
    <extension
          point="com.b2international.snowowl.datastore.serviceConfigJob">
-      <serviceConfigJob
-            class="com.b2international.snowowl.datastore.server.snomed.jobs.SearchProfileServerConfigJob"
-            id="com.b2international.snowowl.datastore.server.snomed.jobs.SearchProfileServerConfigJob"
-            terminologyId="com.b2international.snowowl.terminology.snomed">
-      </serviceConfigJob>
-     <serviceConfigJob
-           class="com.b2international.snowowl.datastore.server.snomed.jobs.EscgQueryEvaluatorServiceConfigJob"
-           id="com.b2international.snowowl.datastore.server.snomed.jobs.EscgQueryEvaluatorServiceConfigJob"
-           terminologyId="com.b2international.snowowl.terminology.snomed">
-     </serviceConfigJob>
-     <serviceConfigJob
-           class="com.b2international.snowowl.datastore.server.snomed.validation.SnomedComponentValidationServiceConfigJob"
-           id="com.b2international.snowowl.datastore.server.snomed.validation.SnomedComponentValidationServiceConfigJob"
-           terminologyId="com.b2international.snowowl.terminology.snomed">
-     </serviceConfigJob>
-     <serviceConfigJob
-           class="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedConceptDeltaProviderConfigJob"
-           id="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedConceptDeltaProviderConfigJob"
-           terminologyId="com.b2international.snowowl.terminology.snomed">
-     </serviceConfigJob>
      <serviceConfigJob
            class="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedRefSetDerivationServiceConfigJob"
            id="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedRefSetDerivationServiceConfigJob"
            terminologyId="com.b2international.snowowl.terminology.snomed">
      </serviceConfigJob>
      <serviceConfigJob
-           class="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedConceptNameProviderServiceConfigJob"
-           id="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedConceptNameProviderServiceConfigJob"
-           terminologyId="com.b2international.snowowl.terminology.snomed">
-     </serviceConfigJob>
-     <serviceConfigJob
-           class="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedDescriptionNameProviderServiceConfigJob"
-           id="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedDescriptionNameProviderServiceConfigJob"
-           terminologyId="com.b2international.snowowl.terminology.snomed">
-     </serviceConfigJob>
-     <serviceConfigJob
-           class="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedRelationshipNameProviderServiceConfigJob"
-           id="com.b2international.snowowl.datastore.server.snomed.jobs.SnomedRelationshipNameProviderServiceConfigJob"
-           terminologyId="com.b2international.snowowl.terminology.snomed">
-     </serviceConfigJob>
+            class="com.b2international.snowowl.snomed.core.mrcm.io.MrcmImporterConfigJob"
+            id="com.b2international.snowowl.snomed.core.mrcm.io.MrcmImporterConfigJob"
+            terminologyId="com.b2international.snowowl.terminology.snomed">
+      </serviceConfigJob>
+      <serviceConfigJob
+            class="com.b2international.snowowl.snomed.core.mrcm.io.MrcmExporterConfigJob"
+            id="com.b2international.snowowl.snomed.core.mrcm.io.MrcmExporterConfigJob"
+            terminologyId="com.b2international.snowowl.terminology.snomed">
+      </serviceConfigJob>
    </extension>
    <extension
          point="com.b2international.snowowl.datastore.changeProcessorFactory">
@@ -79,14 +54,6 @@
             interface="com.b2international.snowowl.datastore.server.snomed.ISnomedVersioningManager"
             terminologyId="com.b2international.snowowl.terminology.snomed">
       </manager>
-   </extension>
-   <extension
-         point="com.b2international.snowowl.datastore.server.versionCompareHierarchyBuilder">
-      <builder
-            class="com.b2international.snowowl.datastore.server.snomed.version.SnomedVersionCompareHierarchyBuilder"
-            id="com.b2international.snowowl.datastore.server.snomed.version.SnomedVersionCompareHierarchyBuilder"
-            repositoryUuid="snomedStore">
-      </builder>
    </extension>
    <extension
          point="com.b2international.snowowl.datastore.server.historyInfo">

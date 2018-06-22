@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,13 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Collection;
 import java.util.Map;
 
 import org.eclipse.net4j.util.om.monitor.OMMonitor;
 
+import com.b2international.commons.FileUtils;
 import com.b2international.commons.StringUtils;
 import com.b2international.index.Hits;
 import com.b2international.index.query.Expressions;
@@ -36,7 +38,6 @@ import com.b2international.index.revision.RevisionIndex;
 import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
@@ -50,6 +51,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.b2international.snowowl.snomed.core.label.SnomedConceptNameProvider;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
@@ -59,7 +61,6 @@ import com.b2international.snowowl.snomed.datastore.internal.rf2.AbstractSnomedD
 import com.b2international.snowowl.snomed.datastore.internal.rf2.SnomedDsvExportItemType;
 import com.b2international.snowowl.snomed.datastore.internal.rf2.SnomedRefSetDSVExportModel;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.b2international.snowowl.snomed.datastore.services.ISnomedConceptNameProvider;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
@@ -71,10 +72,9 @@ import com.google.common.collect.Maps;
  */
 public class MapTypeRefSetDSVExporter implements IRefSetDSVExporter {
 
-	private static String TEMPORARY_WORKING_DIRECTORY;
-	private static String DELIMITER;
-	private static String LINE_SEPARATOR;
-	
+	private final String tmpDir;
+	private final String delimiter;
+	private final String lineSeparator;
 	private final SnomedRefSetDSVExportModel exportSetting;
 	private final IBranchPath branchPath;
 	private RevisionIndex revisionIndexService; 
@@ -83,16 +83,16 @@ public class MapTypeRefSetDSVExporter implements IRefSetDSVExporter {
 		this.exportSetting = exportSetting;
 		this.branchPath = BranchPathUtils.createPath(exportSetting.getBranchPath());
 		
-		TEMPORARY_WORKING_DIRECTORY = exportSetting.getExportPath();
-		DELIMITER = exportSetting.getDelimiter();
-		LINE_SEPARATOR = System.getProperty("line.separator");
+		tmpDir = exportSetting.getExportPath();
+		delimiter = exportSetting.getDelimiter();
+		lineSeparator = System.getProperty("line.separator");
 		
 		RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
 		revisionIndexService = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
 	}
 
 	@Override
-	public File executeDSVExport(final OMMonitor monitor) throws SnowowlServiceException {
+	public File executeDSVExport(final OMMonitor monitor) throws SnowowlServiceException, IOException {
 		
 		final int memberNumberToSignal = 100;
 		final ApplicationContext applicationContext = ApplicationContext.getInstance();
@@ -111,7 +111,7 @@ public class MapTypeRefSetDSVExporter implements IRefSetDSVExporter {
 		} else {
 			monitor.begin(activeMemberCount/memberNumberToSignal);
 		}
-		final File file = new File(TEMPORARY_WORKING_DIRECTORY);
+		final File file = new File(tmpDir, refSet.getId() + ".csv");
 		DataOutputStream os = null;
 		try {
 			file.createNewFile();
@@ -199,16 +199,17 @@ public class MapTypeRefSetDSVExporter implements IRefSetDSVExporter {
 				}
 			}
 		}
-		return file;
+		File zipFile = FileUtils.createZipArchive(file.getParentFile(), Files.createTempFile("export", ".zip").toFile());
+		return zipFile;
 	}
 
 	private String getHeader() {
 		final StringBuffer buffer = new StringBuffer();
 		for (final AbstractSnomedDsvExportItem item : exportSetting.getExportItems()) {
 			buffer.append(item.getDisplayName());
-			buffer.append(DELIMITER);
+			buffer.append(delimiter);
 		}
-		buffer.append(LINE_SEPARATOR);
+		buffer.append(lineSeparator);
 		return buffer.toString();
 	}
 
@@ -216,20 +217,19 @@ public class MapTypeRefSetDSVExporter implements IRefSetDSVExporter {
 		final StringBuffer buffer = new StringBuffer();
 		for (final AbstractSnomedDsvExportItem exportItem : exportSetting.getExportItems()) {
 			buffer.append(getExportItemForConcept(entry, exportItem.getType(), labelMap));
-			buffer.append(DELIMITER);
+			buffer.append(delimiter);
 		}
-		buffer.append(LINE_SEPARATOR);
+		buffer.append(lineSeparator);
 		return buffer.toString();
 	}
 
+	// FIXME: Restore fetching map target labels from external terminology if map target type (code system/version?) is set
 	private String getExportItemForConcept(final SnomedRefSetMemberIndexEntry member, final SnomedDsvExportItemType type, Map<String, String> labelMap) {
 		switch (type) {
 			case REFERENCED_COMPONENT:
 				return labelMap.get(member.getReferencedComponentId());
 			case REFERENCED_COMPONENT_ID:
 				return member.getReferencedComponentId();
-			case MAP_TARGET:
-				return member.getMapTarget();
 			case MAP_TARGET_ID:
 				return member.getMapTarget();
 			case STATUS_ID:
@@ -291,13 +291,8 @@ public class MapTypeRefSetDSVExporter implements IRefSetDSVExporter {
 		}
 	}
 
-	private String getComponentLabel(final String componentType, String componentId) {
-		// XXX: Which branch path to use for an external terminology?
-		return CoreTerminologyBroker.getInstance().getNameProviderFactory(componentType).getNameProvider().getComponentLabel(branchPath, componentId);
-	}
-
 	@Deprecated
 	private String getConceptLabel(String conceptId) {
-		return ApplicationContext.getServiceForClass(ISnomedConceptNameProvider.class).getComponentLabel(branchPath, conceptId);
+		return new SnomedConceptNameProvider(ApplicationContext.getServiceForClass(IEventBus.class), ApplicationContext.getServiceForClass(LanguageSetting.class)).getComponentLabel(branchPath, conceptId);
 	}
 }

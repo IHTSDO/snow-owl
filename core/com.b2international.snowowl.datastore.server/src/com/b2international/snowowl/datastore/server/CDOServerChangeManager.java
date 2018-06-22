@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,19 +119,18 @@ public class CDOServerChangeManager extends ObjectWriteAccessHandler {
 	public void handleTransactionAfterCommitted(final OMMonitor monitor, final TransactionCommitContext commitContext) {
 		try {
 			final String commitContextInfo = getCommitContextInfo(commitContext);
-			LOGGER.info("Changes have been successfully persisted into repository. {}", commitContextInfo);
-			LOGGER.info("Flushing changes into semantic indexes... {}", commitContextInfo);
 			final DelegateCDOServerChangeManager delegate = activeChangeManagers.remove(commitContext);
+//			LOGGER.info("Changes have been successfully persisted into repository. {}", commitContextInfo);
+//			LOGGER.info("Flushing changes into semantic indexes... {}", commitContextInfo);
 			delegate.handleTransactionAfterCommitted();
+//			LOGGER.info("Changes have been successfully persisted into semantic indexes. {}", commitContextInfo);
 			closeChangeSetView(commitContext, delegate);
-			LOGGER.info("Changes have been successfully persisted into semantic indexes. {}", commitContextInfo);
 		} catch (final Throwable e) {
 			throw SnowowlRuntimeException.wrap(e);
 		}
 	}
 
 	private void closeChangeSetView(final TransactionCommitContext commitContext, final DelegateCDOServerChangeManager delegate) {
-		
 		final CDOView changeSetView = delegate.getCommitChangeSet().getView();
 		
 		if (changeSetView.isClosed()) {

@@ -16,10 +16,12 @@
 package com.b2international.snowowl.snomed.datastore.request;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
+import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
+import com.b2international.snowowl.core.request.SearchResourceRequest;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
@@ -97,18 +99,8 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedComponentSear
 	}
 
 	/**
-	 * Filter matches by the specified ESCG expression.
-	 * @param ESCG expression
-	 * @return SnomedConceptSearchRequestBuilder
-	 * @deprecated - as of 5.4, use {@link #filterByEcl(String)}
-	 */
-	public final SnomedConceptSearchRequestBuilder filterByEscg(String expression) {
-		return addOption(SnomedConceptSearchRequest.OptionKey.ESCG, expression);
-	}
-
-	/**
-	 * Filter matches in the inferred tree by the specified Expression Constraint Language (ECL) expression. 
-	 * The currently supported ECL version is v1.3. See <a href="http://snomed.org/ecl">ECL Specification and Guide</a> or
+	 * Filter matches by the specified Expression Constraint Language (ECL) expression. 
+	 * The currently supported ECL version is v1.1. See <a href="http://snomed.org/ecl">ECL Specification and Guide</a> or
 	 * <a href="http://www.snomed.org/news-articles/expression-constraint-language">About ECL</a> for more information.
 	 * 
 	 * @param expression ECL expression
@@ -235,6 +227,10 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedComponentSear
 	 */
 	public final SnomedConceptSearchRequestBuilder filterByDefinitionStatus(String definitionStatusId) {
 		return addOption(SnomedConceptSearchRequest.OptionKey.DEFINITION_STATUS, definitionStatusId);
+	}
+	
+	public SnomedConceptSearchRequestBuilder filterByDescriptionLanguageRefSet(List<ExtendedLocale> extendedLocales) {
+		return addOption(SnomedDescriptionSearchRequest.OptionKey.LANGUAGE_REFSET, SnomedDescriptionSearchRequestBuilder.getLanguageRefSetIds(extendedLocales));
 	}
 
 	/*

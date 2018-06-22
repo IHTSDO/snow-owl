@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ public abstract class SnomedApiTestConstants {
 	/**
 	 * The context-relative base URL for SNOMED CT-related controllers.
 	 */
-	public static final String SCT_API = "/snomed-ct/v2";
+	public static final String SCT_API = "/snomed-ct/v3";
 
 	/**
 	 * An acceptability map which specifies that the corresponding description is acceptable in the UK language reference set.
@@ -73,7 +73,7 @@ public abstract class SnomedApiTestConstants {
 
 	public static final Joiner PATH_JOINER = Joiner.on('/');
 
-	public static final String OWL_EXPRESSION_1 = 
+	public static final String OWL_AXIOM_1 = 
 			"SubClassOf(\n" +
 				"ObjectIntersectionOf(\n" +
 					"sct:73211009 Diabetes mellitus (disorder)\n" +
@@ -85,7 +85,7 @@ public abstract class SnomedApiTestConstants {
 				"sct:8801005 Secondary diabetes mellitus (disorder)\n" +
 			")";
 	
-	public static final String OWL_EXPRESSION_2 =
+	public static final String OWL_AXIOM_2 =
 			"SubClassOf(\n" +
 				"ObjectIntersectionOf(\n" +
 					"sct:73211009 Diabetes mellitus (disorder)\n" +
@@ -96,6 +96,9 @@ public abstract class SnomedApiTestConstants {
 				")\n" + 
 				"sct:8801005 Secondary diabetes mellitus (disorder)\n" +
 			")";
+	
+	public static final String OWL_ONTOLOGY_1 = "Ontology(<http://snomed.info/sct/900000000000207008>)";
+	public static final String OWL_ONTOLOGY_2 = "Prefix(:=<http://snomed.info/id/>)";
 	
 	public static final String DOMAIN_CONSTRAINT = "<< 71388002 |Procedure (procedure)|";
 	public static final String DOMAIN_CONSTRAINT_2 = "<< ^ 723264001 |Lateralizable body structure reference set (foundation metadata concept)|";

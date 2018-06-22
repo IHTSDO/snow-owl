@@ -27,8 +27,6 @@ import java.util.function.Predicate;
 import org.eclipse.core.runtime.SubMonitor;
 
 import com.b2international.index.query.Expression;
-import com.b2international.snowowl.importer.ImportAction;
-import com.b2international.snowowl.importer.ImportException;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -37,6 +35,8 @@ import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetEditingContext;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
+import com.b2international.snowowl.snomed.importer.ImportAction;
+import com.b2international.snowowl.snomed.importer.ImportException;
 import com.b2international.snowowl.snomed.importer.rf2.csv.AbstractRefSetRow;
 import com.b2international.snowowl.snomed.importer.rf2.model.AbstractSnomedImporter;
 import com.b2international.snowowl.snomed.importer.rf2.model.SnomedImportConfiguration;
@@ -142,8 +142,7 @@ public abstract class AbstractSnomedRefSetImporter<T extends AbstractRefSetRow, 
 							Concepts.SYNONYM)); //synonym description type
 			
 			//attempt to create proper language type reference set members for the concept
-			String languageRefSetId = editingContext.getLanguageRefSetId();
-			final SnomedRefSet languageRefSet = editingContext.lookup(languageRefSetId, SnomedRefSet.class);
+			final SnomedRefSet languageRefSet = editingContext.lookup(Concepts.REFSET_LANGUAGE_TYPE_UK, SnomedRefSet.class);
 			
 			if (languageRefSet instanceof SnomedStructuralRefSet) {
 				

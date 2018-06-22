@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +23,16 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 
 /**
- * @since 5.10.19
+ * @since 6.5
  */
-public class SnomedMRCMDomainMemberCreateDelegate extends SnomedRefSetMemberCreateDelegate {
+final class SnomedMRCMDomainMemberCreateDelegate extends SnomedRefSetMemberCreateDelegate {
 
 	SnomedMRCMDomainMemberCreateDelegate(final SnomedRefSetMemberCreateRequest request) {
 		super(request);
 	}
 
 	@Override
-	String execute(final SnomedRefSet refSet, final TransactionContext context) {
+	public String execute(final SnomedRefSet refSet, final TransactionContext context) {
 		checkRefSetType(refSet, SnomedRefSetType.MRCM_DOMAIN);
 		checkReferencedComponent(refSet);
 		checkNonEmptyProperty(refSet, SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT);

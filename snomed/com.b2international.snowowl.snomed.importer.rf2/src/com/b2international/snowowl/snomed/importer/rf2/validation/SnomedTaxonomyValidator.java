@@ -16,8 +16,9 @@
 package com.b2international.snowowl.snomed.importer.rf2.validation;
 
 import static com.b2international.snowowl.snomed.common.ContentSubType.SNAPSHOT;
-import static com.google.common.collect.Lists.newArrayListWithExpectedSize;
 import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
+import static java.util.stream.Collectors.toList;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.File;
@@ -35,18 +36,17 @@ import org.slf4j.Logger;
 import com.b2international.collections.longs.LongCollection;
 import com.b2international.snowowl.datastore.server.snomed.index.init.Rf2BasedSnomedTaxonomyBuilder;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.taxonomy.InvalidRelationship;
 import com.b2international.snowowl.snomed.datastore.taxonomy.InvalidRelationship.MissingConcept;
 import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilder;
-import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilderResult;
+import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyStatus;
 import com.b2international.snowowl.snomed.importer.net4j.DefectType;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedIncompleteTaxonomyValidationDefect;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedValidationDefect;
-import com.b2international.snowowl.snomed.importer.net4j.TaxonomyDefect;
 import com.b2international.snowowl.snomed.importer.rf2.RepositoryState;
 import com.b2international.snowowl.snomed.importer.rf2.util.Rf2FileModifier;
+import com.google.common.base.Strings;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
@@ -80,7 +80,7 @@ public class SnomedTaxonomyValidator {
 	// current store state
 	private final String characteristicType;
 	private final LongCollection conceptIds;
-	private final Collection<SnomedRelationshipIndexEntry.Views.StatementWithId> statements;
+	private final Collection<String[]> statements;
 
 	public SnomedTaxonomyValidator(final ImportConfiguration configuration,
 			final RepositoryState repositoryState,
@@ -127,24 +127,57 @@ public class SnomedTaxonomyValidator {
 	 *  
 	 */
 	private Collection<SnomedValidationDefect> doValidate() {
+		
 		try {
+			
 			final Multimap<String, InvalidRelationship> invalidRelationships = processTaxonomy();
+			
 			if (!invalidRelationships.isEmpty()) {
-				final Collection<TaxonomyDefect> defects = newArrayListWithExpectedSize(invalidRelationships.size());
-				for (final String effectiveTime : invalidRelationships.keySet()) {
-					for (final InvalidRelationship invalidRelationship: invalidRelationships.get(effectiveTime)) {
-						defects.add(new TaxonomyDefect(invalidRelationship.getRelationshipId(), effectiveTime, invalidRelationship.getMissingConcept() == MissingConcept.DESTINATION ? TaxonomyDefect.Type.MISSING_DESTINATION : TaxonomyDefect.Type.MISSING_SOURCE, invalidRelationship.getMissingConceptId()));
-					}
-				}
 				
-				return Collections.singleton(new SnomedIncompleteTaxonomyValidationDefect(relationshipsFile.getName(), defects));
+				String messageWithEffectiveTime = "'%s' relationship refers to an inactive concept '%s' (%s) in effective time '%s'";
+				String messageWithOutEffectiveTime = "'%s' relationship refers to an inactive concept '%s' (%s)";
+				
+				List<String> validationMessages = invalidRelationships.asMap().entrySet().stream().flatMap(entry -> {
+					
+					String effectiveTime = entry.getKey();
+					Collection<InvalidRelationship> relationships = entry.getValue();
+					
+					return relationships.stream().map(relationship -> {
+						
+						String relationshipId = String.valueOf(relationship.getRelationshipId());
+						
+						String missingReference = MissingConcept.DESTINATION == relationship.getMissingConcept()
+								? String.valueOf(relationship.getDestinationId()) : String.valueOf(relationship.getSourceId());
+								
+						String missingReferenceLabel = relationship.getMissingConcept().getLabel();
+						
+						if (!Strings.isNullOrEmpty(effectiveTime)) {
+							return String.format(messageWithEffectiveTime, relationshipId, missingReference, missingReferenceLabel, effectiveTime);
+						} else {
+							return String.format(messageWithOutEffectiveTime, relationshipId, missingReference, missingReferenceLabel);
+						}
+								
+					});
+					
+				}).collect(toList());
+				
+				LOGGER.info("{} SNOMED CT ontology validation successfully finished. {} taxonomy {} identified.",
+						Concepts.STATED_RELATIONSHIP.equals(characteristicType) ? "Stated" : "Inferred", 
+						validationMessages.size(),
+						validationMessages.size() > 1 ? "issues were" : "issue was");
+				
+				return singleton(new SnomedIncompleteTaxonomyValidationDefect(relationshipsFile.getName(), validationMessages));
+				
 			}
+			
 		} catch (final IOException e) {
 			LOGGER.error("Validation failed.", e);
-			return Collections.<SnomedValidationDefect>singleton(new SnomedValidationDefect(relationshipsFile.getName(), DefectType.IO_PROBLEM, Collections.<String>emptySet()));
+			return singleton(new SnomedValidationDefect(relationshipsFile.getName(), DefectType.IO_PROBLEM, Collections.<String>emptySet()));
 		}
 		
-		LOGGER.info("SNOMED CT ontology validation successfully finished. No errors were found.");
+		LOGGER.info("{} SNOMED CT ontology validation successfully finished. No errors were found.",
+				Concepts.STATED_RELATIONSHIP.equals(characteristicType) ? "Stated" : "Inferred");
+
 		return emptySet();
 	}
 
@@ -166,10 +199,11 @@ public class SnomedTaxonomyValidator {
 				builder.applyEdgeChanges(relationshipFilePath);
 			}
 			
-			final SnomedTaxonomyBuilderResult result = builder.build();
+			final SnomedTaxonomyStatus result = builder.build();
 			if (!result.getStatus().isOK()) {
 				invalidRelationships.putAll("", result.getInvalidRelationships());
 			}
+			
 		} else {
 		
 			LOGGER.info("Validating SNOMED CT ontology based on the given RF2 release files...");
@@ -182,8 +216,7 @@ public class SnomedTaxonomyValidator {
 					.addAll(relationshipFiles.keySet())
 					.build()
 					.asList();
-			
-			
+						
 			for (final String effectiveTime : effectiveTimes) {
 				LOGGER.info("Validating taxonomy in '{}'...", effectiveTime);
 				
@@ -192,12 +225,14 @@ public class SnomedTaxonomyValidator {
 				
 				builder.applyNodeChanges(getFilePath(conceptFile));
 				builder.applyEdgeChanges(getFilePath(relationshipFile));
-				final SnomedTaxonomyBuilderResult result = builder.build();
+				final SnomedTaxonomyStatus result = builder.build();
 				if (!result.getStatus().isOK()) {
 					invalidRelationships.putAll(effectiveTime, result.getInvalidRelationships());
 				}
 			}
+			
 		}
+		
 		return invalidRelationships;
 	}
 

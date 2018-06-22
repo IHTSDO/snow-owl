@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.security.Principal;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -47,9 +46,9 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.request.SearchResourceRequest.SortField;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest.SortField;
+import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpression;
 import com.b2international.snowowl.snomed.api.impl.SnomedExpressionService;
 import com.b2international.snowowl.snomed.api.rest.domain.ChangeRequest;
@@ -129,10 +128,6 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="termActive", required=false) 
 			final Boolean descriptionActiveFilter,
 
-			@ApiParam(value="Deprecated! The ESCG expression to match")
-			@RequestParam(value="escg", required=false) 
-			final String escgFilter,
-			
 			@ApiParam(value="The ECL expression to match in the inferred tree")
 			@RequestParam(value="ecl", required=false) 
 			final String eclFilter,
@@ -148,6 +143,14 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@ApiParam(value="The starting offset in the list")
 			@RequestParam(value="offset", defaultValue="0", required=false) 
 			final int offset,
+
+			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
+			@RequestParam(value="scrollKeepAlive", required=false) 
+			final String scrollKeepAlive,
+			
+			@ApiParam(value="A scrollId to continue scrolling a previous query")
+			@RequestParam(value="scrollId", required=false) 
+			final String scrollId,
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
@@ -270,15 +273,15 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		}
 		
 		final SortField sortField = StringUtils.isEmpty(termFilter) 
-				? SearchResourceRequest.DOC_ID 
-				: SearchResourceRequest.SCORE;
+				? SearchIndexResourceRequest.DOC_ID 
+				: SearchIndexResourceRequest.SCORE;
 		
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareSearchConcept()
 					.setLimit(limit)
-					.setOffset(offset)
-					.filterByIds(conceptIds == null ? Collections.emptySet() : conceptIds)
+					.setScroll(scrollKeepAlive)
+					.setScrollId(scrollId)
 					.filterByActive(activeFilter)
 					.filterByModule(moduleFilter)
 					.filterByEffectiveTime(effectiveTimeFilter)

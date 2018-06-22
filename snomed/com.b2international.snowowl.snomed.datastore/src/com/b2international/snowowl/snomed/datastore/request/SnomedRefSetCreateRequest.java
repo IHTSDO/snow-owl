@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,26 +96,28 @@ final class SnomedRefSetCreateRequest implements Request<TransactionContext, Str
 		final SnomedRefSet refSet;
 		
 		switch (type) {
-			case SIMPLE:
-			case QUERY:
-			case DESCRIPTION_TYPE:
-			case MODULE_DEPENDENCY:
-			case OWL_AXIOM:
-			case MRCM_DOMAIN:
-			case MRCM_ATTRIBUTE_DOMAIN:
-			case MRCM_ATTRIBUTE_RANGE:
-			case MRCM_MODULE_SCOPE:
+			case SIMPLE: //$FALL-THROUGH$
+			case QUERY: //$FALL-THROUGH$
+			case DESCRIPTION_TYPE: //$FALL-THROUGH$
+			case MODULE_DEPENDENCY: //$FALL-THROUGH$
+			case OWL_AXIOM: //$FALL-THROUGH$
+			case OWL_ONTOLOGY: //$FALL-THROUGH$
+			case MRCM_DOMAIN: //$FALL-THROUGH$
+			case MRCM_ATTRIBUTE_DOMAIN: //$FALL-THROUGH$
+			case MRCM_ATTRIBUTE_RANGE: //$FALL-THROUGH$
+			case MRCM_MODULE_SCOPE: //$FALL-THROUGH$
 				refSet = createRegularRefSet(context);
 				break;
 			case CONCRETE_DATA_TYPE:
 				refSet = createConcreteDomainRefSet(context);
 				break;
-			case COMPLEX_MAP:
-			case EXTENDED_MAP:
-			case SIMPLE_MAP:
+			case COMPLEX_MAP: //$FALL-THROUGH$
+			case EXTENDED_MAP: //$FALL-THROUGH$
+			case SIMPLE_MAP: //$FALL-THROUGH$
+			case SIMPLE_MAP_WITH_DESCRIPTION:
 				refSet = createMappingRefSet(context);
 				break;
-			case ASSOCIATION:
+			case ASSOCIATION: //$FALL-THROUGH$
 			case LANGUAGE:
 				refSet = createStructuralRefSet(context);
 				break;
@@ -165,5 +167,4 @@ final class SnomedRefSetCreateRequest implements Request<TransactionContext, Str
 				.withIdentifierConceptId(identifierId)
 				.build(context);
 	}
-
 }

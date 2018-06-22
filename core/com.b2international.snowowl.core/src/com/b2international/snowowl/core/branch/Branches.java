@@ -15,7 +15,6 @@
  */
 package com.b2international.snowowl.core.branch;
 
-import java.util.Collections;
 import java.util.List;
 
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
@@ -24,13 +23,9 @@ import com.b2international.snowowl.core.domain.PageableCollectionResource;
  * @since 4.5
  */
 public final class Branches extends PageableCollectionResource<Branch> {
-
-	public Branches(int offset, int limit, int total) {
-		this(Collections.emptyList(), offset, limit, total);
-	}
 	
-	public Branches(List<Branch> items, int offset, int limit, int total) {
-		super(items, offset, limit, total);
+	public Branches(List<Branch> items, String scrollId, Object[] searchAfter, int limit, int total) {
+		super(items, scrollId, searchAfter, limit, total);
 	}
 
 }

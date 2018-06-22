@@ -15,9 +15,10 @@
  */
 package com.b2international.snowowl.datastore.remotejobs;
 
+import java.io.IOException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -35,6 +36,10 @@ import org.slf4j.LoggerFactory;
 import com.b2international.index.BulkUpdate;
 import com.b2international.index.Hits;
 import com.b2international.index.Index;
+import com.b2international.index.Scroll;
+import com.b2international.index.Searcher;
+import com.b2international.index.aggregations.Aggregation;
+import com.b2international.index.aggregations.AggregationBuilder;
 import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
@@ -45,6 +50,7 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -72,7 +78,6 @@ public final class RemoteJobTracker implements IDisposableService {
 									.filter(RemoteJobEntry.Expressions.done())
 									.build()
 							)
-							.offset(0)
 							.limit(Integer.MAX_VALUE)
 							.build());
 					if (hits.getTotal() > 0) {
@@ -101,32 +106,53 @@ public final class RemoteJobTracker implements IDisposableService {
 		this.events = events;
 		this.mapper = mapper;
 		this.index.admin().create();
+		
+		// query all existing remote job entries and set their status to FAILED if they are either in SCHEDULED/RUNNING/CANCEL_REQUESTED state
+		this.index.write(writer -> {
+			final Expression filter = RemoteJobEntry.Expressions.state(ImmutableSet.of(RemoteJobState.SCHEDULED, RemoteJobState.RUNNING, RemoteJobState.CANCEL_REQUESTED));
+			final BulkUpdate<RemoteJobEntry> update = new BulkUpdate<>(
+				RemoteJobEntry.class, 
+				filter, 
+				RemoteJobEntry.Fields.ID, 
+				RemoteJobEntry.WITH_DONE,
+				ImmutableMap.of("state", RemoteJobState.FAILED, "finishDate", System.currentTimeMillis())
+			);
+			writer.bulkUpdate(update);
+			writer.commit();
+			return null;
+		});
+		
 		this.listener = new RemoteJobChangeAdapter();
 		Job.getJobManager().addJobChangeListener(listener);
 		this.cleanUp = new CleanUpTask();
 		Holder.CLEANUP_TIMER.schedule(cleanUp, remoteJobCleanUpInterval, remoteJobCleanUpInterval);
 	}
 	
-	public RemoteJobs search(Expression query, int offset, int limit) {
-		return search(query, ImmutableSet.of(), SortBy.DOC_ID, offset, limit); 
+	public RemoteJobs search(Expression query, int limit) {
+		return search(query, ImmutableList.of(), SortBy.DOC_ID, limit); 
 	}
 	
-	public RemoteJobs search(Expression query, Set<String> fields, SortBy sortBy, int offset, int limit) {
+	private RemoteJobs search(Expression query, List<String> fields, SortBy sortBy, int limit) {
+		final Hits<RemoteJobEntry> hits = searchHits(query, fields, sortBy, limit);
+		return new RemoteJobs(hits.getHits(), null, null, hits.getLimit(), hits.getTotal());
+	}
+	
+	private Hits<RemoteJobEntry> searchHits(Expression query, List<String> fields, SortBy sortBy, int limit) {
 		return index.read(searcher -> {
-			final Hits<RemoteJobEntry> hits = searcher.search(
-					Query.selectPartial(RemoteJobEntry.class, fields)
-						.where(Expressions.builder()
-								.filter(RemoteJobEntry.Expressions.deleted(false))
-								.filter(query)
-								.build())
-						.sortBy(sortBy)
-						.offset(offset)
-						.limit(limit)
-						.build()
+			return searcher.search(
+					Query.select(RemoteJobEntry.class)
+					.fields(fields)
+					.where(Expressions.builder()
+							.filter(RemoteJobEntry.Expressions.deleted(false))
+							.filter(query)
+							.build())
+					.sortBy(sortBy)
+					.limit(limit)
+					.build()
 					);
-			return new RemoteJobs(hits.getHits(), hits.getOffset(), hits.getLimit(), hits.getTotal());
 		});
 	}
+	
 	
 	@VisibleForTesting
 	public RemoteJobEntry get(String jobId) {
@@ -137,13 +163,13 @@ public final class RemoteJobTracker implements IDisposableService {
 		final RemoteJobEntry job = get(jobId);
 		if (job != null && !job.isCancelled()) {
 			LOG.trace("Cancelling job {}", jobId);
-			update(jobId, RemoteJobEntry.WITH_STATE, ImmutableMap.of("state", RemoteJobState.CANCEL_REQUESTED));
+			update(jobId, RemoteJobEntry.WITH_STATE, ImmutableMap.of("expectedState", RemoteJobState.RUNNING, "newState", RemoteJobState.CANCEL_REQUESTED));
 			Job.getJobManager().cancel(SingleRemoteJobFamily.create(jobId));
 		}
 	}
 	
 	public void requestDeletes(Collection<String> jobIds) {
-		final RemoteJobs jobEntries = search(Expressions.matchAny(DocumentMapping._ID, jobIds), 0, jobIds.size());
+		final RemoteJobs jobEntries = search(Expressions.matchAny(DocumentMapping._ID, jobIds), jobIds.size());
 		final Set<String> existingJobIds = FluentIterable.from(jobEntries).transform(RemoteJobEntry::getId).toSet();
 		Job[] existingJobs = Job.getJobManager().find(SingleRemoteJobFamily.create(existingJobIds));
 		// mark existing jobs as deleted and cancel them
@@ -161,8 +187,10 @@ public final class RemoteJobTracker implements IDisposableService {
 			// if the job still running or scheduled, then mark it deleted and the done handler will delete it
 			LOG.trace("Deleting jobs {}", remoteJobsToDelete);
 			writer.removeAll(ImmutableMap.of(RemoteJobEntry.class, remoteJobsToDelete));
-			LOG.trace("Marking deletable jobs {}", remoteJobsToCancel);
-			writer.bulkUpdate(new BulkUpdate<>(RemoteJobEntry.class, Expressions.matchAny(DocumentMapping._ID, remoteJobsToCancel), RemoteJobEntry.Fields.ID, RemoteJobEntry.WITH_DELETED));
+			if (!remoteJobsToCancel.isEmpty()) {
+				LOG.trace("Marking deletable jobs {}", remoteJobsToCancel);
+				writer.bulkUpdate(new BulkUpdate<>(RemoteJobEntry.class, Expressions.matchAny(DocumentMapping._ID, remoteJobsToCancel), RemoteJobEntry.Fields.ID, RemoteJobEntry.WITH_DELETED));
+			}
 			writer.commit();
 			return null;
 		});
@@ -228,11 +256,11 @@ public final class RemoteJobTracker implements IDisposableService {
 				final String jobId = job.getId();
 				LOG.trace("Scheduled job {}", jobId);
 				// try to convert the request to a param object
-				Map<String, Object> parameters;
+				String parameters;
 				try {
-					parameters = mapper.convertValue(job.getRequest(), Map.class);
+					parameters = mapper.writeValueAsString(job.getRequest());
 				} catch (Throwable e) {
-					parameters = Collections.emptyMap();
+					parameters = "";
 				}
 				put(jobId, RemoteJobEntry.builder()
 						.id(jobId)
@@ -262,10 +290,11 @@ public final class RemoteJobTracker implements IDisposableService {
 				LOG.trace("Completed job {}", jobId);
 				final RemoteJobEntry jobEntry = get(jobId);
 				if (jobEntry == null) {
+					LOG.warn("Missing job entry in RemoteJobTracker#done '{}'", jobId);
 					return;
 				}
 				final IStatus result = job.getResult();
-				final Object response = job.getResponse();
+				final String response = job.getResponse();
 				final RemoteJobState newState;
 				if (result.isOK()) {
 					newState = RemoteJobState.FINISHED;
@@ -285,6 +314,33 @@ public final class RemoteJobTracker implements IDisposableService {
 			}
 		}
 		
+	}
+
+	public Searcher searcher() {
+		return new Searcher() {
+			@Override
+			public <T> Hits<T> search(Query<T> query) throws IOException {
+				return (Hits<T>) searchHits(query.getWhere(), query.getFields(), query.getSortBy(), query.getLimit());
+			}
+			
+			@Override
+			public <T> Hits<T> scroll(Scroll<T> scroll) throws IOException {
+				return index.read(searcher -> searcher.scroll(scroll));
+			}
+			
+			@Override
+			public void cancelScroll(String scrollId) {
+				index.read(searcher -> {
+					searcher.cancelScroll(scrollId);
+					return null;
+				});
+			}
+			
+			@Override
+			public <T> Aggregation<T> aggregate(AggregationBuilder<T> aggregation) throws IOException {
+				throw new UnsupportedOperationException();
+			}
+		};
 	}
 
 }

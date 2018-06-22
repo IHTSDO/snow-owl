@@ -16,7 +16,6 @@
 package com.b2international.index;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import com.b2international.index.mapping.Mappings;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,20 +37,12 @@ public interface IndexClientFactory {
 	String DATA_DIRECTORY = "dataDirectory";
 
 	/**
-	 * Configuration key to use to specify the hard commit interval of an index.
-	 * Lucene-only configuration. For the elasticsearch module use the appropriate elasticsearch.yml config property.
-	 */
-	String COMMIT_INTERVAL_KEY = "commitInterval";
-
-	/**
 	 * Configuration key to specify the synchronization interval of the underlying transaction log.
-	 * Lucene-only configuration. For the elasticsearch module use the appropriate elasticsearch.yml config property.
 	 */
-	String TRANSLOG_SYNC_INTERVAL_KEY = "translogSyncInterval";
+	String TRANSLOG_SYNC_INTERVAL_KEY = "translog.sync_interval";
 
 	/**
 	 * Configuration key to specify slow log related configuration.
-	 * Lucene-only configuration. For the elasticsearch module use the appropriate elasticsearch.yml config properties.
 	 */
 	String SLOW_LOG_KEY = "slowlog";
 
@@ -73,19 +64,14 @@ public interface IndexClientFactory {
 	String COMMIT_CONCURRENCY_LEVEL = "concurrencyLevel";
 
 	/**
-	 * The default commit interval is 15 seconds.
-	 */
-	long DEFAULT_COMMIT_INTERVAL = TimeUnit.SECONDS.toMillis(15L);
-
-	/**
 	 * The default translog sync interval is 5 seconds.
 	 */
-	long DEFAULT_TRANSLOG_SYNC_INTERVAL = TimeUnit.SECONDS.toMillis(5L);
+	String DEFAULT_TRANSLOG_SYNC_INTERVAL = "5s";
 
 	/**
-	 * The default result window (~10k items)
+	 * The default result window (~100k items)
 	 */
-	int DEFAULT_RESULT_WINDOW = 10_099;
+	int DEFAULT_RESULT_WINDOW = 100_099;
 	
 	/**
 	 * The default concurrency level for the bulk operations depends on the number of cores you have <code>max(1, cores / 4)</code>.

@@ -51,8 +51,8 @@ final class SnomedDescriptionConverter extends BaseRevisionResourceConverter<Sno
 	}
 
 	@Override
-	protected SnomedDescriptions createCollectionResource(List<SnomedDescription> results, int offset, int limit, int total) {
-		return new SnomedDescriptions(results, offset, limit, total);
+	protected SnomedDescriptions createCollectionResource(List<SnomedDescription> results, String scrollId, Object[] searchAfter, int limit, int total) {
+		return new SnomedDescriptions(results, scrollId, searchAfter, limit, total);
 	}
 	
 	@Override
@@ -70,6 +70,7 @@ final class SnomedDescriptionConverter extends BaseRevisionResourceConverter<Sno
 		result.setIconId(input.getIconId());
 		result.setReleased(input.isReleased());
 		result.setTerm(input.getTerm());
+		result.setSemanticTag(input.getSemanticTag());
 		result.setTypeId(input.getTypeId());
 		result.setType(new SnomedConcept(input.getTypeId()));
 		result.setScore(input.getScore());

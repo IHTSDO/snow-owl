@@ -16,7 +16,7 @@
 package com.b2international.index.query;
 
 import java.util.Collections;
-import java.util.Set;
+import java.util.List;
 
 import com.b2international.index.query.Query.AfterWhereBuilder;
 import com.b2international.index.query.Query.QueryBuilder;
@@ -29,34 +29,54 @@ class DefaultQueryBuilder<T> implements QueryBuilder<T>, AfterWhereBuilder<T> {
 	private static final int DEFAULT_LIMIT = 50;
 
 	private final Class<T> select;
-	private final Class<?> from;
-	private final Class<?> scope;
 	
-	private int offset = 0;
+	private Class<?> from;
+	private Class<?> scope;
+	
+	private String scrollKeepAlive;
+	private Object[] searchAfter;
 	private int limit = DEFAULT_LIMIT;
 	private Expression where;
 	private SortBy sortBy = SortBy.DOC_ID;
 	private boolean withScores = false;
 
-	private Set<String> fields = Collections.emptySet();
+	private List<String> fields = Collections.emptyList();
 
-	DefaultQueryBuilder(Class<T> select, Class<?> from, Class<?> scope) {
+	DefaultQueryBuilder(Class<T> select) {
 		this.select = select;
-		this.from = from;
-		this.scope = scope;
+		this.from = select;
 	}
 	
-	QueryBuilder<T> fields(Set<String> fields) {
+	@Override
+	public QueryBuilder<T> from(Class<?> from) {
+		this.from = from;
+		return this;
+	}
+	
+	@Override
+	public QueryBuilder<T> parent(Class<?> parent) {
+		this.scope = parent;
+		return this;
+	}
+	
+	@Override
+	public QueryBuilder<T> fields(List<String> fields) {
 		this.fields = fields;
 		return this;
 	}
-
+	
 	@Override
-	public AfterWhereBuilder<T> offset(int offset) {
-		this.offset = offset;
+	public AfterWhereBuilder<T> scroll(String scrollKeepAlive) {
+		this.scrollKeepAlive = scrollKeepAlive;
 		return this;
 	}
-
+	
+	@Override
+	public AfterWhereBuilder<T> searchAfter(Object[] sortValues) {
+		this.searchAfter = sortValues;
+		return this;
+	}
+	
 	@Override
 	public AfterWhereBuilder<T> limit(int limit) {
 		this.limit = limit;
@@ -88,8 +108,9 @@ class DefaultQueryBuilder<T> implements QueryBuilder<T>, AfterWhereBuilder<T> {
 		query.setFrom(from);
 		query.setParentType(scope);
 		query.setWhere(where);
+		query.setScrollKeepAlive(scrollKeepAlive);
+		query.setSearchAfter(searchAfter);
 		query.setLimit(limit);
-		query.setOffset(offset);
 		query.setSortBy(sortBy);
 		query.setWithScores(withScores);
 		query.setFields(fields);

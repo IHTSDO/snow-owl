@@ -37,6 +37,7 @@ import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 
 /**
@@ -58,7 +59,9 @@ public final class Taxonomies {
 	private static Taxonomy buildTaxonomy(RevisionSearcher searcher, ICDOCommitChangeSet commitChangeSet, LongCollection conceptIds, CharacteristicType characteristicType, boolean checkCycles) {
 		try {
 			final String characteristicTypeId = characteristicType.getConceptId();
-			final Query<SnomedRelationshipIndexEntry.Views.StatementWithId> query = Query.selectPartial(SnomedRelationshipIndexEntry.Views.StatementWithId.class, SnomedRelationshipIndexEntry.class)
+			final Query<String[]> query = Query.select(String[].class)
+					.from(SnomedRelationshipIndexEntry.class)
+					.fields(SnomedDocument.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID, SnomedRelationshipIndexEntry.Fields.DESTINATION_ID)
 					.where(Expressions.builder()
 							.filter(active())
 							.filter(typeId(Concepts.IS_A))
@@ -68,14 +71,15 @@ public final class Taxonomies {
 							.build())
 					.limit(Integer.MAX_VALUE)
 					.build();
-			final Hits<SnomedRelationshipIndexEntry.Views.StatementWithId> hits = searcher.search(query);
+			final Hits<String[]> hits = searcher.search(query);
 			
 			final SnomedTaxonomyBuilder oldTaxonomy = new SnomedTaxonomyBuilder(conceptIds, hits.getHits());
 			oldTaxonomy.setCheckCycles(checkCycles);
 			final SnomedTaxonomyBuilder newTaxonomy = new SnomedTaxonomyBuilder(conceptIds, hits.getHits());
 			newTaxonomy.setCheckCycles(checkCycles);
 			oldTaxonomy.build();
-			new SnomedTaxonomyUpdateRunnable(searcher, commitChangeSet, newTaxonomy, characteristicTypeId).run();
+			SnomedTaxonomyUpdateRunnable taxonomyUpdate = new SnomedTaxonomyUpdateRunnable(searcher, commitChangeSet, newTaxonomy, characteristicTypeId);
+			taxonomyUpdate.run();
 			final LongSet newKeys = newTaxonomy.getEdges().keySet();
 			final LongSet oldKeys = oldTaxonomy.getEdges().keySet();
 			
@@ -96,7 +100,7 @@ public final class Taxonomies {
 			// detached edges
 			final LongSet detachedEdges = LongSets.difference(oldKeys, newKeys);
 			
-			return new Taxonomy(newTaxonomy, oldTaxonomy, newEdges, changedEdges, detachedEdges);
+			return new Taxonomy(newTaxonomy, oldTaxonomy, taxonomyUpdate.getTaxonomyBuilderResult(), newEdges, changedEdges, detachedEdges);
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException(e);
 		}

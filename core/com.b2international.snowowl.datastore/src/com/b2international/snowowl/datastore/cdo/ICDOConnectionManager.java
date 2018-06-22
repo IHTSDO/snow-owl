@@ -16,17 +16,13 @@
 package com.b2international.snowowl.datastore.cdo;
 
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
-import org.eclipse.emf.cdo.common.branch.CDOBranchPoint;
 import org.eclipse.emf.cdo.common.revision.CDORevision;
 import org.eclipse.emf.cdo.view.CDOView;
 import org.eclipse.net4j.connector.IConnector;
 import org.eclipse.net4j.signal.ISignalProtocol;
 import org.eclipse.net4j.util.event.IListener;
 
-import com.b2international.snowowl.core.api.IBranchPoint;
-import com.b2international.snowowl.core.users.User;
-import com.b2international.snowowl.datastore.Authenticator;
-import com.b2international.snowowl.datastore.delta.IBranchPointCalculationStrategy;
+import com.b2international.snowowl.identity.domain.User;
 
 
 /**
@@ -66,27 +62,19 @@ public interface ICDOConnectionManager extends ICDOContainer<ICDOConnection> {
 	 */
 	ICDOConnection get(final CDOBranch branch);
 	
-	/**
-	 * Returns with the {@link ICDOConnection connection} associated with the branch point.
-	 * @param branchPoint the CDO branch point.
-	 * @return the {@link ICDOConnection connection}.
-	 */
-	ICDOConnection get(final CDOBranchPoint branchPoint);
-	
-	ICDOConnection get(final IBranchPointCalculationStrategy strategy);
-	
-	ICDOConnection get(final IBranchPoint branchPoint);
-	
 	ICDOConnection get(final CDORevision revision);
 	
 	ICDOConnection get(final CDOView view);
 
-	Authenticator getAuthenticator();
-	
 	IConnector getConnector();
 	
 	void subscribeForRemoteMessages(final IListener listener);
 	
 	void unsbscribeFromRemoteMessages(final IListener listener);
+
+	/**
+	 * @deprecated - to access the user provided password, TODO remove this method as soon as possible
+	 */ 
+	String getPassword();
 	
 }

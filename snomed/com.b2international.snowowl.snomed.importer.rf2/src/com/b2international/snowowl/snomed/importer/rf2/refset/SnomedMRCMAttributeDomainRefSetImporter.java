@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 /**
- * @since 5.10.19
+ * @since 6.5
  */
 public class SnomedMRCMAttributeDomainRefSetImporter extends AbstractSnomedRefSetImporter<MRCMAttributeDomainRow, SnomedMRCMAttributeDomainRefSetMember> {
 
@@ -82,7 +82,7 @@ public class SnomedMRCMAttributeDomainRefSetImporter extends AbstractSnomedRefSe
 
 	@Override
 	protected String getIdentifierParentConceptId(final String refSetId) {
-		return Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL;
+		return Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_ROOT;
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -300,7 +300,7 @@ public abstract class SnomedRf2Headers {
 		FIELD_SOURCE_EFFECTIVE_TIME,
 		FIELD_TARGET_EFFECTIVE_TIME	};
 	
-	public static final String[] OWL_AXIOM_HEADER = new String[] {
+	public static final String[] OWL_EXPRESSION_HEADER = new String[] {
 		FIELD_ID, 
 		FIELD_EFFECTIVE_TIME, 
 		FIELD_ACTIVE, 

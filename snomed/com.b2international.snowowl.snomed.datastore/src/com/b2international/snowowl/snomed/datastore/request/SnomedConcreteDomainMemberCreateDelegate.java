@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,20 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
+import java.util.Set;
+
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.store.SnomedComponents;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetUtil;
-import com.b2international.snowowl.snomed.snomedrefset.*;
+import com.b2international.snowowl.snomed.snomedrefset.DataType;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSet;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSetMember;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * @since 5.0
@@ -75,4 +82,16 @@ final class SnomedConcreteDomainMemberCreateDelegate extends SnomedRefSetMemberC
 		return member.getUuid();
 	}
 
+	@Override
+	protected Set<String> getRequiredComponentIds() {
+		ImmutableSet.Builder<String> requiredComponentIds = ImmutableSet.<String>builder()
+				.add(getComponentId(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID))
+				.add(getComponentId(SnomedRf2Headers.FIELD_OPERATOR_ID));
+		
+		if (hasProperty(SnomedRf2Headers.FIELD_UNIT_ID)) {
+			requiredComponentIds.add(getComponentId(SnomedRf2Headers.FIELD_UNIT_ID));
+		}
+		
+		return requiredComponentIds.build();
+	}
 }

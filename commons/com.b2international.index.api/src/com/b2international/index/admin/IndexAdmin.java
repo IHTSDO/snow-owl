@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 
+import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.index.mapping.Mappings;
 
 /**
@@ -73,11 +74,19 @@ public interface IndexAdmin {
 	Mappings mappings();
 
 	/**
-	 * Returns the index name this {@link IndexAdmin} is responsible for.
+	 * Returns the index name prefix which will be used to identify all indexes that managed by this {@link IndexAdmin}.
 	 * 
 	 * @return
 	 */
 	String name();
+	
+	/**
+	 * Returns the actual index name for the given {@link DocumentMapping}.
+	 * 
+	 * @param mapping
+	 * @return
+	 */
+	String getTypeIndex(DocumentMapping mapping);
 
 	/**
 	 * Closes the underlying index.
@@ -91,12 +100,4 @@ public interface IndexAdmin {
 	 *            - max number of segments to force on the index
 	 */
 	void optimize(int maxSegments);
-
-	/**
-	 * @return whether the underlying index service supports _hash values on revision documents or not, by default assumes it does
-	 */
-	default boolean isHashSupported() {
-		return true;
-	}
-
 }

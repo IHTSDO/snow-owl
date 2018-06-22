@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,8 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -29,9 +27,7 @@ import java.util.Set;
 
 import com.b2international.commons.ExplicitFirstOrdering;
 import com.b2international.commons.http.ExtendedLocale;
-import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
@@ -87,46 +83,7 @@ public abstract class DescriptionRequestHelper {
 	}	
 
 	/**
-	 * Extracts the language reference set identifier from the specified list of {@link ExtendedLocale}s. 
-	 * <p>
-	 * The identifiers may come from the value itself, if it includes a reference set ID (eg. {@code en-x-12345678901}),
-	 * or from the language tag part, if it is well known (eg. {@code en-US}).
-	 * <p>
-	 * If no element from the input list can be converted, an {@link IllegalArgumentException} is thrown; no exception occurs
-	 * if only some of the {@code ExtendedLocale}s could not be transformed into a language reference set identifier, however. 
-	 *  
-	 * @param locales  the extended locale list to process (may not be {@code null})
-	 * @return the converted language reference set identifiers
-	 */
-	public static List<String> getLanguageRefSetIds(List<ExtendedLocale> locales) {
-		List<String> languageRefSetIds = newArrayList();
-		List<ExtendedLocale> unconvertableLocales = new ArrayList<ExtendedLocale>();
-	
-		for (ExtendedLocale extendedLocale : locales) {
-			String languageRefSetId;
-	
-			if (!extendedLocale.getLanguageRefSetId().isEmpty()) {
-				languageRefSetId = extendedLocale.getLanguageRefSetId();
-			} else {
-				languageRefSetId = LanguageCodeReferenceSetIdentifierMapping.getReferenceSetIdentifier(extendedLocale.getLanguageTag());
-			}
-	
-			if (languageRefSetId == null) {
-				unconvertableLocales.add(extendedLocale);
-			} else {
-				languageRefSetIds.add(languageRefSetId);
-			}
-		}
-	
-		if (languageRefSetIds.isEmpty() && !unconvertableLocales.isEmpty()) {
-			throw new IllegalArgumentException("Don't know how to convert extended locale " + unconvertableLocales.get(0).toString() + " to a language reference set identifier.");
-		}
-		
-		return languageRefSetIds;
-	}
-
-	/**
-	 * Retrieves the preferred term for the concept identified by the given {@link IComponentRef component reference}, if it exists. 
+	 * Retrieves the preferred term for the concept identified by the given identifier, if it exists. 
 	 * <p>
 	 * The first active description with "synonym" or descendant as the type will be returned, where all of the following conditions apply:
 	 * <ul>
@@ -159,7 +116,7 @@ public abstract class DescriptionRequestHelper {
 	}
 
 	/**
-	 * Retrieves the fully specified name for the concept identified by the given {@link IComponentRef component reference}, if it exists. 
+	 * Retrieves the fully specified name for the concept identified by the given identifier, if it exists. 
 	 * <p>
 	 * The first active description with "fully specified name" as the type will be returned, where all of the following conditions apply:
 	 * <ul>
@@ -253,14 +210,12 @@ public abstract class DescriptionRequestHelper {
 	
 	private SnomedDescriptionSearchRequestBuilder prepareFsnSearchByAcceptability(String conceptId, List<ExtendedLocale> locales) {
 		return prepareFsnSearchDefault(conceptId)
-				.filterByAcceptability(Acceptability.PREFERRED)
-				.filterByExtendedLocales(locales);
+				.filterByPreferredIn(locales);
 	}
 	
 	private SnomedDescriptionSearchRequestBuilder prepareFsnSearchByAcceptability(Collection<String> conceptIds, List<ExtendedLocale> locales) {
 		return prepareFsnSearchDefault(conceptIds)
-				.filterByAcceptability(Acceptability.PREFERRED)
-				.filterByExtendedLocales(locales);
+				.filterByPreferredIn(locales);
 	}
 	
 	private SnomedDescriptionSearchRequestBuilder prepareFsnSearchByLanguageCodes(String conceptId, List<String> languageCodes) {
@@ -297,8 +252,7 @@ public abstract class DescriptionRequestHelper {
 				.filterByActive(true)
 				.filterByConcept(conceptId)
 				.filterByType("<<" + Concepts.SYNONYM)
-				.filterByAcceptability(Acceptability.PREFERRED)
-				.filterByExtendedLocales(locales);
+				.filterByPreferredIn(locales);
 	}
 	
 	private SnomedDescriptionSearchRequestBuilder preparePtSearch(Collection<String> conceptIds, List<ExtendedLocale> locales) {
@@ -307,19 +261,17 @@ public abstract class DescriptionRequestHelper {
 				.filterByActive(true)
 				.filterByConceptId(conceptIds)
 				.filterByType("<<" + Concepts.SYNONYM)
-				.filterByAcceptability(Acceptability.PREFERRED)
-				.filterByExtendedLocales(locales);
+				.filterByPreferredIn(locales);
 	}
 
-	private Map<String, SnomedDescription> indexBestPreferredByConceptId(SnomedDescriptions descriptions, List<ExtendedLocale> orderedLocales) {
-		List<String> languageRefSetIds = getLanguageRefSetIds(orderedLocales);
+	public static Map<String, SnomedDescription> indexBestPreferredByConceptId(Iterable<SnomedDescription> descriptions, List<ExtendedLocale> orderedLocales) {
+		List<String> languageRefSetIds = SnomedDescriptionSearchRequestBuilder.getLanguageRefSetIds(orderedLocales);
 		ExplicitFirstOrdering<String> languageRefSetOrdering = ExplicitFirstOrdering.create(languageRefSetIds);
 		
 		return extractBest(indexByConceptId(descriptions), languageRefSetIds, description -> {
 			Set<String> preferredLanguageRefSetIds = Maps.filterValues(description.getAcceptabilityMap(), Predicates.equalTo(Acceptability.PREFERRED)).keySet();
-			// the explicit first ordering will put the VIP / anticipated / first priority languages codes to the min end. 
-			String firstPriority = languageRefSetOrdering.min(preferredLanguageRefSetIds);
-			return firstPriority;
+			// the explicit first ordering will put the VIP / anticipated / first priority languages codes to the min end.
+			return languageRefSetOrdering.min(preferredLanguageRefSetIds);
 		});
 	}
 	
@@ -331,8 +283,8 @@ public abstract class DescriptionRequestHelper {
 		return extractFirst(indexByConceptId(descriptions));
 	}
 
-	private Multimap<String, SnomedDescription> indexByConceptId(SnomedDescriptions descriptions) {
-		return Multimaps.index(descriptions.getItems(), description -> description.getConceptId());
+	private static Multimap<String, SnomedDescription> indexByConceptId(Iterable<SnomedDescription> descriptions) {
+		return Multimaps.index(descriptions, description -> description.getConceptId());
 	}
 	
 	private Map<String, SnomedDescription> extractFirst(Multimap<String, SnomedDescription> descriptionsByConceptId) {
@@ -340,7 +292,7 @@ public abstract class DescriptionRequestHelper {
 		return ImmutableMap.copyOf(Maps.filterValues(uniqueMap, Predicates.notNull()));
 	}
 	
-	private <T> Map<String, SnomedDescription> extractBest(Multimap<String, SnomedDescription> descriptionsByConceptId, 
+	private static <T> Map<String, SnomedDescription> extractBest(Multimap<String, SnomedDescription> descriptionsByConceptId, 
 			List<T> orderedValues, 
 			Function<SnomedDescription, T> predicateFactory) {
 		

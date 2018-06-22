@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,6 @@ import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CodeSystemEntry;
 import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
-import com.b2international.snowowl.datastore.ICodeSystemVersion;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants;
@@ -247,6 +246,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 			monitor.worked(1);
 			
 		}  catch (Exception e) {
+			LOGGER.error("Failed to perform export", e);
 			
 			final String reason = null != e.getMessage() ? " Reason: '" + e.getMessage() + "'" : "";
 			logActivity("Caught exception while exporting SNOMED CT terminology." + reason);
@@ -358,12 +358,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 					return false;
 				}
 				
-			}).toSortedList(new Comparator<ICodeSystemVersion>() {
-				@Override
-				public int compare(ICodeSystemVersion o1, ICodeSystemVersion o2) {
-					return Longs.compare(o1.getEffectiveDate(), o2.getEffectiveDate());
-				}
-			});
+			}).toSortedList((o1, o2) -> Longs.compare(o1.getEffectiveDate(), o2.getEffectiveDate()));
 			
 			if (sortedVersions.isEmpty()) {
 				String message = null;
@@ -569,6 +564,25 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 				
 			}
 			
+		}
+		
+		if (languageCodesInUse.size() == 1) {
+			String languageCode = Iterables.getOnlyElement(languageCodesInUse);
+			logActivity(String.format("Exporting %sSNOMED CT language reference set members with language code '%s' into RF2 format",
+					exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
+			new SimpleSnomedLanguageRefsetExporter(exportContext, revisionSearcher, languageCode).execute();
+		} else {
+			for (String languageCode : languageCodesInUse) {
+				logActivity(String.format("Exporting %sSNOMED CT language reference set members with language code '%s' into RF2 format",
+						exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
+				new SnomedLanguageRefSetExporter(exportContext, revisionSearcher, languageCode).execute();
+			}
+		}
+		
+		if (monitor.isCanceled()) {
+			return;
+		} else {
+			monitor.worked(2);
 		}
 		
 		logActivity(String.format("Exporting non-stated %sSNOMED CT relationships into RF2 format", exportContext.isUnpublishedExport() ? "unpublished " : ""));

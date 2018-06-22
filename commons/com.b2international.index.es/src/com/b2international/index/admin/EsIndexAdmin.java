@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,18 @@ package com.b2international.index.admin;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Maps.newHashMapWithExpectedSize;
+import static java.util.stream.Collectors.toSet;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
@@ -34,18 +39,17 @@ import org.elasticsearch.common.settings.Settings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.index.Analyzed;
+import com.b2international.commons.CompareUtils;
 import com.b2international.index.Analyzers;
 import com.b2international.index.IndexClientFactory;
 import com.b2international.index.IndexException;
+import com.b2international.index.Keyword;
+import com.b2international.index.Text;
 import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.index.util.NumericClassUtils;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Multimap;
 import com.google.common.io.Resources;
-import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 
 /**
@@ -66,11 +70,8 @@ public final class EsIndexAdmin implements IndexAdmin {
 		this.settings = newHashMap(settings);
 		this.log = LoggerFactory.getLogger(String.format("index.%s", this.name));
 		this.settings.putIfAbsent(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, IndexClientFactory.DEFAULT_COMMIT_CONCURRENCY_LEVEL);
-	}
-	
-	@Override
-	public boolean isHashSupported() {
-		return false;
+		this.settings.putIfAbsent(IndexClientFactory.RESULT_WINDOW_KEY, ""+IndexClientFactory.DEFAULT_RESULT_WINDOW);
+		this.settings.putIfAbsent(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, IndexClientFactory.DEFAULT_TRANSLOG_SYNC_INTERVAL);
 	}
 	
 	@Override
@@ -80,62 +81,78 @@ public final class EsIndexAdmin implements IndexAdmin {
 
 	@Override
 	public boolean exists() {
-		return client().admin().indices().prepareExists(name).get().isExists();
+		return client().admin().indices().prepareExists(getAllIndexes().toArray(new String[]{})).get().isExists();
+	}
+
+	private boolean exists(DocumentMapping mapping) {
+		return client().admin().indices().prepareExists(getTypeIndex(mapping)).get().isExists();
 	}
 
 	@Override
 	public void create() {
-		if (exists()) {
-			waitForYellowHealth();
-			return;
+		log.info("Preparing '{}' indexes...", name);
+		if (!exists()) {
+			// create number of indexes based on number of types
+	 		for (DocumentMapping mapping : mappings.getMappings()) {
+	 			if (exists(mapping)) {
+	 				continue;
+	 			}
+	 			final String indexName = getTypeIndex(mapping);
+				final CreateIndexRequestBuilder req = client().admin().indices().prepareCreate(indexName);
+				final String type = mapping.typeAsString();
+				Map<String, Object> typeMapping = ImmutableMap.of(type,
+					ImmutableMap.builder()
+						.put("date_detection", "false")
+						.put("numeric_detection", "false")
+						.putAll(toProperties(mapping))
+						.build()
+				);
+				req.addMapping(type, typeMapping);
+				try {
+					final Map<String, Object> indexSettings = createIndexSettings();
+					log.info("Configuring '{}' index with settings: {}", indexName, indexSettings);
+					req.setSettings(indexSettings);
+				} catch (IOException e) {
+					throw new IndexException("Couldn't prepare settings for index " + indexName, e);
+				}
+				CreateIndexResponse response = req.get();
+				checkState(response.isAcknowledged(), "Failed to create index '%s' for type '%s'", name, mapping.typeAsString());
+	 		}
 		}
-		final CreateIndexRequestBuilder req = client().admin().indices().prepareCreate(name);
 		
-		// add mappings
-		final Multimap<String, Map<String, Object>> esMappings = HashMultimap.create();
- 		for (DocumentMapping mapping : mappings.getMappings()) {
-			final String type = mapping.typeAsString();
-			Map<String, Object> typeMapping = ImmutableMap.of(type,
-				ImmutableMap.builder()
-					.put("_all", ImmutableMap.of("enabled", false))
-					.putAll(toProperties(mapping))
-					.build()
-			);
-			esMappings.put(type, typeMapping);
- 		}
- 		
-		for (String type : esMappings.keySet()) {
-			final Map<String, Object> typeMapping = esMappings.get(type).stream().sorted((m1, m2) -> -1 * Ints.compare(m1.toString().length(), m2.toString().length())).findFirst().get();
-			req.addMapping(type, typeMapping);
-		}
-
-		try {
-			final Map<String, Object> indexSettings = createSettings();
-			log.info("Configuring '{}' index with settings: {}", name, indexSettings);
-			req.setSettings(indexSettings);
-		} catch (IOException e) {
-			throw new IndexException("Couldn't prepare settings for index " + name, e);
-		}
-
-		CreateIndexResponse response = req.get();
-		checkState(response.isAcknowledged(), "Failed to create index %s", name);
-		waitForYellowHealth();
+ 		// wait until the cluster processes each index create request
+		waitForYellowHealth(getAllIndexes().toArray(new String[]{}));
+		log.info("'{}' indexes are ready.", name);
 	}
 
-	private Map<String, Object> createSettings() throws IOException {
-		return ImmutableMap.of(
-			"analysis", 
-			Settings.builder().loadFromStream("analysis.json", Resources.getResource(getClass(), "analysis.json").openStream()).build().getAsStructuredMap(),
-			"number_of_shards",
-			String.valueOf(settings().getOrDefault(IndexClientFactory.NUMBER_OF_SHARDS, "1"))
-		);
+	private Set<String> getAllIndexes() {
+		return mappings.getMappings().stream().map(this::getTypeIndex).collect(Collectors.toSet());
+	}
+
+	private Map<String, Object> createIndexSettings() throws IOException {
+		return ImmutableMap.<String, Object>builder()
+				.put("analysis", Settings.builder().loadFromStream("analysis.json", Resources.getResource(getClass(), "analysis.json").openStream()).build().getAsStructuredMap())
+				.put("number_of_shards", String.valueOf(settings().getOrDefault(IndexClientFactory.NUMBER_OF_SHARDS, "1")))
+				.put("number_of_replicas", "0")
+				// disable es refresh, we will do it manually on each commit
+				.put("refresh_interval", "-1")
+				.put(IndexClientFactory.RESULT_WINDOW_KEY, settings().get(IndexClientFactory.RESULT_WINDOW_KEY))
+				.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, settings().get(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY))
+				.put("translog.durability", "async")
+				.build();
 	}
 	
-	private void waitForYellowHealth() {
-		client().admin().cluster()
-			.prepareHealth(name())
-			.setWaitForYellowStatus()
-			.get();
+	private void waitForYellowHealth(String...indices) {
+		if (!CompareUtils.isEmpty(indices)) {
+			ClusterHealthResponse clusterHealthResponse = client().admin().cluster()
+				.prepareHealth(indices)
+				.setWaitForYellowStatus()
+				.setTimeout("3m") // wait 3 minutes for yellow status
+				.get();
+			if (clusterHealthResponse.isTimedOut()) {
+				throw new IndexException("Failed to wait for yellow health status of index " + name, null);
+			}
+		}
 	}
 
 	private Map<String, Object> toProperties(DocumentMapping mapping) {
@@ -145,9 +162,8 @@ public final class EsIndexAdmin implements IndexAdmin {
 			if (DocumentMapping._ID.equals(property)) continue;
 			final Class<?> fieldType = NumericClassUtils.unwrapCollectionType(field);
 			
-			checkState(fieldType != Object.class, "Dynamic mappings are not supported with Object type fields");
 			if (Map.class.isAssignableFrom(fieldType)) {
-				// allow dynamic mappings for dynamic objects like field using Map or Object
+				// allow dynamic mappings for dynamic objects like field using Map
 				final Map<String, Object> prop = newHashMap();
 				prop.put("type", "object");
 				prop.put("dynamic", "true");
@@ -160,76 +176,117 @@ public final class EsIndexAdmin implements IndexAdmin {
 				prop.putAll(toProperties(mapping.getNestedMapping(fieldType)));
 				properties.put(property, prop);
 			} else {
-				final String esType = toEsType(fieldType);
-				if (!Strings.isNullOrEmpty(esType)) {
-					final Map<String, Object> prop = newHashMap();
-					if (!mapping.isAnalyzed(field.getName())) {
-						prop.put("type", esType);
-						prop.put("index", "not_analyzed");
-					} else {
-						final Map<String, Analyzed> analyzers = mapping.getAnalyzers(property);
-
-						final Analyzed fieldAnalyzer = analyzers.get(property);
-						prop.put("type", esType);
-						if (fieldAnalyzer != null) {
-							prop.put("index", "analyzed");
-							prop.put("analyzer", EsAnalyzers.getAnalyzer(fieldAnalyzer.analyzer()));
-							if (fieldAnalyzer.searchAnalyzer() != Analyzers.INDEX) {
-								prop.put("search_analyzer", EsAnalyzers.getAnalyzer(fieldAnalyzer.searchAnalyzer()));
+				final Map<String, Object> prop = newHashMap();
+				
+				final Map<String, Text> textFields = mapping.getTextFields(property);
+				final Map<String, Keyword> keywordFields = mapping.getKeywordFields(property);
+				
+				if (textFields.isEmpty() && keywordFields.isEmpty()) {
+					addFieldProperties(prop, fieldType);
+					properties.put(property, prop);
+				} else {
+					checkState(String.class.isAssignableFrom(fieldType), "Only String fields can have Text and Keyword annotation. Found them on '%s'", property);
+					
+					final Text textMapping = textFields.get(property);
+					final Keyword keywordMapping = keywordFields.get(property);
+					checkState(textMapping == null || keywordMapping == null, "Cannot declare both Text and Keyword annotation on same field '%s'", property);
+					
+					if (textMapping != null) {
+						prop.put("type", "text");
+						prop.put("analyzer", EsTextAnalysis.getAnalyzer(textMapping.analyzer()));
+						if (textMapping.searchAnalyzer() != Analyzers.INDEX) {
+							prop.put("search_analyzer", EsTextAnalysis.getAnalyzer(textMapping.searchAnalyzer()));
+						}
+					}
+					
+					if (keywordMapping != null) {
+						prop.put("type", "keyword");
+						String normalizer = EsTextAnalysis.getNormalizer(keywordMapping.normalizer());
+						if (!Strings.isNullOrEmpty(normalizer)) {
+							prop.put("normalizer", normalizer);
+						}
+						prop.put("index", keywordMapping.index());
+						prop.put("doc_values", keywordMapping.index());
+					}
+					
+					// put extra text fields into fields object
+					final Map<String, Object> fields = newHashMapWithExpectedSize(textFields.size() + keywordFields.size());
+					for (Entry<String, Text> analyzer : textFields.entrySet()) {
+						final String extraField = analyzer.getKey();
+						final String[] extraFieldParts = extraField.split(Pattern.quote(DocumentMapping.DELIMITER));
+						if (extraFieldParts.length > 1) {
+							final Text analyzed = analyzer.getValue();
+							final Map<String, Object> fieldProps = newHashMap();
+							fieldProps.put("type", "text");
+							fieldProps.put("analyzer", EsTextAnalysis.getAnalyzer(analyzed.analyzer()));
+							if (analyzed.searchAnalyzer() != Analyzers.INDEX) {
+								fieldProps.put("search_analyzer", EsTextAnalysis.getAnalyzer(analyzed.searchAnalyzer()));
 							}
-						} else {
-							prop.put("index", "not_analyzed");
+							fields.put(extraFieldParts[1], fieldProps);
 						}
-						
-						// put extra fields into fields object
-						final Map<String, Object> fields = newHashMapWithExpectedSize(analyzers.size());
-						for (Entry<String, Analyzed> analyzer : analyzers.entrySet()) {
-							final String extraField = analyzer.getKey();
-							final String[] extraFieldParts = extraField.split(Pattern.quote(DocumentMapping.DELIMITER));
-							if (extraFieldParts.length > 1) {
-								final Analyzed analyzed = analyzer.getValue();
-								final Map<String, Object> fieldProps = newHashMap();
-								fieldProps.put("type", esType);
-								fieldProps.put("index", "analyzed");
-								fieldProps.put("analyzer", EsAnalyzers.getAnalyzer(analyzed.analyzer()));
-								if (analyzed.searchAnalyzer() != Analyzers.INDEX) {
-									fieldProps.put("search_analyzer", EsAnalyzers.getAnalyzer(analyzed.searchAnalyzer()));
-								}
-								fields.put(extraFieldParts[1], fieldProps);
+					}
+					
+					// put extra keyword fields into fields object
+					for (Entry<String, Keyword> analyzer : keywordFields.entrySet()) {
+						final String extraField = analyzer.getKey();
+						final String[] extraFieldParts = extraField.split(Pattern.quote(DocumentMapping.DELIMITER));
+						if (extraFieldParts.length > 1) {
+							final Keyword analyzed = analyzer.getValue();
+							final Map<String, Object> fieldProps = newHashMap();
+							fieldProps.put("type", "keyword");
+							String normalizer = EsTextAnalysis.getNormalizer(analyzed.normalizer());
+							if (!Strings.isNullOrEmpty(normalizer)) {
+								fieldProps.put("normalizer", normalizer);
 							}
+							fieldProps.put("index", analyzed.index());
+							fields.put(extraFieldParts[1], fieldProps);
 						}
-						if (!fields.isEmpty()) {
-							prop.put("fields", fields);
-						}
+					}
+					
+					if (!fields.isEmpty()) {
+						prop.put("fields", fields);
 					}
 					properties.put(property, prop);
 				}
+				
 			}
 		}
+		
+		// Add system field "_hash", if there is at least a single field to hash
+		if (!mapping.getHashedFields().isEmpty()) {
+			final Map<String, Object> prop = newHashMap();
+			prop.put("type", "keyword");
+			prop.put("index", false);
+			properties.put(DocumentMapping._HASH, prop);
+		}
+		
 		return ImmutableMap.of("properties", properties);
 	}
 
-	private String toEsType(Class<?> fieldType) {
+	private void addFieldProperties(Map<String, Object> fieldProperties, Class<?> fieldType) {
 		if (Enum.class.isAssignableFrom(fieldType) || NumericClassUtils.isBigDecimal(fieldType) || String.class.isAssignableFrom(fieldType)) {
-			return "string";
+			fieldProperties.put("type", "keyword");
 		} else if (NumericClassUtils.isFloat(fieldType)) {
-			return "float";
+			fieldProperties.put("type", "float");
 		} else if (NumericClassUtils.isInt(fieldType)) {
-			return "integer";
+			fieldProperties.put("type", "integer");
 		} else if (NumericClassUtils.isShort(fieldType)) {
-			return "short";
+			fieldProperties.put("type", "short");
 		} else if (NumericClassUtils.isDate(fieldType) || NumericClassUtils.isLong(fieldType)) {
-			return "long";
+			fieldProperties.put("type", "long");
 		} else if (Boolean.class.isAssignableFrom(Primitives.wrap(fieldType))) {
-			return "boolean";
+			fieldProperties.put("type", "boolean");
+		} else {
+			// Any other type will result in a sub-object that only appears in _source
+			fieldProperties.put("type", "object");
+			fieldProperties.put("enabled", false);
 		}
-		return null;
 	}
 
 	@Override
 	public void delete() {
 		if (exists()) {
-			DeleteIndexResponse response = client().admin().indices().prepareDelete(name).get();
+			DeleteIndexResponse response = client().admin().indices().prepareDelete(name+"*").get();
 			checkState(response.isAcknowledged(), "Failed to delete index %s", name);
 		}
 	}
@@ -261,18 +318,31 @@ public final class EsIndexAdmin implements IndexAdmin {
 
 	@Override
 	public void optimize(int maxSegments) {
-		client().admin().indices().prepareForceMerge(name()).setMaxNumSegments(maxSegments).get();
-		waitForYellowHealth();
+//		client().admin().indices().prepareForceMerge(name).setMaxNumSegments(maxSegments).get();
+//		waitForYellowHealth();
+	}
+	
+	public String getTypeIndex(DocumentMapping mapping) {
+		if (mapping.getParent() != null) {
+			return String.format("%s-%s", name, mapping.getParent().typeAsString());
+		} else {
+			return String.format("%s-%s", name, mapping.typeAsString());
+		}
 	}
 	
 	public Client client() {
 		return client;
 	}
 	
-	public void refresh() {
-		log.info("Refreshing index '{}'", name);
-		client().admin().indices().prepareRefresh(name).get();
-		waitForYellowHealth();
+	public void refresh(Set<DocumentMapping> typesToRefresh) {
+		if (!CompareUtils.isEmpty(typesToRefresh)) {
+			String[] indicesToRefresh = typesToRefresh.stream().map(this::getTypeIndex).collect(toSet()).toArray(new String[0]);
+			log.trace("Refreshing indexes '{}'", Arrays.toString(indicesToRefresh));
+			client().admin()
+			        .indices()
+			        .prepareRefresh(indicesToRefresh)
+			        .get();
+			waitForYellowHealth(indicesToRefresh);
+		}
 	}
-	
 }

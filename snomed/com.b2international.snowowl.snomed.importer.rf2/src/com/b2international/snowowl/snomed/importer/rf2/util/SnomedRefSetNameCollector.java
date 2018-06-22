@@ -142,8 +142,8 @@ public class SnomedRefSetNameCollector {
 			.filterByIds(unlabeledRefSetIds)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, configuration.getBranchPath())
 			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-			.getSync()
-			.getItems().stream().map(SnomedConcept::getId).collect(Collectors.toSet());
+			.then(concepts -> concepts.stream().map(SnomedConcept::getId).collect(Collectors.toSet()))
+			.getSync();
 		
 		fillGeneralLabels(existingConceptIds);
 		unlabeledRefSetIds.removeAll(existingConceptIds);

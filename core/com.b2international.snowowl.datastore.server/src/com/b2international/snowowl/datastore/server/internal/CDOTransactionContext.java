@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,11 @@
  */
 package com.b2international.snowowl.datastore.server.internal;
 
+import java.util.Collection;
 import java.util.ConcurrentModificationException;
+import java.util.Map;
 
+import org.eclipse.emf.cdo.CDOObject;
 import org.eclipse.emf.cdo.common.commit.CDOCommitInfo;
 import org.eclipse.emf.cdo.util.CommitException;
 import org.eclipse.emf.ecore.EObject;
@@ -38,11 +41,29 @@ import com.b2international.snowowl.datastore.exception.RepositoryLockException;
  */
 public final class CDOTransactionContext extends DelegatingBranchContext implements TransactionContext {
 
-	private CDOEditingContext editingContext;
+	private final String userId;
+	private final String commitComment;
+	private final String parentContextDescription;
+	private final CDOEditingContext editingContext;
+	
+	private boolean isNotificationEnabled = true;
 
-	CDOTransactionContext(BranchContext context, CDOEditingContext editingContext) {
+	CDOTransactionContext(BranchContext context, CDOEditingContext editingContext, String userId, String commitComment, String parentContextDescription) {
 		super(context);
 		this.editingContext = editingContext;
+		this.userId = userId;
+		this.commitComment = commitComment;
+		this.parentContextDescription = parentContextDescription;
+	}
+	
+	@Override
+	public long commit() {
+		return commit(userId(), commitComment, parentContextDescription);
+	}
+	
+	@Override
+	public String userId() {
+		return userId;
 	}
 	
 	@Override
@@ -56,6 +77,16 @@ public final class CDOTransactionContext extends DelegatingBranchContext impleme
 	@Override
 	public <T extends EObject> T lookup(String componentId, Class<T> type) {
 		return editingContext.lookup(componentId, type);
+	}
+	
+	@Override
+	public <T extends EObject> T lookupIfExists(String componentId, Class<T> type) {
+		return editingContext.lookupIfExists(componentId, type);
+	}
+	
+	@Override
+	public <T extends CDOObject> Map<String, T> lookup(Collection<String> componentIds, Class<T> type) {
+		return editingContext.lookup(componentIds, type);
 	}
 	
 	@Override
@@ -92,6 +123,8 @@ public final class CDOTransactionContext extends DelegatingBranchContext impleme
 	public long commit(String userId, String commitComment, String parentContextDescription) {
 		try {
 			final CDOCommitInfo info = new CDOServerCommitBuilder(userId, commitComment, editingContext.getTransaction())
+					.notifyWriteAccessHandlers(isNotificationEnabled())
+					.sendCommitNotification(isNotificationEnabled())
 					.parentContextDescription(parentContextDescription)
 					.commitOne();
 			return info.getTimeStamp();
@@ -112,6 +145,21 @@ public final class CDOTransactionContext extends DelegatingBranchContext impleme
 			}
 			throw new SnowowlRuntimeException(e.getMessage(), e);
 		}
+	}
+
+	@Override
+	public boolean isNotificationEnabled() {
+		return isNotificationEnabled;
+	}
+	
+	@Override
+	public void setNotificationEnabled(boolean isNotificationEnabled) {
+		this.isNotificationEnabled = isNotificationEnabled;
+	}
+
+	@Override
+	public void clearContents() {
+		editingContext.clearContents();
 	}
 
 }

@@ -1,9 +1,5 @@
 /*
-<<<<<<< issue/INFRA-2348_fix_ecl_serialization
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
-=======
  * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
->>>>>>> 2f88a79 [ecl] improve performance of ECL to ID set evaluation
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,22 +16,15 @@
 package com.b2international.snowowl.snomed.datastore.request;
 
 import java.util.Collection;
-import java.util.List;
 
-import com.b2international.collections.longs.LongSet;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
+import com.b2international.snowowl.core.request.SearchResourceRequest;
+import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.snomed.core.ecl.EclExpression;
-import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
-import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
-import com.b2international.snowowl.snomed.dsl.query.RValue;
-import com.b2international.snowowl.snomed.dsl.query.SyntaxErrorException;
 import com.b2international.snowowl.snomed.ecl.Ecl;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
@@ -44,16 +33,17 @@ import com.google.common.collect.Iterables;
 /**
  * Abstract class for SNOMED CT search requests.
  * @since 4.5
+ * @param R - the return type of this request
+ * @param D - the document type to search for
  */
-public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<BranchContext, R> {
+public abstract class SnomedSearchRequest<R, D extends SnomedDocument> extends SearchIndexResourceRequest<BranchContext, R, D> {
 
 	enum OptionKey {
 		
 		/**
-		 * Language reference sets to use
+		 * Component's released flag to match
 		 */
-		LANGUAGE_REFSET,
-		
+		RELEASED,
 		/**
 		 * Component status to match
 		 */
@@ -73,20 +63,17 @@ public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<Branc
 		 * Filter components by effective time ending with this value, inclusive.
 		 */
 		EFFECTIVE_TIME_END
+		
 	}
 	
 	protected SnomedSearchRequest() {}
 	
-	protected List<String> languageRefSetIds() {
-		return getList(OptionKey.LANGUAGE_REFSET, String.class);
-	}
-
-	protected final void addModuleClause(ExpressionBuilder queryBuilder) {
-		if (containsKey(OptionKey.MODULE)) {
-			queryBuilder.filter(SnomedDocument.Expressions.module(getString(OptionKey.MODULE)));
+	protected final void addReleasedClause(ExpressionBuilder queryBuilder) {
+		if (containsKey(OptionKey.RELEASED)) {
+			queryBuilder.filter(SnomedDocument.Expressions.released(getBoolean(OptionKey.RELEASED)));
 		}
 	}
-
+	
 	protected final void addActiveClause(ExpressionBuilder queryBuilder) {
 		if (containsKey(OptionKey.ACTIVE)) {
 			queryBuilder.filter(SnomedDocument.Expressions.active(getBoolean(OptionKey.ACTIVE)));
@@ -101,23 +88,6 @@ public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<Branc
 		}
 	}
 	
-	/**
-	 * @deprecated - use {@link #addEclFilter(BranchContext, ExpressionBuilder, Enum, Function)} instead
-	 */
-	protected final void addEscgFilter(final BranchContext context, final ExpressionBuilder queryBuilder, Enum<?> key, Function<LongSet, Expression> expressionProvider) {
-		if (containsKey(key)) {
-			try {
-				final String escg = getString(key);
-				final RValue expression = context.service(EscgRewriter.class).parseRewrite(escg);
-				final LongSet conceptIds = new ConceptIdQueryEvaluator2(context.service(RevisionSearcher.class)).evaluate(expression);
-				final Expression conceptFilter = expressionProvider.apply(conceptIds);
-				queryBuilder.filter(conceptFilter);
-			} catch (SyntaxErrorException e) {
-				throw new IllegalQueryParameterException(e.getMessage());
-			}
-		}
-	}
-	
 	protected final void addEclFilter(final BranchContext context, final ExpressionBuilder queryBuilder, Enum<?> eclCapableOptionKey, Function<Collection<String>, Expression> matchingIdsToExpression) {
 		if (containsKey(eclCapableOptionKey)) {
 			// trim all input values before using them
@@ -127,8 +97,15 @@ public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<Branc
 	}
 
 	protected final void addEclFilter(BranchContext context, ExpressionBuilder queryBuilder, Collection<String> optionValues, Function<Collection<String>, Expression> matchingIdsToExpression) {
+		Collection<String> eclFilter = evaluateEclFilter(context, optionValues);
+		if (eclFilter != null) {
+			queryBuilder.filter(matchingIdsToExpression.apply(eclFilter));
+		}
+	}
+
+	protected final Collection<String> evaluateEclFilter(BranchContext context, Collection<String> optionValues) {
 		if (optionValues.isEmpty()) {
-			return;
+			return null;
 		}
 		Collection<String> idFilter = FluentIterable.from(optionValues).transform(new Function<String, String>() {
 			@Override
@@ -144,7 +121,7 @@ public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<Branc
 
 				// unless it is an Any ECL expression, which allows any value
 				if (Ecl.ANY.equals(expression)) {
-					return;
+					return null;
 				}
 				
 				// TODO replace sync call to concept search with async promise
@@ -154,7 +131,7 @@ public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<Branc
 				}
 			}
 		}
-		queryBuilder.filter(matchingIdsToExpression.apply(idFilter));
+		return idFilter;
 	}
 	
 }

@@ -55,7 +55,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 
 /**
- * @since 5.10.18
+ * @since 6.1.0
  */
 public class SnomedDonatedComponentResolverRule extends AbstractSnomedMergeConflictRule {
 

@@ -16,6 +16,7 @@
 package com.b2international.snowowl.datastore.server.internal;
 
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
@@ -39,12 +40,12 @@ import org.eclipse.emf.cdo.net4j.CDONet4jSession;
 
 import com.b2international.commons.platform.Extensions;
 import com.b2international.index.DefaultIndex;
+import com.b2international.index.DocSearcher;
 import com.b2international.index.Index;
 import com.b2international.index.IndexClient;
 import com.b2international.index.IndexClientFactory;
 import com.b2international.index.IndexRead;
 import com.b2international.index.Indexes;
-import com.b2international.index.Searcher;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.index.revision.DefaultRevisionIndex;
 import com.b2international.index.revision.RevisionBranch;
@@ -53,8 +54,7 @@ import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
-import com.b2international.snowowl.core.domain.DelegatingRepositoryContext;
-import com.b2international.snowowl.core.domain.DelegatingServiceProvider;
+import com.b2international.snowowl.core.domain.DelegatingContext;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.RepositoryEvent;
 import com.b2international.snowowl.core.merge.MergeService;
@@ -64,6 +64,7 @@ import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils.ConsumeAllCDOBranchesHandler;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils.ConsumeAllCommitInfoHandler;
+import com.b2international.snowowl.datastore.cdo.ICDOConflictProcessor;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
@@ -76,8 +77,12 @@ import com.b2international.snowowl.datastore.config.IndexSettings;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.events.RepositoryCommitNotification;
 import com.b2international.snowowl.datastore.index.MappingProvider;
-import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
+import com.b2international.snowowl.datastore.internal.InternalRepository;
+import com.b2international.snowowl.datastore.internal.branch.BranchDocument;
+import com.b2international.snowowl.datastore.internal.branch.CDOBranchManagerImpl;
+import com.b2international.snowowl.datastore.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator;
+import com.b2international.snowowl.datastore.request.IndexReadRequest;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
 import com.b2international.snowowl.datastore.review.MergeReview;
@@ -85,13 +90,9 @@ import com.b2international.snowowl.datastore.review.MergeReviewManager;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
+import com.b2international.snowowl.datastore.server.RepositoryClassLoaderProviderRegistry;
 import com.b2international.snowowl.datastore.server.ReviewConfiguration;
 import com.b2international.snowowl.datastore.server.cdo.CDOConflictProcessorBroker;
-import com.b2international.snowowl.datastore.server.cdo.ICDOConflictProcessor;
-import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchManagerImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.CDOMainBranchImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.server.internal.merge.MergeServiceImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewManagerImpl;
@@ -107,8 +108,8 @@ import com.google.inject.Provider;
 /**
  * @since 4.1
  */
-public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, CDOCommitInfoHandler {
-	
+public final class CDOBasedRepository extends DelegatingContext implements InternalRepository, CDOCommitInfoHandler {
+
 	private static final String REINDEX_DIAGNOSIS_TEMPLATE = "Run reindex to synchronize index with the database. Command: 'snowowl reindex %s%s'.";
 	private static final String RESTORE_DIAGNOSIS = "Inconsistent database and index. Shutdown and restore database and indexes from a backup.";
 
@@ -127,6 +128,7 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		initIndex(mapper);
 		initializeBranchingSupport(mergeMaxResults);
 		bind(Repository.class, this);
+		bind(ClassLoader.class, env.service(RepositoryClassLoaderProviderRegistry.class).getClassLoader());
 		checkHealth();
 	}
 
@@ -241,10 +243,8 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 	}
 
 	private void initIndex(final ObjectMapper mapper) {
-		final Collection<Class<?>> types = newHashSet();
-		types.add(CDOMainBranchImpl.class);
-		types.add(CDOBranchImpl.class);
-		types.add(InternalBranch.class);
+		final Collection<Class<?>> types = newArrayList();
+		types.add(BranchDocument.class);
 		types.add(Review.class);
 		types.add(ReviewImpl.class);
 		types.add(MergeReview.class);
@@ -436,14 +436,10 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		final RepositoryContext repositoryContext = new DefaultRepositoryContext(this, this);
 		return getIndex().read(new IndexRead<CommitInfos>() {
 			@Override
-			public CommitInfos execute(Searcher index) throws IOException {
-				return RepositoryRequests.commitInfos().prepareSearchCommitInfo()
-					.all()
-					.build()
-					.execute(DelegatingRepositoryContext
-							.basedOn(repositoryContext)
-							.bind(Searcher.class, index)
-							.build());
+			public CommitInfos execute(DocSearcher index) throws IOException {
+				return new IndexReadRequest<>(RepositoryRequests.commitInfos().prepareSearchCommitInfo()
+						.all()
+						.build()).execute(repositoryContext);
 			}
 		});
 	}

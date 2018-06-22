@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ApiError;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJob;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
@@ -57,7 +58,7 @@ public class ClassifyRequest implements Request<ServiceProvider, ApiError> {
 	
 	@JsonProperty
 	public String getBranch() {
-		return settings.getSnomedBranchPath().getPath();
+		return settings.getBranchPath();
 	}
 
 	@Override
@@ -76,7 +77,7 @@ public class ClassifyRequest implements Request<ServiceProvider, ApiError> {
 
 		try {
 
-			IBranchPath snomedBranchPath = settings.getSnomedBranchPath();
+			IBranchPath snomedBranchPath = BranchPathUtils.createPath(settings.getBranchPath());
 			List<ConceptDefinition> additionalDefinitions = settings.getAdditionalDefinitions();
 			String parentContextDescription = settings.getParentContextDescription();
 
@@ -111,4 +112,5 @@ public class ClassifyRequest implements Request<ServiceProvider, ApiError> {
 		LOG.error("Caught exception while running classification.", e);
 		return new ApiError.Builder("Caught exception while running classification.").code(500).build();
 	}
+
 }

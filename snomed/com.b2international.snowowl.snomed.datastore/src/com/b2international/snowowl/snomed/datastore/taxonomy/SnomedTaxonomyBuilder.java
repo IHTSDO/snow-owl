@@ -24,7 +24,6 @@ import com.b2international.collections.longs.LongKeyMap;
 import com.b2international.commons.arrays.Arrays2;
 import com.b2international.commons.arrays.LongBidiMapWithInternalId;
 import com.b2international.snowowl.core.domain.IComponent;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.google.common.base.Preconditions;
 
 /**
@@ -62,8 +61,14 @@ public class SnomedTaxonomyBuilder extends AbstractSnomedTaxonomyBuilder {
 
 	private SnomedTaxonomyBuilder() {}
 	
-	public SnomedTaxonomyBuilder(final LongCollection conceptIds, final Collection<SnomedRelationshipIndexEntry.Views.StatementWithId> isAStatements) {
-		nodes = new LongBidiMapWithInternalId(conceptIds.size());
+	public SnomedTaxonomyBuilder(final int expectedConceptsSize, final int expectedRelationshipsSize) {
+		nodes = new LongBidiMapWithInternalId(expectedConceptsSize);
+		edges = expectedRelationshipsSize > 0 ? PrimitiveMaps.newLongKeyOpenHashMapWithExpectedSize(expectedRelationshipsSize) : PrimitiveMaps.newLongKeyOpenHashMap(); 
+	}
+	
+	public SnomedTaxonomyBuilder(final LongCollection conceptIds, final Collection<String[]> isAStatements) {
+		this(conceptIds.size(), isAStatements.size());
+
 		for (final LongIterator itr = conceptIds.iterator(); itr.hasNext(); /**/) {
 			final long id = itr.next();
 			if (id != IComponent.ROOT_IDL) {
@@ -71,12 +76,8 @@ public class SnomedTaxonomyBuilder extends AbstractSnomedTaxonomyBuilder {
 			}
 		}
 		
-		edges = isAStatements.size() > 0 
-				? PrimitiveMaps.<long[]>newLongKeyOpenHashMapWithExpectedSize(isAStatements.size()) 
-				: PrimitiveMaps.<long[]>newLongKeyOpenHashMap();
-
-		for (final SnomedRelationshipIndexEntry.Views.StatementWithId statement : isAStatements) {
-			edges.put(Long.parseLong(statement.getId()), new long[] { Long.parseLong(statement.getDestinationId()), Long.parseLong(statement.getSourceId()) });
+		for (final String[] statement : isAStatements) {
+			edges.put(Long.parseLong(statement[0]), new long[] { Long.parseLong(statement[2]), Long.parseLong(statement[1]) });
 		}
 		
 		setDirty(true);

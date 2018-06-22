@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.b2international.index.Analyzed;
 import com.b2international.index.Analyzers;
 import com.b2international.index.Doc;
+import com.b2international.index.RevisionHash;
+import com.b2international.index.Keyword;
 import com.b2international.index.Script;
+import com.b2international.index.Text;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.util.Reflections;
@@ -41,6 +43,7 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
 
 /**
@@ -68,9 +71,11 @@ public final class DocumentMapping {
 	private final String typeAsString;
 	private final Map<String, Field> fieldMap;
 	private final Map<Class<?>, DocumentMapping> nestedTypes;
-	private final TreeMap<String, Analyzed> analyzedFields;
+	private final TreeMap<String, Text> textFields;
+	private final TreeMap<String, Keyword> keywordFields;
 	private final DocumentMapping parent;
 	private final Map<String, Script> scripts;
+	private final Set<String> hashedFields;
 
 	DocumentMapping(Class<?> type) {
 		this(null, type);
@@ -89,19 +94,36 @@ public final class DocumentMapping {
 				}
 			}).uniqueIndex(GET_NAME);
 		
-		final Builder<String, Analyzed> analyzedFields = ImmutableSortedMap.naturalOrder();
+		final Builder<String, Text> textFields = ImmutableSortedMap.naturalOrder();
+		final Builder<String, Keyword> keywordFields = ImmutableSortedMap.naturalOrder();
 
 		for (Field field : getFields()) {
-			for (Analyzed analyzer : field.getAnnotationsByType(Analyzed.class)) {
+			for (Text analyzer : field.getAnnotationsByType(Text.class)) {
 				if (Strings.isNullOrEmpty(analyzer.alias())) {
-					analyzedFields.put(field.getName(), analyzer);
+					textFields.put(field.getName(), analyzer);
 				} else {
-					analyzedFields.put(DELIMITER_JOINER.join(field.getName(), analyzer.alias()), analyzer);
+					textFields.put(DELIMITER_JOINER.join(field.getName(), analyzer.alias()), analyzer);
+				}
+			}
+			for (Keyword analyzer : field.getAnnotationsByType(Keyword.class)) {
+				if (Strings.isNullOrEmpty(analyzer.alias())) {
+					keywordFields.put(field.getName(), analyzer);
+				} else {
+					keywordFields.put(DELIMITER_JOINER.join(field.getName(), analyzer.alias()), analyzer);
 				}
 			}
 		}
 		
-		this.analyzedFields = new TreeMap<>(analyzedFields.build());
+		this.textFields = new TreeMap<>(textFields.build());
+		this.keywordFields = new TreeMap<>(keywordFields.build());
+
+		// @RevisionHash should be directly present, not inherited
+		final RevisionHash revisionHash = type.getDeclaredAnnotation(RevisionHash.class);
+		if (revisionHash != null) {
+			this.hashedFields = ImmutableSortedSet.copyOf(revisionHash.value());
+		} else {
+			this.hashedFields = ImmutableSortedSet.of();
+		}
 				
 		this.nestedTypes = FluentIterable.from(getFields())
 			.transform(new Function<Field, Class<?>>() {
@@ -192,6 +214,7 @@ public final class DocumentMapping {
 	}
 	
 	public Class<?> getFieldType(String key) {
+		// XXX: _hash can be retrieved via field selection, but has not corresponding entry in the mapping
 		if (DocumentMapping._HASH.equals(key)) {
 			return String.class;
 		}
@@ -202,12 +225,24 @@ public final class DocumentMapping {
 		return ImmutableList.copyOf(fieldMap.values());
 	}
 	
-	public boolean isAnalyzed(String field) {
-		return analyzedFields.containsKey(field);
+	public boolean isText(String field) {
+		return textFields.containsKey(field);
 	}
 	
-	public Map<String, Analyzed> getAnalyzedFields() {
-		return analyzedFields;
+	public boolean isKeyword(String field) {
+		return keywordFields.containsKey(field);
+	}
+	
+	public Map<String, Text> getTextFields() {
+		return textFields;
+	}
+	
+	public Map<String, Keyword> getKeywordFields() {
+		return keywordFields;
+	}
+	
+	public Set<String> getHashedFields() {
+		return hashedFields;
 	}
 
 	public Class<?> type() {
@@ -280,12 +315,16 @@ public final class DocumentMapping {
 		return doc == null ? false : doc.nested();
 	}
 
-	public Map<String, Analyzed> getAnalyzers(String fieldName) {
-		return analyzedFields.subMap(fieldName, fieldName + Character.MAX_VALUE);
+	public Map<String, Text> getTextFields(String fieldName) {
+		return textFields.subMap(fieldName, fieldName + Character.MAX_VALUE);
+	}
+	
+	public Map<String, Keyword> getKeywordFields(String fieldName) {
+		return keywordFields.subMap(fieldName, fieldName + Character.MAX_VALUE);
 	}
 	
 	public Analyzers getSearchAnalyzer(String fieldName) {
-		final Analyzed analyzed = getAnalyzedFields().get(fieldName);
+		final Text analyzed = getTextFields().get(fieldName);
 		return analyzed.searchAnalyzer() == Analyzers.INDEX ? analyzed.analyzer() : analyzed.searchAnalyzer();
 	}
 

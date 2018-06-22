@@ -38,14 +38,14 @@ import com.b2international.snowowl.core.merge.MergeConflict;
 import com.b2international.snowowl.core.merge.MergeConflict.ConflictType;
 import com.b2international.snowowl.core.merge.MergeConflictImpl;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.taxonomy.InvalidRelationship;
 import com.b2international.snowowl.snomed.datastore.taxonomy.InvalidRelationship.MissingConcept;
 import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilder;
-import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilderResult;
+import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyStatus;
 import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyUpdateRunnable;
 import com.google.common.collect.ImmutableList;
 
@@ -67,29 +67,31 @@ public class SnomedInvalidTaxonomyMergeConflictRule extends AbstractSnomedMergeC
 		return index.read(branchPath.getPath(), new RevisionIndexRead<List<MergeConflict>>() {
 			@Override
 			public List<MergeConflict> execute(final RevisionSearcher searcher) throws IOException {
-				final Query<RevisionDocument.Views.IdOnly> allConceptsQuery = Query.selectPartial(RevisionDocument.Views.IdOnly.class, SnomedConceptDocument.class)
+				final Query<String> allConceptsQuery = Query.select(String.class)
+						.from(SnomedConceptDocument.class)
+						.fields(SnomedDocument.Fields.ID)
 						.where(Expressions.matchAll())
 						.limit(Integer.MAX_VALUE)
 						.build();
 				
-				final Hits<RevisionDocument.Views.IdOnly> allConcepts = searcher.search(allConceptsQuery);
+				final Hits<String> allConcepts = searcher.search(allConceptsQuery);
 				final LongSet conceptIds = PrimitiveSets.newLongOpenHashSet(allConcepts.getTotal());
 				
-				for (RevisionDocument.Views.IdOnly conceptId : allConcepts) {
-					conceptIds.add(Long.parseLong(conceptId.getId()));
+				for (String conceptId : allConcepts) {
+					conceptIds.add(Long.parseLong(conceptId));
 				}
 				
 				final List<MergeConflict> conflicts = newArrayList();
 				
 				for (final String characteristicTypeId : ImmutableList.of(Concepts.STATED_RELATIONSHIP, Concepts.INFERRED_RELATIONSHIP)) {
-					final Collection<SnomedRelationshipIndexEntry.Views.StatementWithId> statements = getActiveStatements(searcher, characteristicTypeId);
+					final Collection<String[]> statements = getActiveStatements(searcher, characteristicTypeId);
 					final SnomedTaxonomyBuilder taxonomyBuilder = new SnomedTaxonomyBuilder(conceptIds, statements);
 					final SnomedTaxonomyUpdateRunnable taxonomyRunnable = new SnomedTaxonomyUpdateRunnable(searcher, transaction, taxonomyBuilder, characteristicTypeId);
 					taxonomyRunnable.run();
 					
-					final SnomedTaxonomyBuilderResult result = taxonomyRunnable.getTaxonomyBuilderResult();
-					if (!result.getStatus().isOK()) {
-						for (InvalidRelationship invalidRelationship : result.getInvalidRelationships()) {
+					final SnomedTaxonomyStatus status = taxonomyRunnable.getTaxonomyBuilderResult();
+					if (!status.getStatus().isOK()) {
+						for (InvalidRelationship invalidRelationship : status.getInvalidRelationships()) {
 							
 							String relationshipId = String.valueOf(invalidRelationship.getRelationshipId());
 							String sourceId = String.valueOf(invalidRelationship.getSourceId());
@@ -118,8 +120,10 @@ public class SnomedInvalidTaxonomyMergeConflictRule extends AbstractSnomedMergeC
 		});
 	}
 	
-	private Collection<SnomedRelationshipIndexEntry.Views.StatementWithId> getActiveStatements(RevisionSearcher searcher, String characteristicTypeId) throws IOException {
-		final Query<SnomedRelationshipIndexEntry.Views.StatementWithId> query = Query.selectPartial(SnomedRelationshipIndexEntry.Views.StatementWithId.class, SnomedRelationshipIndexEntry.class)
+	private Collection<String[]> getActiveStatements(RevisionSearcher searcher, String characteristicTypeId) throws IOException {
+		final Query<String[]> query = Query.select(String[].class)
+				.from(SnomedRelationshipIndexEntry.class)
+				.fields(SnomedDocument.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID, SnomedRelationshipIndexEntry.Fields.DESTINATION_ID)
 				.where(Expressions.builder()
 						.filter(SnomedRelationshipIndexEntry.Expressions.active())
 						.filter(SnomedRelationshipIndexEntry.Expressions.typeId(Concepts.IS_A))

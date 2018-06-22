@@ -26,8 +26,8 @@ public final class RemoteJobs extends PageableCollectionResource<RemoteJobEntry>
 
 	private static final long serialVersionUID = 1L;
 
-	public RemoteJobs(List<RemoteJobEntry> items, int offset, int limit, int total) {
-		super(items, offset, limit, total);
+	public RemoteJobs(List<RemoteJobEntry> items, String scrollId, Object[] searchAfter, int limit, int total) {
+		super(items, scrollId, searchAfter, limit, total);
 	}
 	
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,111 +15,44 @@
  */
 package com.b2international.snowowl.snomed.datastore;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-import java.util.List;
-
 import org.eclipse.emf.cdo.CDOObject;
-import org.eclipse.emf.cdo.view.CDOQuery;
 import org.eclipse.emf.cdo.view.CDOView;
-import org.eclipse.emf.ecore.EPackage;
 
-import com.b2international.commons.CompareUtils;
-import com.b2international.commons.StringUtils;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.AbstractLookupService;
-import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.datastore.cdo.CDOQueryUtils;
 import com.b2international.snowowl.datastore.cdo.CDOUtils;
-import com.b2international.snowowl.datastore.utils.ComponentUtils2;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.SnomedPackage;
-import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
 
 /**
  * Lookup service implementation for SNOMED CT reference sets.
  * @deprecated - UNSUPPORTED API, only exist for compatibility reasons, use {@link SnomedRequests} where possible
  */
-public class SnomedRefSetLookupService extends AbstractLookupService<String, SnomedRefSet, CDOView> {
-
-	/**
-	 * Table names for all available reference sets, ordered by frequency of use (it is likely that most of the reference sets in
-	 * a system will be simple, for example).
-	 */
-	private static final List<String> REFSET_TABLE_NAMES = ImmutableList.of("SNOMEDREFSET_SNOMEDREGULARREFSET",
-			"SNOMEDREFSET_SNOMEDMAPPINGREFSET",
-			"SNOMEDREFSET_SNOMEDCONCRETEDATATYPEREFSET",
-			"SNOMEDREFSET_SNOMEDSTRUCTURALREFSET");
-
-	@Override
-	public SnomedRefSet getComponent(final String identifierConceptId, final CDOView view) {
-		checkArgument(!StringUtils.isEmpty(identifierConceptId), "Identifier SNOMED CT concept ID cannot be null or empty.");
-
-		final long refSetStorageKey = getStorageKey(BranchPathUtils.createPath(view), identifierConceptId);
-		CDOObject cdoObject = null;
-
-		notFoundRefSetLoop:
-
-			if (CDOUtils.NO_STORAGE_KEY == refSetStorageKey) {
-
-				//try to get reference set from the underlying transaction
-				for (final SnomedRefSet newRefSet : ComponentUtils2.getNewObjects(view, SnomedRefSet.class)) {
-					if (identifierConceptId.equals(newRefSet.getIdentifierId())) {
-						cdoObject = newRefSet;
-						break notFoundRefSetLoop;
-					}
-				}
-
-				for (final String tableName : REFSET_TABLE_NAMES) {
-
-					final String sqlGetRefsetByIdentifierConceptId = String.format(SnomedTerminologyQueries.SQL_GET_REFSET_BY_IDENTIFIER_CONCEPT_ID, tableName);
-					final CDOQuery cdoQuery = view.createQuery("sql", sqlGetRefsetByIdentifierConceptId);
-					cdoQuery.setParameter("identifierConceptId", identifierConceptId);
-
-					final List<SnomedRefSet> result = CDOQueryUtils.getViewResult(cdoQuery, SnomedRefSet.class);
-
-					if (!CompareUtils.isEmpty(result)) {
-						return Iterables.getOnlyElement(result);
-					}
-				}
-
-				return null;
-			}
-
-		if (null == cdoObject) {
-			cdoObject = CDOUtils.getObjectIfExists(view, refSetStorageKey);
-		}
-
-		if (null == cdoObject) {
-			return null;
-		}
-
-		return (SnomedRefSet) cdoObject;
-	}
+public final class SnomedRefSetLookupService extends AbstractLookupService<SnomedRefSet, CDOView> {
 
 	@Override
 	public SnomedConceptDocument getComponent(final IBranchPath branchPath, final String id) {
 		try {
-			final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
-			final SnomedReferenceSet refSet = SnomedRequests
-					.prepareGetReferenceSet(id)
+			return SnomedRequests.prepareGetConcept(id)
+					.setExpand("referenceSet()")
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
-					.execute(bus)
+					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+					.then(concept -> {
+						if (concept.getReferenceSet() == null) {
+							return null;
+						}
+						final SnomedDescription pt = concept.getPt();
+						final String preferredTerm = pt == null ? concept.getId() : pt.getTerm();
+						return SnomedConceptDocument.builder(concept)
+								.label(preferredTerm)
+								.build();
+					})
 					.getSync();
-			
-			final SnomedConceptDocument concept = new SnomedConceptLookupService().getComponent(branchPath, id);
-			
-			return SnomedConceptDocument
-					.builder(concept)
-					.refSet(refSet)
-					.build();
 		} catch (NotFoundException e) {
 			return null;
 		}
@@ -132,7 +65,12 @@ public class SnomedRefSetLookupService extends AbstractLookupService<String, Sno
 	}
 
 	@Override
-	protected EPackage getEPackage() {
-		return SnomedPackage.eINSTANCE;
+	public String getId(CDOObject component) {
+		return ((SnomedRefSet) component).getIdentifierId();
+	}
+	
+	@Override
+	protected Class<SnomedRefSet> getType() {
+		return SnomedRefSet.class;
 	}
 }

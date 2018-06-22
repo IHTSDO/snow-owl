@@ -27,10 +27,6 @@ import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
  */
 public class SimpleSnomedLanguageRefsetExporter extends SnomedLanguageRefSetExporter {
 
-	public SimpleSnomedLanguageRefsetExporter(SnomedExportContext exportContext, RevisionSearcher revisionSearcher) {
-		this(exportContext, revisionSearcher, null);
-	}
-	
 	public SimpleSnomedLanguageRefsetExporter(SnomedExportContext exportContext, RevisionSearcher revisionSearcher, String languageCode) {
 		super(exportContext, revisionSearcher, languageCode);
 	}

@@ -38,7 +38,7 @@ import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
+import com.b2international.snowowl.core.request.SearchResourceRequest;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
@@ -81,6 +81,7 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
@@ -425,8 +426,8 @@ final class SnomedEclRefinementEvaluator {
 			// if reversed refinement, then we are interested in the destinationIds otherwise we need the sourceIds
 			final Collection<String> destinationConceptFilter = Collections.singleton(serializer.serializeWithoutTerms(((AttributeComparison) comparison).getConstraint()));
 			final Collection<String> focusConceptFilter = refinement.isReversed() ? destinationConceptFilter : null;
-			final Collection<String> valueConceptFilter = refinement.isReversed() ? null : destinationConceptFilter;
-			return evalRelationships(context, focusConceptFilter, typeConceptFilter, valueConceptFilter, grouped, expressionForm);
+			final Collection<String> valueConceptFilter = refinement.isReversed() ? focusConcepts.resolve(context).getSync() : destinationConceptFilter;
+			return evalRelationships(context, focusConceptFilter, typeConceptFilter, valueConceptFilter, grouped);
 		} else if (comparison instanceof DataTypeComparison) {
 			if (grouped) {
 				throw new BadRequestException("Group refinement is not supported in data type based comparison (string/numeric)");
@@ -619,7 +620,7 @@ final class SnomedEclRefinementEvaluator {
 			final boolean groupedRelationshipsOnly,
 			String expressionForm) {
 
-		final ImmutableSet.Builder<String> fieldsToLoad = ImmutableSet.builder();
+		final ImmutableList.Builder<String> fieldsToLoad = ImmutableList.builder();
 		fieldsToLoad.add(ID, SOURCE_ID,	DESTINATION_ID);
 		if (groupedRelationshipsOnly) {
 			fieldsToLoad.add(GROUP);
@@ -637,7 +638,7 @@ final class SnomedEclRefinementEvaluator {
 		// XXX more than 1000 IDs will be filtered using Java instead of in the query to gain performance
 		final Predicate<SnomedRelationship> sourcePredicate;
 		if (sourceFilter != null) {
-			if (sourceFilter.size() < 1000) {
+			if (sourceFilter.size() < 10000) {
 				req.filterBySource(sourceFilter);
 				sourcePredicate = Predicates.alwaysTrue();
 			} else {
@@ -649,7 +650,7 @@ final class SnomedEclRefinementEvaluator {
 		
 		final Predicate<SnomedRelationship> destinationPredicate;
 		if (destinationFilter != null) {
-			if (destinationFilter.size() < 1000) {
+			if (destinationFilter.size() < 10000) {
 				req.filterByDestination(destinationFilter);
 				destinationPredicate = Predicates.alwaysTrue();
 			} else {

@@ -97,7 +97,7 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 	}
 	
 	@Override
-	public SnomedTaxonomyBuilderResult build() {
+	public SnomedTaxonomyStatus build() {
 		final List<InvalidRelationship> invalidRelationships = Lists.newArrayList();
 
 		// allocate data
@@ -147,8 +147,7 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 			count++;
 		}
 
-		final SnomedTaxonomyBuilderResult result;
-		if (isEmpty(invalidRelationships)) {
+		final SnomedTaxonomyStatus result;
 			
 			for (int i = 0; i < conceptCount; i++) {
 	
@@ -166,20 +165,19 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 				final int subjectId = _conceptInternalIds[i][0];
 				final int objectId = _conceptInternalIds[i][1];
 	
-				ancestors[subjectId][tailsSuperTypes[subjectId]++] = objectId;
-				descendants[objectId][tailsSubTypes[objectId]++] = subjectId;
+				if (objectId != -1 && subjectId != -1) {
+					ancestors[subjectId][tailsSuperTypes[subjectId]++] = objectId;
+					descendants[objectId][tailsSubTypes[objectId]++] = subjectId;
+				}
 	
 			}
 			
-			result = new SnomedTaxonomyBuilderResult(Statuses.ok());
+		if (isEmpty(invalidRelationships)) {
+			result = new SnomedTaxonomyStatus(Statuses.ok());
 		} else {
-			LOGGER.warn("Missing concepts from relationships");
-			//PGW Temporary code to report where issues appearing.  Whatever is calling this function does 
-			//not appear to be iterating through the result.
-			for (InvalidRelationship r : invalidRelationships) {
-				LOGGER.warn("Invalid relationship: s " + r.getSourceId() + " d " + r.getDestinationId());
-			}
-			result = new SnomedTaxonomyBuilderResult(Statuses.error("Missing concepts from relationships."), invalidRelationships);
+			LOGGER.warn("Taxonomy builder encountered relationships referencing inactive / non-existent concepts");
+			result = new SnomedTaxonomyStatus(
+					Statuses.error("Taxonomy builder encountered relationships referencing inactive / non-existent concepts"), invalidRelationships);
 		}
 
 		dirty = false;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.setup.DefaultBootstrapFragment;
 import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.core.setup.ModuleConfig;
-import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.core.validation.eval.ValidationRuleEvaluator;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.snomed.core.ecl.DefaultEclParser;
@@ -38,13 +38,10 @@ import com.b2international.snowowl.snomed.core.lang.StaticLanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationServiceConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
-import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdentiferReservationService;
-import com.b2international.snowowl.snomed.datastore.id.reservations.Reservation;
-import com.b2international.snowowl.snomed.datastore.id.reservations.Reservations;
+import com.b2international.snowowl.snomed.datastore.id.SnomedNamespaceAndModuleAssignerProvider;
 import com.b2international.snowowl.snomed.ecl.EclStandaloneSetup;
+import com.b2international.snowowl.snomed.validation.SnomedQueryValidationRuleEvaluator;
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableSet;
 import com.google.inject.Injector;
 
 /**
@@ -66,9 +63,15 @@ public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
 			}
 		}
 		env.services().registerService(LanguageSetting.class, new StaticLanguageSetting(coreConfig.getLanguage(), SnomedCoreConfiguration.DEFAULT_LANGUAGE));
+		
 		final Injector injector = new EclStandaloneSetup().createInjectorAndDoEMFRegistration();
 		env.services().registerService(EclParser.class, new DefaultEclParser(injector.getInstance(IParser.class), injector.getInstance(IResourceValidator.class)));
 		env.services().registerService(EclSerializer.class, new DefaultEclSerializer(injector.getInstance(ISerializer.class)));
+		
+		// register SNOMED CT Query based validation rule evaluator
+		ValidationRuleEvaluator.Registry.register(new SnomedQueryValidationRuleEvaluator());
+
+		env.services().registerService(SnomedNamespaceAndModuleAssignerProvider.class, SnomedNamespaceAndModuleAssignerProvider.INSTANCE);
 	}
 
 	@Override
@@ -79,15 +82,6 @@ public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
 			repository.setReaderPoolCapacity(snomedConfig.getReaderPoolCapacity());
 			repository.setWriterPoolCapacity(snomedConfig.getWriterPoolCapacity());
 		}
-		
-		final Reservation intMetadataReservation = Reservations.range(
-				SnomedIdentifiers.MIN_INT_METADATA_ITEMID, // 900000000000000
-				SnomedIdentifiers.MAX_INT_ITEMID, // 999999999999999
-				null, // INT namespace 
-				ImmutableSet.of(ComponentCategory.CONCEPT, ComponentCategory.DESCRIPTION, ComponentCategory.RELATIONSHIP));
-		
-		final ISnomedIdentiferReservationService reservationService = env.service(ISnomedIdentiferReservationService.class);
-		reservationService.create("int_metadata", intMetadataReservation);
 	}
 	
 }

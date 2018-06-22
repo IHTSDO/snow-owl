@@ -54,23 +54,23 @@ import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.core.request.SearchResourceRequest.SortField;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfo;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
+import com.b2international.snowowl.datastore.internal.branch.BranchManagerImpl;
 import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
+import com.b2international.snowowl.datastore.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest.SortField;
+import com.b2international.snowowl.datastore.request.repository.OptimizeRequest;
+import com.b2international.snowowl.datastore.request.repository.PurgeRequest;
 import com.b2international.snowowl.datastore.request.repository.RepositorySearchRequestBuilder;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
-import com.b2international.snowowl.datastore.server.internal.branch.BranchManagerImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.server.migrate.MigrateRequest;
 import com.b2international.snowowl.datastore.server.migrate.MigrateRequestBuilder;
 import com.b2international.snowowl.datastore.server.migrate.MigrationResult;
-import com.b2international.snowowl.datastore.server.reindex.OptimizeRequest;
-import com.b2international.snowowl.datastore.server.reindex.PurgeRequest;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequestBuilder;
 import com.b2international.snowowl.datastore.server.reindex.ReindexResult;
@@ -78,7 +78,6 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Builder;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.google.common.base.Function;
@@ -623,7 +622,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 			
 			RepositoryRequests.commitInfos().prepareSearchCommitInfo()
 				.one()
-				.sortBy(new SortField(CommitInfoDocument.Fields.TIME_STAMP, false))
+				.sortBy(SortField.descending(CommitInfoDocument.Fields.TIME_STAMP))
 				.build(repositoryId)
 				.execute(getBus())
 				.getSync()

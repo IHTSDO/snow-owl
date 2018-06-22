@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +15,24 @@
  */
 package com.b2international.snowowl.datastore.request;
 
-import java.io.IOException;
+import java.util.Collections;
 
 import com.b2international.index.Hits;
-import com.b2international.index.Searcher;
+import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.branch.Branches;
 import com.b2international.snowowl.core.domain.RepositoryContext;
+import com.b2international.snowowl.datastore.internal.branch.BranchDocument;
 import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
 import com.google.common.collect.ImmutableList;
 
 /**
  * @since 4.1
  */
-final class BranchSearchRequest extends SearchResourceRequest<RepositoryContext, Branches> {
+final class BranchSearchRequest extends SearchIndexResourceRequest<RepositoryContext, Branches, BranchDocument> {
 
 	enum OptionKey {
 		
@@ -50,15 +51,14 @@ final class BranchSearchRequest extends SearchResourceRequest<RepositoryContext,
 	BranchSearchRequest() {}
 	
 	@Override
-	protected Branches createEmptyResult(int offset, int limit) {
-		return new Branches(offset, limit, 0);
+	protected Branches createEmptyResult(int limit) {
+		return new Branches(Collections.emptyList(), null, null, limit, 0);
 	}
 
 	@Override
-	protected Branches doExecute(RepositoryContext context) throws IOException {
-		final Searcher searcher = context.service(Searcher.class);
-		final ExpressionBuilder queryBuilder = Expressions.builder();
-
+	protected Expression prepareQuery(RepositoryContext context) {
+		ExpressionBuilder queryBuilder = Expressions.builder();
+				
 		addIdFilter(queryBuilder, ids -> Expressions.matchAny("path", ids));
 		
 		if (containsKey(OptionKey.PARENT)) {
@@ -69,19 +69,24 @@ final class BranchSearchRequest extends SearchResourceRequest<RepositoryContext,
 			queryBuilder.filter(Expressions.matchAny("name", getCollection(OptionKey.NAME, String.class)));
 		}
 		
-		final Hits<InternalBranch> matches = searcher.search(select(InternalBranch.class)
-				.where(queryBuilder.build())
-				.offset(offset())
-				.limit(limit())
-				.sortBy(sortBy())
-				.build());
-		
+		return queryBuilder.build();
+	}
+	
+	@Override
+	protected Class<BranchDocument> getDocumentType() {
+		return BranchDocument.class;
+	}
+
+	@Override
+	protected Branches toCollectionResource(RepositoryContext context, Hits<BranchDocument> hits) {
 		final BranchManager branchManager = context.service(BranchManager.class);
-		for (InternalBranch branch : matches) {
+		final ImmutableList.Builder<Branch> branches = ImmutableList.builder();
+		for (BranchDocument doc : hits) {
+			final InternalBranch branch = doc.toBranch();
 			branch.setBranchManager(branchManager);
+			branches.add(branch);
 		}
-		
-		return new Branches(ImmutableList.<Branch>copyOf(matches), offset(), limit(), matches.getTotal());
+		return new Branches(branches.build(), hits.getScrollId(), hits.getSearchAfter(), limit(), hits.getTotal());
 	}
 
 }

@@ -32,7 +32,6 @@ import com.b2international.index.Index;
 import com.b2international.index.Indexes;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.snowowl.core.ServiceProvider;
-import com.b2international.snowowl.core.domain.DelegatingServiceProvider;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.SystemNotification;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
@@ -57,15 +56,15 @@ public class JobRequestsTest {
 	private RemoteJobTracker tracker;
 	private IEventBus bus;
 	private final Collection<RemoteJobNotification> notifications = newArrayList();
+	private ObjectMapper mapper;
 
 	@Before
 	public void setup() {
-		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
+		mapper = JsonSupport.getDefaultObjectMapper();
 		final Index index = Indexes.createIndex("jobs", mapper, new Mappings(RemoteJobEntry.class));
 		this.bus = EventBusUtil.getBus();
 		this.tracker = new RemoteJobTracker(index, bus, mapper, 200);
-		this.context = DelegatingServiceProvider
-				.basedOn(ServiceProvider.EMPTY)
+		this.context = ServiceProvider.EMPTY.inject()
 				.bind(ObjectMapper.class, mapper)
 				.bind(RemoteJobTracker.class, tracker)
 				.build();
@@ -84,7 +83,7 @@ public class JobRequestsTest {
 		final String jobId = schedule("scheduleAndWaitDone", context -> RESULT);
 		final RemoteJobEntry entry = waitDone(jobId);
 		assertEquals(RemoteJobState.FINISHED, entry.getState());
-		assertEquals(RESULT, entry.getResult().get("value"));
+		assertEquals(RESULT, entry.getResult(mapper).get("value"));
 		// verify job events
 		// 1 added
 		// 1 changed - RUNNING
@@ -95,10 +94,10 @@ public class JobRequestsTest {
 	@Test
 	public void scheduleAndCancel() throws Exception {
 		final String jobId = schedule("scheduleAndCancel", context -> {
-			// wait 50 ms, then throw cancelled if monitor is cancelled or return the result, so the main thread have time to actually initiate the cancel request
+			// wait 1000 ms, then throw cancelled if monitor is cancelled or return the result, so the main thread have time to actually initiate the cancel request
 			final IProgressMonitor monitor = context.service(IProgressMonitor.class);
 			try {
-				Thread.sleep(50);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				throw new RuntimeException(e);
 			}
@@ -193,6 +192,11 @@ public class JobRequestsTest {
 	private RemoteJobEntry waitDone(final String jobId) {
 		RemoteJobEntry entry = null;
 		do {
+			try {
+				Thread.sleep(20);
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
 			entry = get(jobId);
 		} while (!entry.isDone());
 		return entry;

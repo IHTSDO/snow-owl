@@ -34,19 +34,21 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.io.ByteSource;
 import com.google.common.io.Files;
@@ -54,8 +56,6 @@ import com.google.common.io.Files;
 public final class FileUtils {
 
 	private static final int DEFAULT_BUFFER_SIZE = 4096;
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
 
 	public static final String TEMP_DIR_PROPERTY = "java.io.tmpdir";
 
@@ -94,8 +94,7 @@ public final class FileUtils {
 		try (final InputStream is = url.openStream()) {
 			return copyContentToTempFile(is, getFileName(url));
 		} catch (final IOException e) {
-			LOGGER.error("Error while creating temporary file from URL: " + url, e);
-			return null;
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -125,8 +124,7 @@ public final class FileUtils {
 			}.copyTo(Files.asByteSink(tmpFile));
 			return tmpFile;
 		} catch (final IOException e) {
-			LOGGER.error("Error while creating temporary file from input stream with file name: " + fileName, e);
-			return null;
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -238,6 +236,7 @@ public final class FileUtils {
 	 *
 	 */
 	public static void decompressZipArchive(final File zipFile, final File rootDirectoryToUnZip) throws IOException {
+		
 		final int BUFFER = 2048;
 
 		if (rootDirectoryToUnZip.exists() && rootDirectoryToUnZip.isFile()) {
@@ -251,15 +250,25 @@ public final class FileUtils {
 		final FileInputStream fis = new FileInputStream(zipFile);
 		final ZipInputStream zis = new ZipInputStream(new BufferedInputStream(fis));
 
-		ZipEntry entry;
-		while((entry = zis.getNextEntry()) != null) {
-			int count;
-			final byte data[] = new byte[BUFFER];
+		ZipEntry entry = zis.getNextEntry();
+		
+		while (entry != null) {
 
+			File newFile = new File(rootDirectoryToUnZip, entry.getName());
+			
 			if (entry.isDirectory()) {
-				new File(rootDirectoryToUnZip, entry.getName()).mkdir();
+				newFile.mkdir();
 			} else {
-				final FileOutputStream fos = new FileOutputStream(new File(rootDirectoryToUnZip, entry.getName()));
+
+				File parentFile = newFile.getParentFile();
+				if (parentFile != null && !parentFile.exists()) {
+					parentFile.mkdirs();
+				}
+				
+				int count;
+				final byte data[] = new byte[BUFFER];
+				
+				final FileOutputStream fos = new FileOutputStream(newFile);
 				final BufferedOutputStream dest = new BufferedOutputStream(fos, BUFFER);
 
 				while ((count = zis.read(data, 0, BUFFER)) != -1) {
@@ -271,6 +280,8 @@ public final class FileUtils {
 				dest.close();
 				fos.close();
 			}
+			
+			entry = zis.getNextEntry();
 		}
 
 		zis.close();
@@ -333,57 +344,8 @@ public final class FileUtils {
 		// Prevent instantiation
 	}
 
-    /**
-     * Attempts to show a File using the native operating
-     * system file view, for example the Finder on a Mac,
-     * or Explorer on Windows.  This may not work on all
-     * platforms.
-     * @param file The file to be shown
-     */
-    public static void showFile(final File file) {
-    	try {
-	        if (SystemUtils.isMac()) {
-	            showInFinder(file);
-	        } else if (SystemUtils.isWindows()) {
-	            showInExplorer(file);
-	        } else {
-	            LOGGER.debug("showFile not implemented for " + SystemUtils.getProperty(SystemUtils.OS_NAME));
-	        }
-    	} catch (final IOException e) {
-    		LOGGER.error("Error while opening file. [" + file.getPath() + "]");
-    	}
-    }
-
-
-    /**
-     * Attempts to show a file in the Finder on a Mac.
-     * @param file The file to be shown
-     */
-    private static void showInFinder(final File file) throws IOException {
-        // Use applescript to show the item in the Finder
-        final String[] params = new String[]{"osascript", "-e", "set p to \"" + file.getCanonicalPath() + "\"", "-e", "tell application \"Finder\"", "-e", "reveal (POSIX file p) as alias", "-e", "activate", "-e", "end tell",};
-        Runtime.getRuntime().exec(params);
-    }
-
-
-    /**
-     * Attempts to show a file in the Explorer on Windows.
-     * @param file The file to be shown.
-     */
-    private static void showInExplorer(final File file) throws IOException {
-        String path = file.getCanonicalPath();
-        if (path.indexOf(" ") != -1) {
-            // The path contains spaces, so we must surround it with quotes
-            path = "\"" + path + "\"";
-        }
-		final String[] params = new String[] { "explorer", "/n,/select," + path };
-
-        Runtime.getRuntime().exec(params);
-    }
-
 	/**
 	 * Collects the occurences into the passed Set (recursively)
-	 *
 	 */
 	public static void search(final File rootPath, final String fileName, final Set<File> occuranceCollectorSet) {
 		if (!rootPath.exists()) {
@@ -408,6 +370,30 @@ public final class FileUtils {
 			if (entry.getName().equals(fileName)) {
 				occuranceCollectorSet.add(entry);
 			}
+		}
+	}
+	
+	
+	/**
+	 * Returns a file path from the given directory that matches the path matcher expression.
+	 * It is expected to have a single file in the directory that matches the expression.
+	 * @param directory to find the file within
+	 * @param path matcher expression
+	 * @return path for the matched file.
+	 */
+	public static Path getFileFromWorkFolder(String workDir, String pathMatcherExpression) throws IOException {
+		
+		Path workDirPath = Paths.get(workDir);
+		final PathMatcher filter = workDirPath.getFileSystem().getPathMatcher("glob:**/" + pathMatcherExpression);
+		
+		try (final Stream<Path> stream = java.nio.file.Files.list(workDirPath)) {
+			Set<Path> filesFromWorkFolder = stream.filter(filter::matches).collect(Collectors.toSet());
+			if (filesFromWorkFolder.isEmpty()) {
+				throw new RuntimeException("Could not find file in the work folder " +workDir + " for the path expression: " + pathMatcherExpression);
+			} else if (filesFromWorkFolder.size() > 1) {
+				throw new RuntimeException("Found more than one file in work folder for the path expression: " + pathMatcherExpression);
+			}
+			return filesFromWorkFolder.iterator().next();
 		}
 	}
 }

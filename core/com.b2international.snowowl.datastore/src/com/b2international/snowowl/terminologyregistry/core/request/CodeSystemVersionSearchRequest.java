@@ -15,23 +15,22 @@
  */
 package com.b2international.snowowl.terminologyregistry.core.request;
 
-import java.io.IOException;
 import java.util.Collections;
 
 import com.b2international.commons.StringUtils;
 import com.b2international.index.Hits;
-import com.b2international.index.Searcher;
+import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.CodeSystemVersions;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
+import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 
 /**
  * @since 4.7
  */
-final class CodeSystemVersionSearchRequest extends SearchResourceRequest<RepositoryContext, CodeSystemVersions> {
+final class CodeSystemVersionSearchRequest extends SearchIndexResourceRequest<RepositoryContext, CodeSystemVersions, CodeSystemVersionEntry> {
 
 	private static final long serialVersionUID = 1L;
 
@@ -48,9 +47,9 @@ final class CodeSystemVersionSearchRequest extends SearchResourceRequest<Reposit
 	void setVersionId(String versionId) {
 		this.versionId = versionId;
 	}
-
+	
 	@Override
-	protected CodeSystemVersions doExecute(final RepositoryContext context) throws IOException {
+	protected Expression prepareQuery(RepositoryContext context) {
 		final ExpressionBuilder query = Expressions.builder();
 
 		if (!StringUtils.isEmpty(codeSystemShortName)) {
@@ -61,21 +60,22 @@ final class CodeSystemVersionSearchRequest extends SearchResourceRequest<Reposit
 			query.filter(CodeSystemVersionEntry.Expressions.versionId(versionId));
 		}
 		
-		final Searcher searcher = context.service(Searcher.class);
-		
-		final Hits<CodeSystemVersionEntry> hits = searcher.search(select(CodeSystemVersionEntry.class)
-				.where(query.build())
-				.sortBy(sortBy())
-				.offset(offset())
-				.limit(limit())
-				.build());
-		
-		return new CodeSystemVersions(hits.getHits(), offset(), limit(), hits.getTotal());
+		return query.build();
 	}
 	
 	@Override
-	protected CodeSystemVersions createEmptyResult(int offset, int limit) {
-		return new CodeSystemVersions(Collections.emptyList(), offset, limit, 0);
+	protected Class<CodeSystemVersionEntry> getDocumentType() {
+		return CodeSystemVersionEntry.class;
+	}
+
+	@Override
+	protected CodeSystemVersions toCollectionResource(RepositoryContext context, Hits<CodeSystemVersionEntry> hits) {
+		return new CodeSystemVersions(hits.getHits(), hits.getScrollId(), hits.getSearchAfter(), limit(), hits.getTotal());
+	}
+	
+	@Override
+	protected CodeSystemVersions createEmptyResult(int limit) {
+		return new CodeSystemVersions(Collections.emptyList(), null, null, limit, 0);
 	}
 
 }

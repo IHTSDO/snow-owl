@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.UUID;
 
 import org.junit.Test;
 
@@ -76,12 +75,13 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
-import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
+import com.b2international.snowowl.snomed.core.domain.Rf2ExportResult;
+import com.b2international.snowowl.snomed.core.domain.Rf2RefSetExportLayout;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
@@ -108,6 +108,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		Multimap<String, Pair<Boolean, String>> resultMap = collectLines(exportArchive, fileToLinesMap);
 		Set<String> difference = Sets.difference(fileToLinesMap.keySet(), resultMap.keySet());
 
+		// check if complete files are missing from the result archive
 		assertTrue(String.format("File(s) starting with <%s> are missing from the export archive", Joiner.on(", ").join(difference)),
 				difference.isEmpty());
 
@@ -195,14 +196,10 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		List<String> lines = Files.readAllLines(file);
 
 		for (Pair<Boolean, String> line : expectedLines) {
-			if (lines.contains(line.getB())) {
-				resultMap.put(filePrefix, Pair.of(true, line.getB()));
-			} else {
-				resultMap.put(filePrefix, Pair.of(false, line.getB()));
-			}
+			resultMap.put(filePrefix, Pair.of(lines.contains(line.getB()), line.getB()));
 		}
 	}
-
+	
 	@Test
 	public void createValidExportConfiguration() {
 		Map<?, ?> config = ImmutableMap.builder()
@@ -297,18 +294,24 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void executeMultipleExportsAtTheSameTime() throws Exception {
 		
-		Promise<UUID> first = SnomedRequests.rf2().prepareExport()
+		Promise<Rf2ExportResult> first = SnomedRequests.rf2().prepareExport()
 			.setUserId("System")
 			.setCodeSystem("SNOMEDCT")
 			.setReleaseType(Rf2ReleaseType.FULL)
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.setCountryNamespaceElement("INT")
+			.setRefSetExportLayout(Rf2RefSetExportLayout.COMBINED)
+			.setReferenceBranch(branchPath.getPath())
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(ApplicationContext.getServiceForClass(IEventBus.class));
 		
-		Promise<UUID> second = SnomedRequests.rf2().prepareExport()
+		Promise<Rf2ExportResult> second = SnomedRequests.rf2().prepareExport()
 			.setUserId("System")
 			.setCodeSystem("SNOMEDCT")
+			.setCountryNamespaceElement("INT")
+			.setRefSetExportLayout(Rf2RefSetExportLayout.COMBINED)
 			.setReleaseType(Rf2ReleaseType.SNAPSHOT)
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.setReferenceBranch(branchPath.getPath())
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(ApplicationContext.getServiceForClass(IEventBus.class));
 		
 		String message = Promise.all(first, second)
@@ -316,13 +319,13 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				@Override
 				public String apply(List<Object> input) {
 					
-					UUID firstId = (UUID) input.get(0);
-					UUID secondId = (UUID) input.get(1);
+					Rf2ExportResult firstResult = (Rf2ExportResult) input.get(0);
+					Rf2ExportResult secondResult = (Rf2ExportResult) input.get(1);
 					
 					InternalFileRegistry fileRegistry = (InternalFileRegistry) ApplicationContext.getServiceForClass(FileRegistry.class);
 					
-					File firstArchive = fileRegistry.getFile(firstId);
-					File secondArchive = fileRegistry.getFile(secondId);
+					File firstArchive = fileRegistry.getFile(firstResult.getRegistryId());
+					File secondArchive = fileRegistry.getFile(secondResult.getRegistryId());
 					
 					final Map<String, Boolean> firstArchiveMap = ImmutableMap.<String, Boolean>builder()
 							.put("sct2_Concept_Full", true)
@@ -339,8 +342,8 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 						return e.getMessage();
 					}
 					
-					fileRegistry.delete(firstId);
-					fileRegistry.delete(secondId);
+					fileRegistry.delete(firstResult.getRegistryId());
+					fileRegistry.delete(secondResult.getRegistryId());
 					
 					return null;
 				}
@@ -584,7 +587,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		
 		final Multimap<String, Pair<Boolean, String>> fileToLinesMap = ArrayListMultimap.<String, Pair<Boolean, String>>create();
 		
-		String refsetFileName = "der2_Refset_PTOfConceptSnapshot";
+		String refsetFileName = "der2_Refset_SimpleSnapshot";
 		
 		fileToLinesMap.put(refsetFileName, Pair.of(true, refsetMemberLine));
 		fileToLinesMap.put(refsetFileName, Pair.of(true, newRefsetMemberLine));
@@ -650,7 +653,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		
 		final Multimap<String, Pair<Boolean, String>> fileToLinesMap = ArrayListMultimap.<String, Pair<Boolean, String>>create();
 		
-		String refsetFileName = "der2_Refset_PTOfConceptSnapshot";
+		String refsetFileName = "der2_Refset_SimpleSnapshot";
 		
 		fileToLinesMap.put(refsetFileName, Pair.of(true, refsetMemberLine));
 		fileToLinesMap.put(refsetFileName, Pair.of(true, newRefsetMemberLine));
@@ -1157,9 +1160,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		String owlExpression = "dummy expression";
 		
 		Map<?, ?> memberRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, Concepts.ROOT_CONCEPT)
-				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-						.put("owlExpression", owlExpression)
-						.build())
+				.put("owlExpression", owlExpression)
 				.put("commitComment", "Created new OWL axiom reference set member")
 				.build();
 
@@ -1222,16 +1223,15 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void exportUnpublishedMRCMReferenceSetMembers() throws Exception {
+		
 		Map<?, ?> mrcmDomainRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_DOMAIN_INTERNATIONAL, Concepts.ROOT_CONCEPT)
-				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-						.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
-						.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "parentDomain")
-						.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
-						.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "proximalPrimitiveRefinement")
-						.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
-						.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
-						.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "editorialGuideReference")
-						.build())
+				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
+				.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "parentDomain")
+				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
+				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "proximalPrimitiveRefinement")
+				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
+				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
+				.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "editorialGuideReference")
 				.put("commitComment", "Created new MRCM domain reference set member")
 				.build();
 
@@ -1240,14 +1240,12 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 		
 		Map<?, ?> mrcmAttributeDomainRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL, Concepts.ROOT_CONCEPT)
-				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
-					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
-					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
-					.build())
+				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
+				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
 				.put("commitComment", "Created new MRCM attribute domain reference set member")
 				.build();
 
@@ -1256,12 +1254,10 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 		
 		Map<?, ?> mrcmAttributeRangeRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_ATTRIBUTE_RANGE_INTERNATIONAL, Concepts.ROOT_CONCEPT)
-				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, "rangeConstraint")
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, "attributeRule")
-					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
-					.build())
+				.put(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, "rangeConstraint")
+				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, "attributeRule")
+				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
 				.put("commitComment", "Created new MRCM attribute range reference set member")
 				.build();
 
@@ -1270,9 +1266,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 		
 		Map<?, ?> mrcmModuleScopeRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_MODULE_SCOPE, Concepts.ROOT_CONCEPT)
-				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-						.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, Concepts.ROOT_CONCEPT)
-						.build())
+				.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, Concepts.ROOT_CONCEPT)
 				.put("commitComment", "Created new MRCM module scope reference set member")
 				.build();
 
@@ -1345,7 +1339,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("der2_ssccRefset_MRCMAttributeRangeDelta", true)
 				.put("der2_cRefset_MRCMModuleScopeDelta", true)
 				.build();
-				
+		
 		assertArchiveContainsFiles(exportArchive, files);
 
 		Multimap<String, Pair<Boolean, String>> fileToLinesMap = ArrayListMultimap.<String, Pair<Boolean, String>>create();
@@ -1354,6 +1348,71 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		fileToLinesMap.put("der2_cissccRefset_MRCMAttributeDomainDelta", Pair.of(true, mrcmAttributeDomainLine));
 		fileToLinesMap.put("der2_ssccRefset_MRCMAttributeRangeDelta", Pair.of(true, mrcmAttributeRangeLine));
 		fileToLinesMap.put("der2_cRefset_MRCMModuleScopeDelta", Pair.of(true, mrcmModuleScopeLine));
+
+		assertArchiveContainsLines(exportArchive, fileToLinesMap);
+	}
+	
+	@Test
+	public void exportUnpublishedOWLExpressionRefsetMembers() throws Exception {
+		
+		Map<?, ?> owlOntologyRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_ONTOLOGY, Concepts.ROOT_CONCEPT)
+				.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "test expression")
+				.put("commitComment", "Created new OWL Ontology reference set member")
+				.build();
+
+		String owlOntologyRefsetMemberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, owlOntologyRequestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		Map<?, ?> owlAxiomRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, Concepts.ROOT_CONCEPT)
+				.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "test axiom")
+				.put("commitComment", "Created new OWL Axiom reference set member")
+				.build();
+
+		String owlAxiomRefsetMemberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, owlAxiomRequestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		Map<?, ?> config = ImmutableMap.builder()
+				.put("type", Rf2ReleaseType.DELTA.name())
+				.put("branchPath", branchPath.getPath())
+				.build();
+
+		String exportId = getExportId(createExport(config));
+
+		getExport(exportId).statusCode(200)
+			.body("type", equalTo(Rf2ReleaseType.DELTA.name()))
+			.body("branchPath", equalTo(branchPath.getPath()));
+
+		File exportArchive = getExportFile(exportId);
+
+		String owlOntologyMemberLine = TAB_JOINER.join(owlOntologyRefsetMemberId, 
+				"", 
+				"1",
+				Concepts.MODULE_SCT_CORE, 
+				Concepts.REFSET_OWL_ONTOLOGY, 
+				Concepts.ROOT_CONCEPT,
+				"test expression"); 
+
+		String owlAxiomMemberLine = TAB_JOINER.join(owlAxiomRefsetMemberId, 
+				"", 
+				"1", 
+				Concepts.MODULE_SCT_CORE, 
+				Concepts.REFSET_OWL_AXIOM,
+				Concepts.ROOT_CONCEPT,
+				"test axiom");
+
+		final Map<String, Boolean> files = ImmutableMap.<String, Boolean>builder()
+				.put("der2_sRefset_OWLAxiomDelta", true)
+				.put("der2_sRefset_OWLOntologyDelta", true)
+				.build();
+			
+		assertArchiveContainsFiles(exportArchive, files);
+
+		Multimap<String, Pair<Boolean, String>> fileToLinesMap = ArrayListMultimap.<String, Pair<Boolean, String>>create();
+
+		fileToLinesMap.put("der2_sRefset_OWLOntologyDelta", Pair.of(true, owlOntologyMemberLine));
+		fileToLinesMap.put("der2_sRefset_OWLAxiomDelta", Pair.of(true, owlAxiomMemberLine));
 
 		assertArchiveContainsLines(exportArchive, fileToLinesMap);
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@ import com.b2international.snowowl.core.domain.PageableCollectionResource;
 /**
  * @since 4.7
  */
-public class CodeSystems extends PageableCollectionResource<CodeSystemEntry> {
+public final class CodeSystems extends PageableCollectionResource<CodeSystemEntry> {
 
 	private static final long serialVersionUID = 1L;
 
-	public CodeSystems(List<CodeSystemEntry> items, int offset, int limit, int total) {
-		super(items, offset, limit, total);
+	public CodeSystems(List<CodeSystemEntry> items, String scrollId, Object[] searchAfter, int limit, int total) {
+		super(items, scrollId, searchAfter, limit, total);
 	}
 
 }

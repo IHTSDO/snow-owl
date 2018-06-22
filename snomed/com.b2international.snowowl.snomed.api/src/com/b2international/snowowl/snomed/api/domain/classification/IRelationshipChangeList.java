@@ -28,7 +28,7 @@ public interface IRelationshipChangeList {
 	 * 
 	 * @return a subset of the relationships which should be modified 
 	 */
-	List<IRelationshipChange> getChanges();
+	List<IRelationshipChange> getItems();
 
 	/**
 	 * Returns the total number of relationship changes for this classification run.
@@ -36,4 +36,16 @@ public interface IRelationshipChangeList {
 	 * @return the total number of changes
 	 */
 	int getTotal();
+	
+	/**
+	 * Returns the requested limit number of relationship changes. 
+	 * @return
+	 */
+	int getLimit();
+	
+	/**
+	 * Returns the offset of this collection-like resource
+	 * @return
+	 */
+	int getOffset();
 }

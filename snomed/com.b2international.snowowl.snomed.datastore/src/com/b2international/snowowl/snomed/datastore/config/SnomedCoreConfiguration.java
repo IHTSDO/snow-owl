@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	
 	public static final String DEFAULT_LANGUAGE = "en-gb"; //$NON-NLS-1$
 	public static final String DEFAULT_NAMESPACE = ""; //$NON-NLS-1$
-	public static final String DEFAULT_MODULE = Concepts.MODULE_SCT_CORE;
 	
 	// Branch metadata property keys
 	public static final String BRANCH_DEFAULT_NAMESPACE_KEY = "defaultNamespace";
@@ -67,6 +66,9 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	@Valid
 	@JsonProperty(value = "classification")
 	private SnomedClassificationConfiguration classificationConfig = new SnomedClassificationConfiguration();
+	
+	@Valid
+	private SnomedExportDefaultConfiguration export = new SnomedExportDefaultConfiguration();
 	
 	private boolean collectSystemChanges = false;
 	
@@ -122,7 +124,7 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	}
 	
 	/**
-	 * Get all identifier service related configuration options
+	 * @return the identifier generation sub-section of the SNOMED CT core configuration object
 	 */
 	public SnomedIdentifierConfiguration getIds() {
 		return ids;
@@ -133,6 +135,17 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	 */
 	public void setIds(SnomedIdentifierConfiguration ids) {
 		this.ids = ids;
+	}
+	
+	/**
+	 * @return the RF2 export defaults sub-section of the SNOMED CT core configuration object
+	 */
+	public SnomedExportDefaultConfiguration getExport() {
+		return export;
+	}
+	
+	public void setExport(SnomedExportDefaultConfiguration export) {
+		this.export = export;
 	}
 
 	/**

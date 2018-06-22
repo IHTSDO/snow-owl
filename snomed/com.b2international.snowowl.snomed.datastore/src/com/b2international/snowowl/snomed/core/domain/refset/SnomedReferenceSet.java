@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.core.domain.refset;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
@@ -35,6 +36,10 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
  * <li>{@code members()} - returns the members of this reference set as part of the reference set</li>
  * </ul>
  * 
+ * The number of expanded fields can be controlled with the {@code limit:} directive. For example:
+ * {@code members(limit:Integer.MAX_VALUE)}
+ * <p>
+ *
  * Expand parameters can be nested to further expand or filter the details returned. 
  * 
  * @see SnomedConcept
@@ -53,6 +58,11 @@ public final class SnomedReferenceSet extends SnomedComponent {
 	private String mapTargetComponentType;
 	private SnomedReferenceSetMembers members;
 
+	@Override
+	public short getTerminologyComponentId() {
+		return SnomedTerminologyComponentConstants.REFSET_NUMBER;
+	}
+	
 	/**
 	 * Returns the type of the reference set.
 	 * 

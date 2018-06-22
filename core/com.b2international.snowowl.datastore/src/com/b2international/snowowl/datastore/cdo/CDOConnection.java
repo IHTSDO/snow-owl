@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,9 @@
  */
 package com.b2international.snowowl.datastore.cdo;
 
-import static com.b2international.snowowl.datastore.BranchPathUtils.isBasePath;
-import static com.b2international.snowowl.datastore.BranchPointUtils.create;
-import static com.b2international.snowowl.datastore.BranchPointUtils.createBase;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.util.Comparator;
 import java.util.List;
 
 import javax.annotation.Nullable;
@@ -37,18 +35,18 @@ import org.eclipse.net4j.util.ref.ReferenceType;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.core.api.IBranchPoint;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
-import com.b2international.snowowl.core.users.User;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.datastore.cdo.ICDOBranchActionManager.BranchPathPredicate;
 import com.b2international.snowowl.datastore.connection.RepositoryConnectionConfiguration;
+import com.b2international.snowowl.identity.domain.User;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Longs;
 
 /**
  * The CDOConnection object wraps the client side elements of the connection to the server:
@@ -61,6 +59,36 @@ import com.google.common.collect.Lists;
 /*default*/ class CDOConnection extends CDOManagedItem<ICDOConnection> implements ICDOConnection {
 
 	private static final int COMMIT_MONITOR_TIMEOUT_SECONDS = 1000;
+	
+	/**
+	 * Comparator for comparing branches based on their base timestamps.
+	 */
+	Comparator<CDOBranch> BRANCH_BASE_COMPARATOR = new Comparator<CDOBranch>() {
+		@Override public int compare(final CDOBranch o1, final CDOBranch o2) {
+			return Longs.compare(o1.getBase().getTimeStamp(), o2.getBase().getTimeStamp());
+		}
+	};
+
+	/**
+	 * Predicate for comparing branches by their paths.
+	 * 
+	 * @see ICDOBranchActionManager
+	 */
+	public static class BranchPathPredicate implements Predicate<CDOBranch> {
+		
+		private final String branchPath;
+
+		public BranchPathPredicate(final IBranchPath branchPath) {
+			checkNotNull(branchPath, "Branch path argument cannot be null.");
+			this.branchPath = branchPath.getPath();
+		}
+
+		@Override public boolean apply(final CDOBranch branch) {
+			checkNotNull(branch, "CDO branch cannot be null.");
+			checkNotNull(branch.getPathName(), "Branch path cannot be null for branch: %s", branch);
+			return branchPath.equals(branch.getPathName());
+		}
+	}
 
 	/*default*/ CDOConnection(final String repositoryUuid, @Nullable final String repositoryName, final byte namespaceId, 
 			@Nullable final String toolingId, @Nullable final String dependsOnRepositoryUuid, final boolean meta) {
@@ -70,23 +98,6 @@ import com.google.common.collect.Lists;
 	@Override
 	public CDOView createView() {
 		return createView(getMainBranch());
-	}
-	
-	@Override
-	public CDOView createView(final IBranchPoint branchPoint) {
-		checkNotNull(branchPoint, "Branch point argument cannot be null.");
-		final CDOBranch branch = checkNotNull(getBranch(branchPoint.getBranchPath()), "Branch '%s' does not exist.",
-				branchPoint.getBranchPath());
-		return createView(branch, branchPoint.getTimestamp());
-	}
-	
-	@Override
-	public CDOView createView(final IBranchPath branchPath) {
-		if (isBasePath(checkNotNull(branchPath, "branchPath"))) {
-			return createView(createBase(getUuid(), branchPath));
-		} else {
-			return createView(create(getUuid(), branchPath));
-		}
 	}
 	
 	@Override
@@ -191,7 +202,7 @@ import com.google.common.collect.Lists;
 			final ImmutableSortedSet<CDOBranch> resultsForParent = FluentIterable
 				.from(ImmutableList.copyOf(parent.getBranches()))
 				.filter(new BranchPathPredicate(branchPath))
-				.toSortedSet(ICDOBranchActionManager.BRANCH_BASE_COMPARATOR);
+				.toSortedSet(BRANCH_BASE_COMPARATOR);
 			
 			results.addAll(resultsForParent);
 		}

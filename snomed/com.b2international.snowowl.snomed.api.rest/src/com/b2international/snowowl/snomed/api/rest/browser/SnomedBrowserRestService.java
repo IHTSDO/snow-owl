@@ -39,10 +39,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import com.b2international.commons.CompareUtils;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
-import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.datastore.request.ExpandParser;
-import com.b2international.snowowl.datastore.server.domain.StorageRef;
+import com.b2international.snowowl.core.request.ExpandParser;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
@@ -355,8 +353,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestParam(value="form", defaultValue="inferred")
 			final String form) {
 		
-		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptParents(ref, getExtendedLocales(languageSetting), "stated".equals(form), preferredDescriptionType);
+		return browserService.getConceptParents(branchPath, conceptId, "stated".equals(form), preferredDescriptionType, getExtendedLocales(languageSetting));
 	}
 	
 	@ApiOperation(
@@ -427,9 +424,13 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestParam(value="query")
 			final String query,
 
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false)
-			final int offset,
+			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
+			@RequestParam(value="scrollKeepAlive", required=false) 
+			final String scrollKeepAlive,
+			
+			@ApiParam(value="A scrollId to continue scrolling a previous query")
+			@RequestParam(value="scrollId", required=false) 
+			final String scrollId,
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,25 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.hibernate.validator.constraints.NotEmpty;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
+import com.b2international.snowowl.snomed.Concept;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.refset.MemberChange;
 import com.b2international.snowowl.snomed.core.domain.refset.QueryRefSetMemberEvaluation;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * @since 4.5
  */
-public final class QueryRefSetMemberUpdateRequest implements Request<TransactionContext, Void> {
+public final class QueryRefSetMemberUpdateRequest implements Request<TransactionContext, Boolean> {
 
 	@NotEmpty
 	private final String memberId;
@@ -39,14 +47,47 @@ public final class QueryRefSetMemberUpdateRequest implements Request<Transaction
 	}
 
 	@Override
-	public Void execute(TransactionContext context) {
+	public Boolean execute(TransactionContext context) {
 		// evaluate query member
 		final QueryRefSetMemberEvaluation evaluation = SnomedRequests.prepareQueryRefSetMemberEvaluation(memberId).build().execute(context);
+		
+		// lookup IDs before applying change to speed up query member update
+		final Set<String> referencedComponents = evaluation.getChanges().stream().map(MemberChange::getReferencedComponent).map(SnomedConcept::getId).collect(Collectors.toSet());
+		context.lookup(referencedComponents, Concept.class);
+		
 		// apply all change as request on the target reference set
 		for (MemberChange change : evaluation.getChanges()) {
-			SnomedRequests.prepareMemberChangeRequest(change, moduleId, evaluation.getReferenceSetId()).build().execute(context);
+			switch (change.getChangeKind()) {
+			case ADD:
+				SnomedRequests
+					.prepareNewMember()
+					.setModuleId(moduleId)
+					.setReferencedComponentId(change.getReferencedComponent().getId())
+					.setReferenceSetId(evaluation.getReferenceSetId())
+					.buildNoContent()
+					.execute(context);
+				break;
+			case REMOVE:
+				final SnomedReferenceSetMember member = SnomedRequests.prepareGetMember(change.getMemberId())
+					.build()
+					.execute(context);
+				if (member.isReleased()) {
+					SnomedRequests.prepareUpdateMember()
+						.setMemberId(change.getMemberId())
+						.setSource(ImmutableMap.of(SnomedRf2Headers.FIELD_ACTIVE, Boolean.FALSE))
+						.build()
+						.execute(context);
+				} else {
+					SnomedRequests.prepareDeleteMember(change.getMemberId())
+						.build()
+						.execute(context);
+				}
+				break;
+			default: 
+				throw new UnsupportedOperationException("Not implemented case: " + change.getChangeKind()); 
+			}
 		}
-		return null;
+		return Boolean.TRUE;
 	}
 
 }

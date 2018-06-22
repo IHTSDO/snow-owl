@@ -24,23 +24,19 @@ import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.apache.lucene.document.Document;
-import org.apache.lucene.index.Term;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.NumericRangeQuery;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHitCountCollector;
 
 import com.b2international.index.compat.SingleDirectoryIndexImpl;
-import com.b2international.index.lucene.Fields;
-import com.b2international.index.lucene.QueryBuilderBase.QueryBuilder;
+import com.b2international.index.query.Query.QueryBuilder;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.claml.ClamlModel.Term;
+import com.b2international.snowowl.core.request.SearchResourceRequest.Sort;
+import com.b2international.snowowl.core.request.SearchResourceRequest.SortField;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -85,9 +81,9 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	
 	private final ObjectMapper objectMapper;
 
-	public ClassificationRunIndex(final File directory) {
+	public ClassificationRunIndex(final File directory, ObjectMapper mapper) {
 		super(directory);
-		objectMapper = new ObjectMapper();
+		this.objectMapper = mapper;
 	}
 
 	public void trimIndex(int maximumResultsToKeep) throws IOException {
@@ -104,7 +100,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		}
 		
 		final Date lastCreationDate = lastRunToKeep.getCreationDate();
-		final Query trimmingQuery = NumericRangeQuery.newLongRange(FIELD_CREATION_DATE, null, lastCreationDate.getTime(), false, false);
+		final Query trimmingQuery = LongPoint.newRangeQuery(FIELD_CREATION_DATE, Long.MIN_VALUE, lastCreationDate.getTime());
 		writer.deleteDocuments(trimmingQuery);
 		commit();
 	}
@@ -138,7 +134,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 				return;
 			}
 			
-			final TopDocs docs = searcher.search(query, null, docsToRetrieve, Sort.INDEXORDER, false, false);
+			final TopDocs docs = searcher.search(query, docsToRetrieve, Sort.INDEXORDER, false, false);
 			final ScoreDoc[] scoreDocs = docs.scoreDocs;
 
 			final ObjectReader reader = objectMapper.reader(ClassificationRun.class);
@@ -151,7 +147,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 				
 				run.setStatus(ClassificationStatus.STALE);
 				
-				upsertClassificationRunNoCommit(BranchPathUtils.createPath(branchPath), run);
+				upsertClassificationRunNoCommit(branchPath, run);
 			}
 
 			commit();
@@ -182,13 +178,12 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		}
 	}
 
-	public void upsertClassificationRun(final IBranchPath branchPath, final ClassificationRun classificationRun) throws IOException {
+	public void upsertClassificationRun(final String branchPath, final ClassificationRun classificationRun) throws IOException {
 		upsertClassificationRunNoCommit(branchPath, classificationRun);
 		commit();
 	}
 
-	private void upsertClassificationRunNoCommit(final IBranchPath branchPath, final ClassificationRun classificationRun) throws IOException {
-
+	private void upsertClassificationRunNoCommit(final String branchPath, final ClassificationRun classificationRun) throws IOException {
 		final Document updatedDocument = new Document();
 		
 		Fields.searchOnlyStringField(FIELD_CLASS).addTo(updatedDocument, ClassificationRun.class.getSimpleName());
@@ -196,7 +191,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		Fields.searchOnlyStringField(FIELD_STATUS).addTo(updatedDocument, classificationRun.getStatus().name());
 		Fields.longField(FIELD_CREATION_DATE).addTo(updatedDocument, classificationRun.getCreationDate().getTime());
 		Fields.stringField(FIELD_USER_ID).addTo(updatedDocument, classificationRun.getUserId());
-		Fields.stringField(FIELD_BRANCH_PATH).addTo(updatedDocument, branchPath.getPath());
+		Fields.stringField(FIELD_BRANCH_PATH).addTo(updatedDocument, branchPath);
 		Fields.storedOnlyStringField(FIELD_SOURCE).addTo(updatedDocument, objectMapper.writer().writeValueAsString(classificationRun));
 		
 		final Query query = Fields.newQuery()
@@ -219,7 +214,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 			return;
 		}
 
-		final IBranchPath branchPath = BranchPathUtils.createPath(sourceDocument.get(FIELD_BRANCH_PATH));
+		final String branchPath = sourceDocument.get(FIELD_BRANCH_PATH);
 		final ClassificationRun classificationRun = objectMapper.reader(ClassificationRun.class).readValue(sourceDocument.get(FIELD_SOURCE));
 
 		if (newStatus.equals(classificationRun.getStatus())) {
@@ -355,12 +350,9 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final String sourceConceptId, final int offset, final int limit) throws IOException {
 
 		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, branchPath, sourceConceptId);
-		final RelationshipChangeList result = new RelationshipChangeList();
-
-		result.setTotal(getHitCount(query));
-		result.setChanges(this.<IRelationshipChange>search(query, RelationshipChange.class, offset, limit));
-
-		return result;
+		final int total = getHitCount(query);
+		final List<IRelationshipChange> changes = this.search(query, RelationshipChange.class, offset, limit);
+		return new RelationshipChangeList(changes, offset, limit, total);
 	}
 
 	private <T> void indexResult(final String id, final IBranchPath branchPath, final String userId, final long creationDate,
@@ -429,7 +421,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 				return resultBuilder.build();
 			}
 			
-			final TopDocs docs = searcher.search(query, null, docsToRetrieve, sort, false, false);
+			final TopDocs docs = searcher.search(query, docsToRetrieve, sort, false, false);
 			final ScoreDoc[] scoreDocs = docs.scoreDocs;
 
 			final ObjectReader reader = objectMapper.reader(sourceClass);
@@ -456,7 +448,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		try {
 
 			searcher = manager.acquire();
-			final TopDocs docs = searcher.search(query, null, limit, Sort.INDEXORDER, false, false);
+			final TopDocs docs = searcher.search(query, limit, Sort.INDEXORDER, false, false);
 			final ImmutableList.Builder<Document> resultBuilder = ImmutableList.builder();
 
 			for (final ScoreDoc scoreDoc : docs.scoreDocs) {

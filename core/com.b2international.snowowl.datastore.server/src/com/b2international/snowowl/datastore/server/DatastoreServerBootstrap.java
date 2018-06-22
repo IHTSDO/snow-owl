@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.collections.PrimitiveCollectionModule;
 import com.b2international.index.Index;
-import com.b2international.index.IndexClientFactory;
 import com.b2international.index.Indexes;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.snowowl.core.Repository;
@@ -43,13 +42,13 @@ import com.b2international.snowowl.core.events.util.ApiRequestHandler;
 import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.core.setup.ModuleConfig;
 import com.b2international.snowowl.core.setup.PreRunCapableBootstrapFragment;
-import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.datastore.cdo.CDOConnectionFactoryProvider;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.config.IndexConfiguration;
 import com.b2international.snowowl.datastore.config.IndexSettings;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
+import com.b2international.snowowl.datastore.internal.InternalRepository;
 import com.b2international.snowowl.datastore.net4j.Net4jUtils;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobTracker;
@@ -59,16 +58,15 @@ import com.b2international.snowowl.datastore.server.internal.DefaultRepositoryCo
 import com.b2international.snowowl.datastore.server.internal.DefaultRepositoryManager;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedEditingContextFactoryProvider;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedRepositoryClassLoaderProviderRegistry;
-import com.b2international.snowowl.datastore.server.internal.InternalRepository;
 import com.b2international.snowowl.datastore.server.internal.JsonSupport;
 import com.b2international.snowowl.datastore.server.session.ApplicationSessionManager;
 import com.b2international.snowowl.datastore.server.session.LogListener;
-import com.b2international.snowowl.datastore.server.session.VersionProcessor;
 import com.b2international.snowowl.datastore.serviceconfig.ServiceConfigJobManager;
 import com.b2international.snowowl.datastore.session.IApplicationSessionManager;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.eventbus.Pipe;
 import com.b2international.snowowl.eventbus.net4j.EventBusNet4jUtil;
+import com.b2international.snowowl.identity.IdentityProvider;
+import com.b2international.snowowl.identity.domain.User;
 import com.b2international.snowowl.rpc.RpcConfiguration;
 import com.b2international.snowowl.rpc.RpcProtocol;
 import com.b2international.snowowl.rpc.RpcUtil;
@@ -93,12 +91,18 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		LOG.debug("Preparing RPC communication (config={},gzip={})", rpcConfig, gzip);
 		RpcUtil.prepareContainer(container, rpcConfig, gzip);
 		LOG.debug("Preparing EventBus communication (gzip={})", gzip);
-		EventBusNet4jUtil.prepareContainer(container, gzip);
-		env.services().registerService(IEventBus.class, EventBusNet4jUtil.getBus(container));
+		int numberOfWorkers = configuration.getModuleConfig(RepositoryConfiguration.class).getNumberOfWorkers();
+		EventBusNet4jUtil.prepareContainer(container, gzip, numberOfWorkers);
+		env.services().registerService(IEventBus.class, EventBusNet4jUtil.getBus(container, numberOfWorkers));
 		LOG.debug("Preparing JSON support");
 		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
 		mapper.registerModule(new PrimitiveCollectionModule());
 		env.services().registerService(ObjectMapper.class, mapper);
+		// initialize class loader registry
+		env.services().registerService(RepositoryClassLoaderProviderRegistry.class, new ExtensionBasedRepositoryClassLoaderProviderRegistry());
+		final ClassLoader classLoader = env.service(RepositoryClassLoaderProviderRegistry.class).getClassLoader();
+		// initialize Notification support
+		env.services().registerService(Notifications.class, new Notifications(env.service(IEventBus.class), classLoader));
 	}
 
 	@Override
@@ -109,23 +113,16 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 			if (isInReindexMode()) {
 				initReindexSettings(configuration);
 			} else {
-				
 				RepositoryConfiguration repositoryConfiguration = configuration.getModuleConfig(RepositoryConfiguration.class);
 				LOG.info("Revision cache is {}", repositoryConfiguration.isRevisionCacheEnabled() ? "enabled" : "disabled");
-				
-				IndexConfiguration indexConfiguration = repositoryConfiguration.getIndexConfiguration();
-				LOG.info("Index commit interval is set to {} (default value is {})", indexConfiguration.getCommitInterval(), IndexClientFactory.DEFAULT_COMMIT_INTERVAL);
-				LOG.info("Index translog sync interval is set to {} (default value is {})", indexConfiguration.getTranslogSyncInterval(), IndexClientFactory.DEFAULT_TRANSLOG_SYNC_INTERVAL);
-				
 			}
 			
 			final IManagedContainer container = env.container();
 			final Stopwatch serverStopwatch = Stopwatch.createStarted();
 			
 			RpcUtil.getInitialServerSession(container).registerServiceLookup(new RpcServerServiceLookup());
-			final ApplicationSessionManager manager = new ApplicationSessionManager(configuration);
+			final ApplicationSessionManager manager = new ApplicationSessionManager(env.service(IdentityProvider.class));
 			manager.addListener(new LogListener());
-			manager.addListener(new VersionProcessor());
 			
 			env.services().registerService(IApplicationSessionManager.class, manager);
 			env.services().registerService(InternalApplicationSessionManager.class, manager);
@@ -144,6 +141,9 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 			env.services().registerService(RepositoryManager.class, new DefaultRepositoryManager());
 			env.services().registerService(EditingContextFactoryProvider.class, new ExtensionBasedEditingContextFactoryProvider());
 			
+			int numberOfWorkers = configuration.getModuleConfig(RepositoryConfiguration.class).getNumberOfWorkers();
+			initializeRequestSupport(env, numberOfWorkers);
+			
 			LOG.debug("<<< Server-side datastore bundle started. [{}]", serverStopwatch);
 		} else {
 			LOG.debug("Snow Owl application is running in remote mode.");
@@ -158,9 +158,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 			}
 		}
 		
-		env.services().registerService(RepositoryClassLoaderProviderRegistry.class, new ExtensionBasedRepositoryClassLoaderProviderRegistry());
-		final ClassLoader classLoader = env.service(RepositoryClassLoaderProviderRegistry.class).getClassLoader();
-		env.services().registerService(Notifications.class, new Notifications(env.service(IEventBus.class), classLoader));
 	}
 
 	private void initReindexSettings(SnowOwlConfiguration configuration) {
@@ -168,10 +165,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		IndexConfiguration indexConfiguration = repositoryConfig.getIndexConfiguration();
 		repositoryConfig.setRevisionCacheEnabled(false);
 		LOG.info("Set revision cache to {} for reindexing", repositoryConfig.isRevisionCacheEnabled());
-		indexConfiguration.setCommitInterval(900000L);
-		LOG.info("Set index commit interval to {} for reindexing", indexConfiguration.getCommitInterval());
-		indexConfiguration.setTranslogSyncInterval(300000L);
-		LOG.info("Set index translog sync interval to {} for reindexing", indexConfiguration.getTranslogSyncInterval());
 	}
 
 	private boolean isInReindexMode() {
@@ -184,7 +177,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		
 		if (env.isEmbedded() || env.isServer()) {
 			initializeJobSupport(env, configuration);
-			initializeRequestSupport(env, configuration.getModuleConfig(RepositoryConfiguration.class).getNumberOfWorkers());
 			initializeRepositories(configuration, env);
 			initializeContent(env);
 		}
@@ -206,17 +198,11 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 	
 	private void initializeRequestSupport(Environment env, int numberOfWorkers) {
 		final IEventBus events = env.service(IEventBus.class);
-		final Handlers handlers = new Handlers(numberOfWorkers);
 		final ClassLoader classLoader = env.service(RepositoryClassLoaderProviderRegistry.class).getClassLoader();
 		for (int i = 0; i < numberOfWorkers; i++) {
-			handlers.registerHandler(Request.ADDRESS, new ApiRequestHandler(env, classLoader));
+			events.registerHandler(Request.ADDRESS, new ApiRequestHandler(env, classLoader));
 		}
-
-		// register number of cores event bridge/pipe between events and handlers
-		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
-			events.registerHandler(Request.ADDRESS, new Pipe(handlers, Request.ADDRESS));
-		}
-		env.services().registerService(Handlers.class, handlers);
+		
 		env.services().registerService(RepositoryContextProvider.class, new DefaultRepositoryContextProvider(env.service(RepositoryManager.class)));
 	}
 
@@ -262,6 +248,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		clientProtocol.open(connector);
 
 		RpcUtil.getRpcClientProxy(InternalApplicationSessionManager.class).connectSystemUser();
-		CDOConnectionFactoryProvider.INSTANCE.getConnectionFactory().connect(SpecialUserStore.SYSTEM_USER);
+		CDOConnectionFactoryProvider.INSTANCE.getConnectionFactory().connect(User.SYSTEM.getUsername(), "" /*fake password*/);
 	}
 }

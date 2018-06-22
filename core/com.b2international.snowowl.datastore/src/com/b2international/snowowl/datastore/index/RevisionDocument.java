@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,71 +27,16 @@ import org.eclipse.emf.cdo.common.id.CDOIDUtil;
 import com.b2international.index.WithScore;
 import com.b2international.index.query.Expression;
 import com.b2international.index.revision.Revision;
-import com.b2international.snowowl.core.api.component.IconIdProvider;
-import com.b2international.snowowl.core.api.component.IdProvider;
-import com.b2international.snowowl.core.api.index.IIndexEntry;
-import com.fasterxml.jackson.annotation.JsonCreator;
+import com.b2international.snowowl.core.api.IComponent;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Objects;
 import com.google.common.base.Objects.ToStringHelper;
 
 /**
  * @since 4.7
  */
-public abstract class RevisionDocument extends Revision implements IIndexEntry, IconIdProvider<String>, WithScore {
+public abstract class RevisionDocument extends Revision implements IComponent<String>, WithScore {
 
-	public static abstract class Views {
-		
-		public static class IdOnly implements IdProvider<String> {
-			
-			private String id;
-			
-			@JsonCreator
-			public IdOnly(@JsonProperty("id") String id) {
-				this.id = id;
-			}
-			
-			@Override
-			public String getId() {
-				return id;
-			}
-			
-		}
-		
-		public static class IdAndStorageKeyOnly extends IdOnly {
-
-			private long storageKey;
-			
-			@JsonCreator
-			public IdAndStorageKeyOnly(@JsonProperty("id") final String id, @JsonProperty("storageKey") final long storageKey) {
-				super(id);
-				this.storageKey = storageKey;
-			}
-			
-			public long getStorageKey() {
-				return storageKey;
-			}
-			
-			@Override
-			public int hashCode() {
-				return java.util.Objects.hash(getId(), getStorageKey());
-			}
-			
-			@Override
-			public boolean equals(Object obj) {
-				if (this == obj) return true;
-				if (obj == null) return false;
-				if (getClass() != obj.getClass()) return false;
-				final IdAndStorageKeyOnly other = (IdAndStorageKeyOnly) obj;
-				return java.util.Objects.equals(getId(), other.getId())
-						&& java.util.Objects.equals(getStorageKey(), other.getStorageKey());
-			}
-			
-		}
-		
-	}
-	
 	public static abstract class Expressions {
 
 		protected Expressions() {
@@ -210,7 +155,6 @@ public abstract class RevisionDocument extends Revision implements IIndexEntry, 
 		return id;
 	}
 
-	@Override
 	public String getIconId() {
 		return iconId;
 	}

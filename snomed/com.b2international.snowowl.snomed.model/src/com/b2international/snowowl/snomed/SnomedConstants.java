@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -137,7 +137,8 @@ public abstract class SnomedConstants {
 
 		public static final String TOPLEVEL_METADATA = "900000000000441003";
 		public static final String LINKAGE = "106237007";
-		public static final String PHARMACEUTICAL = "373873005"; 
+		public static final String PHARMACEUTICAL = "373873005";
+		public static final String PHYSICAL_OBJECT = "260787004";
 		public static final String QUALIFIER_VALUE_TOPLEVEL_CONCEPT = "362981000";
 		
 		public static final String NOT_REFINABLE = "900000000000007000";
@@ -166,11 +167,23 @@ public abstract class SnomedConstants {
 		public static final String REFSET_DESCRIPTION_TYPE = "900000000000538005";
 		public static final String REFSET_CONCRETE_DOMAIN_TYPE_AU = "50131000036100"; //AU release -> NEHTA_0856_2012_AMTImplentationKit_20120229
 		public static final String REFSET_MODULE_DEPENDENCY_TYPE = "900000000000534007";
+		
+		public static final String REFSET_ANNOTATION_TYPE = "900000000000516008";
+		public static final String REFSET_OWL_EXPRESSION_TYPE = "762676003";
+		public static final String REFSET_OWL_ONTOLOGY = "762103008";
 		public static final String REFSET_OWL_AXIOM = "733073007";
-		public static final String REFSET_MRCM_DOMAIN_INTERNATIONAL = "723560006";
-		public static final String REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL = "723561005";
-		public static final String REFSET_MRCM_ATTRIBUTE_RANGE_INTERNATIONAL = "723562003";
+		
+		public static final String REFSET_MRCM_ROOT = "723564002";
 		public static final String REFSET_MRCM_MODULE_SCOPE = "723563008";
+		
+		public static final String REFSET_MRCM_DOMAIN_ROOT = "723589008";
+		public static final String REFSET_MRCM_DOMAIN_INTERNATIONAL = "723560006";
+		
+		public static final String REFSET_MRCM_ATTRIBUTE_DOMAIN_ROOT = "723604009";
+		public static final String REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL = "723561005";
+		
+		public static final String REFSET_MRCM_ATTRIBUTE_RANGE_ROOT = "723592007";
+		public static final String REFSET_MRCM_ATTRIBUTE_RANGE_INTERNATIONAL = "723562003";
 		
 		//CMT reference sets
 		public static final String REFSET_B2I_EXAMPLE = "780716481000154104"; //for more details see: https://github.com/b2ihealthcare/snowowl/issues/368
@@ -256,7 +269,11 @@ public abstract class SnomedConstants {
 		public static final String REFSET_CONCEPT_INACTIVITY_INDICATOR = "900000000000489007";
 		public static final String REFSET_DESCRIPTION_INACTIVITY_INDICATOR = "900000000000490003";
 		
-		//component inactivation reasons
+		// MRCM related concepts
+		public static final String RULE_STRENGTH_ROOT = "723573005";
+		public static final String CONTENT_TYPE_ROOT = "723574004";
+		
+		//component incativation reasons
 		public static final String LIMITED = "900000000000486000";
 		public static final String DUPLICATE = "900000000000482003";
 		public static final String OUTDATED = "900000000000483008";
@@ -270,6 +287,7 @@ public abstract class SnomedConstants {
 		public static final String NOT_SEMANTICALLY_EQUIVALENT = "723278000";
 		
 		// Historical reference sets
+		public static final String REFSET_HISTORICAL_ASSOCIATION = "900000000000522004";
 		public static final String REFSET_ALTERNATIVE_ASSOCIATION = "900000000000530003";
 		public static final String REFSET_MOVED_FROM_ASSOCIATION = "900000000000525002";
 		public static final String REFSET_MOVED_TO_ASSOCIATION = "900000000000524003";
@@ -316,7 +334,43 @@ public abstract class SnomedConstants {
 		public static final String MODULE_SCT_CORE = "900000000000207008";
 		public static final String MODULE_SCT_MODEL_COMPONENT = "900000000000012004";
 		public static final String MODULE_B2I_EXTENSION = "636635721000154103";
+		public static final String CORE_NAMESPACE = "373872000";
 		public static final String B2I_NAMESPACE = "1000154";
+		
+		// UK modules
+		public static final String UK_MAINTAINED_CLINICAL_MODULE = "999003121000000100";
+		public static final String UK_EDITION_MODULE = "999000041000000102";
+		public static final String UK_EDITION_REFERENCE_SET_MODULE = "999000031000000106";
+		public static final String UK_CLINICAL_EXTENSION_MODULE = "999000011000000103";
+		public static final String UK_CLINICAL_EXTENSION_REFERENCE_SET_MODULE = "999000021000000109";
+		
+		public static final String UK_MAINTAINED_PHARMACY_MODULE = "999000871000001102";
+		public static final String UK_DRUG_EXTENSION_MODULE = "999000011000001104";
+		public static final String UK_DRUG_EXTENSION_REFERENCE_SET_MODULE = "999000021000001108";
+		
+		public static final String UK_EXCLUDE_FROM_CLINICAL_RELEASE_MODULE = "15211000000101";
+		public static final String UK_EXCLUDE_FROM_DRUG_EXTENSION_RELEASE_MODULE = "13088301000001107";
+		
+		public static final Set<String> UK_MODULES = ImmutableSet.of(
+			UK_MAINTAINED_CLINICAL_MODULE, 
+			UK_EDITION_MODULE,
+			UK_EDITION_REFERENCE_SET_MODULE,
+			UK_CLINICAL_EXTENSION_MODULE,
+			UK_CLINICAL_EXTENSION_REFERENCE_SET_MODULE,
+			UK_MAINTAINED_PHARMACY_MODULE,
+			UK_DRUG_EXTENSION_MODULE,
+			UK_DRUG_EXTENSION_REFERENCE_SET_MODULE
+		);
+		
+		public static final Set<String> UK_MODULES_NOCLASSIFY = ImmutableSet.of(
+			UK_MAINTAINED_CLINICAL_MODULE, 
+			UK_EDITION_MODULE,
+			UK_EDITION_REFERENCE_SET_MODULE,
+			UK_CLINICAL_EXTENSION_REFERENCE_SET_MODULE,
+			UK_MAINTAINED_PHARMACY_MODULE,
+			UK_DRUG_EXTENSION_MODULE,
+			UK_DRUG_EXTENSION_REFERENCE_SET_MODULE
+		);
 
 		// SG specific concepts
 		public static final String GENERATED_SINGAPORE_MEDICINAL_PRODUCT = "551000991000133100";
@@ -346,6 +400,7 @@ public abstract class SnomedConstants {
 		public static final String REFINABILITY_VALUE = "900000000000226000";
 		public static final String DESCRIPTION_INACTIVATION_VALUE = "900000000000493001";
 		public static final String CONCEPT_INACTIVATION_VALUE = "900000000000481005";
+
 	}
 	
 	// RF2 effective time format

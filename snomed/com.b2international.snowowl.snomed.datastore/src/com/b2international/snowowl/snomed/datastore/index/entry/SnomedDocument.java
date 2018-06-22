@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import static com.b2international.index.query.Expressions.match;
 import static com.b2international.index.query.Expressions.matchAny;
 import static com.b2international.index.query.Expressions.matchRange;
 import static com.google.common.base.Preconditions.checkArgument;
-import java.util.Set;
 
 import com.b2international.index.query.Expression;
 import com.b2international.snowowl.core.date.EffectiveTimes;
@@ -63,16 +62,20 @@ public abstract class SnomedDocument extends RevisionDocument implements Contain
 		 * @param modules
 		 * @return expression
 		 */
-		public static Expression modules(Set<String> modules) {
+		public static Expression modules(Iterable<String> modules) {
 			return matchAny(Fields.MODULE_ID, modules);
 		}
 
 		public static final Expression released() {
-			return match(Fields.RELEASED, true);
+			return released(true);
 		}
 		
 		public static final Expression unreleased() {
-			return match(Fields.RELEASED, false);
+			return released(false);
+		}
+		
+		public static final Expression released(boolean released) {
+			return match(Fields.RELEASED, released);
 		}
 		
 		public static final Expression effectiveTime(long effectiveTime) {
@@ -134,8 +137,8 @@ public abstract class SnomedDocument extends RevisionDocument implements Contain
 		public static final String EFFECTIVE_TIME = "effectiveTime";
 	}
 
-	private final String moduleId;
 	private final boolean released;
+	private final String moduleId;
 	private final boolean active;
 	private final long effectiveTime;
 
@@ -146,10 +149,7 @@ public abstract class SnomedDocument extends RevisionDocument implements Contain
 			final boolean released, 
 			final boolean active, 
 			final long effectiveTime) {
-		super(id, 
-				label == null ? String.format("!!!%s!!!", id) : label, // XXX use ID with markers to indicate problems when fetching entries without label on the client side
-				iconId);
-
+		super(id, label, iconId);
 		checkArgument(effectiveTime >= EffectiveTimes.UNSET_EFFECTIVE_TIME, "Effective time argument '%s' is invalid.", effectiveTime);
 		this.moduleId = moduleId;
 		this.released = released;

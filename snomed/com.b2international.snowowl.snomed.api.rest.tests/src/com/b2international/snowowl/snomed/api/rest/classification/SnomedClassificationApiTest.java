@@ -54,9 +54,11 @@ import com.b2international.snowowl.snomed.api.domain.classification.Classificati
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConcept;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
+import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConceptSet;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChange;
+import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChangeList;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests;
@@ -67,9 +69,7 @@ import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfigurati
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
-import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
@@ -79,6 +79,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.jayway.restassured.mapper.ObjectMapper;
 import com.jayway.restassured.response.ValidatableResponse;
 
 /**
@@ -98,13 +99,15 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	private static final String PROVOCATION_TECHNIQUE = "246506007";
 	
 	private static ObjectMapper getObjectMapper() {
-		ObjectMapper objectMapper = new ObjectMapper();
+		ObjectMapper mapper = new ObjectMapper();
 		SimpleModule module = new SimpleModule("classification", Version.unknownVersion());
 		module.addAbstractTypeMapping(IRelationshipChange.class, RelationshipChange.class);
+		module.addAbstractTypeMapping(IRelationshipChangeList.class, RelationshipChangeList.class);
+		mapper.registerModule(module);
 		module.addAbstractTypeMapping(IEquivalentConceptSet.class, EquivalentConceptSet.class);
 		module.addAbstractTypeMapping(IEquivalentConcept.class, EquivalentConcept.class);
-		objectMapper.registerModule(module);
-		return objectMapper;
+		mapper.registerModule(module);
+		return mapper;
 	}
 
 	private static int getPersistedInferredRelationshipCount(IBranchPath conceptPath, String conceptId) {
@@ -131,9 +134,10 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		.statusCode(200)
 		.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
 
-		PageableCollectionResource<IRelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+		Collection<IRelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
 				.extract()
-				.asInputStream(), RELATIONSHIP_CHANGES_REFERENCE);
+				.asInputStream(), IRelationshipChangeList.class)
+				.getItems();
 
 		Multimap<String, IRelationshipChange> changesBySource = Multimaps.index(changes, c -> c.getSourceId());
 		Collection<IRelationshipChange> parentRelationshipChanges = changesBySource.get(parentConceptId);
@@ -199,12 +203,12 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		.statusCode(200)
 		.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
 
-		PageableCollectionResource<IRelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+		IRelationshipChangeList changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
 				.extract()
-				.asInputStream(), RELATIONSHIP_CHANGES_REFERENCE);
+				.asInputStream(), IRelationshipChangeList.class);
 
 		assertEquals(1, changes.getTotal());
-		IRelationshipChange relationshipChange = Iterables.getOnlyElement(changes);
+		IRelationshipChange relationshipChange = Iterables.getOnlyElement(changes.getItems());
 		assertEquals(ChangeNature.REDUNDANT, relationshipChange.getChangeNature());
 		assertEquals(childConceptId, relationshipChange.getSourceId());
 		assertEquals(Concepts.IS_A, relationshipChange.getTypeId());
@@ -309,13 +313,13 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		 * Expecting lots of changes; all concepts receive the "Part of" relationship because it was added to the root concept, however, the original inferred relationship 
 		 * with group 5 should be redundant.
 		 */
-		PageableCollectionResource<IRelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+		IRelationshipChangeList changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
 				.extract()
-				.asInputStream(), RELATIONSHIP_CHANGES_REFERENCE);
+				.asInputStream(), IRelationshipChangeList.class);
 
 		boolean redundantFound = false;
 
-		for (IRelationshipChange relationshipChange : changes) {
+		for (IRelationshipChange relationshipChange : changes.getItems()) {
 			assertEquals(Concepts.PART_OF, relationshipChange.getTypeId());
 			assertEquals(Concepts.NAMESPACE_ROOT, relationshipChange.getDestinationId());
 
@@ -406,11 +410,11 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		 * Expecting that childConceptId will get two inferred IS A-s pointing to parentConceptId and equivalentConceptId, respectively, 
 		 * while parentConceptId and equivalentConceptId each will get a single inferred IS A pointing to the root concept.
 		 */
-		PageableCollectionResource<IRelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+		IRelationshipChangeList changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
 				.extract()
-				.asInputStream(), RELATIONSHIP_CHANGES_REFERENCE);
+				.asInputStream(), IRelationshipChangeList.class);
 
-		FluentIterable<IRelationshipChange> changesIterable = FluentIterable.from(changes);
+		FluentIterable<IRelationshipChange> changesIterable = FluentIterable.from(changes.getItems());
 		
 		assertEquals(4, changes.getTotal());
 		assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.INFERRED.equals(relationshipChange.getChangeNature())));

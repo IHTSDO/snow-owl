@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.eclipse.core.runtime.SubMonitor;
 
 import com.b2international.collections.longs.LongIterator;
 import com.b2international.collections.longs.LongList;
-import com.b2international.snowowl.datastore.server.snomed.index.InitialReasonerTaxonomyBuilder;
+import com.b2international.snowowl.datastore.server.snomed.index.ReasonerTaxonomyBuilder;
 import com.b2international.snowowl.snomed.reasoner.server.classification.ReasonerTaxonomy;
 import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChangeProcessor;
 import com.google.common.collect.Ordering;
@@ -33,15 +33,14 @@ import com.google.common.collect.Ordering;
  * hierarchy encapsulated in a reasoner.
  * 
  * @param <T> the generated component type
- * 
  */
 public abstract class NormalFormGenerator<T extends Serializable> {
 
 	protected final ReasonerTaxonomy reasonerTaxonomy;
 	
-	protected final InitialReasonerTaxonomyBuilder reasonerTaxonomyBuilder;
+	protected final ReasonerTaxonomyBuilder reasonerTaxonomyBuilder;
 
-	public NormalFormGenerator(final ReasonerTaxonomy reasonerTaxonomy, InitialReasonerTaxonomyBuilder reasonerTaxonomyBuilder) {
+	public NormalFormGenerator(final ReasonerTaxonomy reasonerTaxonomy, ReasonerTaxonomyBuilder reasonerTaxonomyBuilder) {
 		this.reasonerTaxonomy = reasonerTaxonomy;
 		this.reasonerTaxonomyBuilder = reasonerTaxonomyBuilder;
 	}
@@ -71,18 +70,27 @@ public abstract class NormalFormGenerator<T extends Serializable> {
 				processor.apply(conceptId, existingComponents, generatedComponents, ordering, subMonitor.newChild(1));
 				generatedComponentCount += generatedComponents.size();
 			}
-
+			
 		} finally {
 			subMonitor.done();
 		}
 		
 		return generatedComponentCount; 
 	}
-	
+
+	/**
+	 * Returns the set of currently persisted components for the specified concept.
+	 * <p>
+	 * The returned collection might not be in normal form.
+	 * 
+	 * @param concept the concept for which components should be generated
+	 * @return the existing components of the specified concept
+	 */
 	public abstract Collection<T> getExistingComponents(final long conceptId);
 
 	/**
 	 * Computes and returns a set of components in normal form for the specified concept.
+	 * 
 	 * @param concept the concept for which components should be generated
 	 * @return the generated components of the specified concept in normal form
 	 */

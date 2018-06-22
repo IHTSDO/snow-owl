@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ import static com.b2international.snowowl.core.ApplicationContext.getServiceForC
 import static com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW;
 import static com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions.SAVE_CLASSIFICATION_RESULTS;
 
-import java.io.IOException;
+import java.util.List;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -30,14 +31,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongCollection;
 import com.b2international.collections.longs.LongSet;
 import com.b2international.index.revision.RevisionIndex;
-import com.b2international.index.revision.RevisionIndexRead;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ApiError;
 import com.b2international.snowowl.datastore.cdo.CDOServerCommitBuilder;
@@ -47,36 +48,42 @@ import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContext;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreOperationLockException;
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
 import com.b2international.snowowl.datastore.oplock.impl.SingleRepositoryAndBranchLockTarget;
-import com.b2international.snowowl.datastore.server.snomed.index.AbstractReasonerTaxonomyBuilder.Type;
-import com.b2international.snowowl.datastore.server.snomed.index.InitialReasonerTaxonomyBuilder;
+import com.b2international.snowowl.datastore.server.snomed.index.ReasonerTaxonomyBuilder;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.datastore.ConcreteDomainFragment;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
+import com.b2international.snowowl.snomed.datastore.StatementFragment;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.id.SnomedNamespaceAndModuleAssigner;
+import com.b2international.snowowl.snomed.datastore.id.SnomedNamespaceAndModuleAssignerProvider;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.reasoner.server.classification.EquivalentConceptMerger;
 import com.b2international.snowowl.snomed.reasoner.server.classification.ReasonerTaxonomy;
-import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChange;
+import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChangeRecorder;
 import com.b2international.snowowl.snomed.reasoner.server.diff.concretedomain.ConcreteDomainPersister;
 import com.b2international.snowowl.snomed.reasoner.server.diff.relationship.RelationshipPersister;
 import com.b2international.snowowl.snomed.reasoner.server.normalform.ConceptConcreteDomainNormalFormGenerator;
 import com.b2international.snowowl.snomed.reasoner.server.normalform.RelationshipNormalFormGenerator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
+import com.google.common.collect.Lists;
 
 /**
  * @since 5.7
  */
-public class PersistChangesRequest implements Request<ServiceProvider, ApiError> {
+final class PersistChangesRequest implements Request<ServiceProvider, ApiError> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(PersistChangesRequest.class);
+	private static final Logger LOG = LoggerFactory.getLogger("reasoner");
 	
 	private static final long LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(5L);
 
 	@JsonProperty
 	private final String classificationId;
 	private final String userId;
+	private final ReasonerTaxonomyBuilder taxonomyBuilder;
 
 	private ReasonerTaxonomy taxonomy;
 	private DatastoreLockContext lockContext;
@@ -85,11 +92,16 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 
 	private boolean concreteDomainSupportEnabled;
 
-	public PersistChangesRequest(String classificationId, ReasonerTaxonomy taxonomy, String userId) {
+	PersistChangesRequest(String classificationId, ReasonerTaxonomy taxonomy, ReasonerTaxonomyBuilder taxonomyBuilder, String userId) {
 		this.classificationId = classificationId;
 		this.taxonomy = taxonomy;
+		this.taxonomyBuilder = taxonomyBuilder;
 		this.userId = userId;
 		this.concreteDomainSupportEnabled = ApplicationContext.getInstance().getServiceChecked(SnomedCoreConfiguration.class).isConcreteDomainSupported();
+	}
+	
+	private boolean isConcreteDomainSupported() {
+		return ApplicationContext.getInstance().getService(SnowOwlConfiguration.class).getModuleConfig(SnomedCoreConfiguration.class).isConcreteDomainSupported();
 	}
 
 	@Override
@@ -98,7 +110,7 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 
 		try {
 			lockBeforeChanges();
-			return persistChanges(monitor);
+			return persistChanges(context, monitor);
 		} catch (Exception e) {
 			return createApiError(e);
 		} finally {
@@ -136,7 +148,7 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 		}
 	}
 
-	private ApiError persistChanges(IProgressMonitor monitor) throws CommitException {
+	private ApiError persistChanges(ServiceProvider context, IProgressMonitor monitor) throws CommitException {
 
 		if (null == taxonomy) {
 			throw new IllegalStateException("Tried to run the same persist changes job twice.");
@@ -149,47 +161,21 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 		try {
 
 			editingContext = new SnomedEditingContext(branchPath);
-			InitialReasonerTaxonomyBuilder reasonerTaxonomyBuilder = getIndex().read(branchPath.getPath(), new RevisionIndexRead<InitialReasonerTaxonomyBuilder>() {
-				@Override
-				public InitialReasonerTaxonomyBuilder execute(RevisionSearcher searcher) throws IOException {
-					return new InitialReasonerTaxonomyBuilder(searcher, Type.REASONER);
-				}
-			});
-
-			RelationshipNormalFormGenerator relationshipGenerator = new RelationshipNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder);
-			RelationshipPersister relationshipAddPersister = new RelationshipPersister(editingContext, OntologyChange.Nature.ADD);
-			RelationshipPersister relationshipRemovePersister = new RelationshipPersister(editingContext, OntologyChange.Nature.REMOVE);
-
-			relationshipGenerator.collectNormalFormChanges(subMonitor.newChild(1), relationshipAddPersister);
-			relationshipGenerator.collectNormalFormChanges(subMonitor.newChild(1), relationshipRemovePersister);
-
-			if (concreteDomainSupportEnabled) {
-				ConceptConcreteDomainNormalFormGenerator conceptConcreteDomainGenerator = new ConceptConcreteDomainNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder);
-				conceptConcreteDomainGenerator.collectNormalFormChanges(subMonitor.newChild(1), new ConcreteDomainPersister(editingContext, OntologyChange.Nature.ADD));
-				conceptConcreteDomainGenerator.collectNormalFormChanges(subMonitor.newChild(1), new ConcreteDomainPersister(editingContext, OntologyChange.Nature.REMOVE));
-			}
-
-//			List<LongSet> equivalenciesToFix = Lists.newArrayList();
-//
-//			for (LongSet equivalentSet : taxonomy.getEquivalentConceptIds()) {
-//				long firstConceptId = equivalentSet.iterator().next();
-//				String firstConceptIdString = Long.toString(firstConceptId);
-//
-//				// FIXME: make equivalence set to fix user-selectable, only subtype of SMP can be auto-merged
-//				if (isSubTypeOfSMP(branchPath, firstConceptIdString)) {
-//					equivalenciesToFix.add(equivalentSet);
-//				}
-//			}
-//
-//			new EquivalentConceptMerger(editingContext, equivalenciesToFix).fixEquivalencies();
+			SnomedNamespaceAndModuleAssigner namespaceAndModuleAssigner = context.service(SnomedNamespaceAndModuleAssignerProvider.class).get();
+			LOG.info("Reasoner service will use the {} class for relationship/concrete domain namespace and module assignement.", namespaceAndModuleAssigner.getClass().getSimpleName());
+			applyChanges(subMonitor, editingContext, namespaceAndModuleAssigner);
+			// fixEquivalences(editingContext);
 
 			CDOTransaction editingContextTransaction = editingContext.getTransaction();
 			editingContext.preCommit();
 
 			new CDOServerCommitBuilder(userId, "Classified ontology.", editingContextTransaction)
-			.parentContextDescription(SAVE_CLASSIFICATION_RESULTS)
-			.commitOne(subMonitor.newChild(2));
+					.parentContextDescription(SAVE_CLASSIFICATION_RESULTS)
+					.commitOne(subMonitor.newChild(2));
 
+			// register reserved IDs
+			namespaceAndModuleAssigner.registerAllocatedIds();
+			
 			return new ApiError.Builder("OK").code(200).build();
 		} catch (CommitException e) {
 			// if (editingContext != null) {
@@ -200,6 +186,73 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 			if (editingContext != null) {
 				editingContext.close();
 			}
+		}
+	}
+
+	private void applyChanges(SubMonitor subMonitor, SnomedEditingContext editingContext, SnomedNamespaceAndModuleAssigner namespaceAndModuleAssigner) {
+		final OntologyChangeRecorder<StatementFragment> relationshipRecorder = new OntologyChangeRecorder<>();
+		final OntologyChangeRecorder<ConcreteDomainFragment> concreteDomainRecorder = new OntologyChangeRecorder<>();
+		recordChanges(subMonitor, relationshipRecorder, concreteDomainRecorder);
+	
+		namespaceAndModuleAssigner.allocateRelationshipIdsAndModules(relationshipRecorder.getAddedSubjects().keys(), editingContext);
+		applyRelationshipChanges(editingContext, relationshipRecorder, namespaceAndModuleAssigner);
+		
+		if (isConcreteDomainSupported()) {
+			namespaceAndModuleAssigner.allocateConcreteDomainModules(concreteDomainRecorder.getAddedSubjects().keySet(), editingContext);
+			applyConcreteDomainChanges(editingContext, concreteDomainRecorder, namespaceAndModuleAssigner);
+		}
+	}
+
+	private void recordChanges(final SubMonitor subMonitor,
+			final OntologyChangeRecorder<StatementFragment> relationshipRecorder,
+			final OntologyChangeRecorder<ConcreteDomainFragment> concreteDomainRecorder) {
+		final RelationshipNormalFormGenerator relationshipGenerator = new RelationshipNormalFormGenerator(taxonomy, taxonomyBuilder);
+		relationshipGenerator.collectNormalFormChanges(subMonitor.newChild(1), relationshipRecorder);
+	
+		final ConceptConcreteDomainNormalFormGenerator conceptConcreteDomainGenerator = new ConceptConcreteDomainNormalFormGenerator(taxonomy, taxonomyBuilder);
+		conceptConcreteDomainGenerator.collectNormalFormChanges(subMonitor.newChild(1), concreteDomainRecorder);
+	}
+
+	private void applyRelationshipChanges(SnomedEditingContext editingContext, OntologyChangeRecorder<StatementFragment> relationshipRecorder, SnomedNamespaceAndModuleAssigner namespaceAndModuleAssigner) {
+		final RelationshipPersister relationshipPersister = new RelationshipPersister(editingContext, namespaceAndModuleAssigner);
+		
+		for (Entry<String, StatementFragment> addedFragments : relationshipRecorder.getAddedSubjects().entries()) {
+			relationshipPersister.handleAddedSubject(addedFragments.getKey(), addedFragments.getValue());
+		}
+		
+		for (Entry<String, StatementFragment> removedFragments : relationshipRecorder.getRemovedSubjects().entries()) {
+			relationshipPersister.handleRemovedSubject(removedFragments.getKey(), removedFragments.getValue());
+		}
+	}
+
+	private void applyConcreteDomainChanges(SnomedEditingContext editingContext, OntologyChangeRecorder<ConcreteDomainFragment> concreteDomainRecorder, SnomedNamespaceAndModuleAssigner namespaceAndModuleAssigner) {
+		final ConcreteDomainPersister concreteDomainPersister = new ConcreteDomainPersister(editingContext, namespaceAndModuleAssigner);
+		
+		for (Entry<String, ConcreteDomainFragment> addedFragments : concreteDomainRecorder.getAddedSubjects().entries()) {
+			concreteDomainPersister.handleAddedSubject(addedFragments.getKey(), addedFragments.getValue());
+		}
+		
+		for (Entry<String, ConcreteDomainFragment> removedFragments : concreteDomainRecorder.getRemovedSubjects().entries()) {
+			concreteDomainPersister.handleRemovedSubject(removedFragments.getKey(), removedFragments.getValue());
+		}
+	}
+
+	private void fixEquivalences(SnomedEditingContext editingContext) {
+		final IBranchPath branchPath = taxonomy.getBranchPath();
+		final List<LongCollection> equivalenciesToFix = Lists.newArrayList();
+		
+		for (LongCollection equivalentSet : taxonomy.getEquivalentConceptIds()) {
+			long firstConceptId = equivalentSet.iterator().next();
+			String firstConceptIdString = Long.toString(firstConceptId);
+	
+			// FIXME: make equivalence set to fix user-selectable, only subtype of SMP can be auto-merged
+			if (isSubTypeOfSMP(branchPath, firstConceptIdString)) {
+				equivalenciesToFix.add(equivalentSet);
+			}
+		}
+	
+		if (!equivalenciesToFix.isEmpty()) {
+			new EquivalentConceptMerger(editingContext, equivalenciesToFix).fixEquivalencies();
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
+import java.util.Set;
+
 import com.b2international.commons.CompareUtils;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.domain.TransactionContext;
@@ -29,6 +31,7 @@ import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * @since 5.0
@@ -149,6 +152,15 @@ abstract class SnomedRefSetMemberCreateDelegate {
 		if (CompareUtils.isEmpty(getProperty(key, Object.class))) {
 			throw new BadRequestException("Property '%s' may not be null or empty for '%s' reference set members.", key, refSet.getIdentifierId());
 		}
+	}
+
+	/**
+	 * Subclasses may override to return additional required component IDs, like special IDs that are required to execute the delegate properly. 
+	 * Common reference set properties (like moduleId and referencedComponentId) can be excluded, they are already checked externally.
+	 * @return
+	 */
+	protected Set<String> getRequiredComponentIds() {
+		return ImmutableSet.of();
 	}
 
 	abstract String execute(SnomedRefSet refSet, TransactionContext context);

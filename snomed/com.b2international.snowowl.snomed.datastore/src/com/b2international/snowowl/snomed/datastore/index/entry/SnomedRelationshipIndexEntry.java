@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,34 +23,43 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 import com.b2international.index.Doc;
+import com.b2international.index.RevisionHash;
 import com.b2international.index.query.Expression;
-import com.b2international.snowowl.core.api.IStatement;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
-import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import com.google.common.base.Function;
 import com.google.common.base.Objects.ToStringHelper;
-import com.google.common.collect.FluentIterable;
+import com.google.common.base.Strings;
 
 /**
  * A transfer object representing a SNOMED CT description.
  */
 @Doc
 @JsonDeserialize(builder = SnomedRelationshipIndexEntry.Builder.class)
-public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument implements IStatement<String> {
+@RevisionHash({ 
+	SnomedDocument.Fields.ACTIVE, 
+	SnomedDocument.Fields.EFFECTIVE_TIME, 
+	SnomedDocument.Fields.MODULE_ID, 
+	SnomedRelationshipIndexEntry.Fields.GROUP,
+	SnomedRelationshipIndexEntry.Fields.UNION_GROUP,
+	SnomedRelationshipIndexEntry.Fields.CHARACTERISTIC_TYPE_ID,
+	SnomedRelationshipIndexEntry.Fields.MODIFIER_ID,
+	SnomedRelationshipIndexEntry.Fields.TYPE_ID,
+	SnomedRelationshipIndexEntry.Fields.DESTINATION_ID,
+	SnomedRelationshipIndexEntry.Fields.DESTINATION_NEGATED
+})
+public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument {
 
 	private static final long serialVersionUID = -7873086925532169024L;
 	
@@ -62,9 +71,11 @@ public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument 
 	}
 
 	public static Builder builder(final SnomedRelationship input) {
+		String id = input.getId();
 		final Builder builder = builder()
 				.storageKey(input.getStorageKey())
-				.id(input.getId())
+				.id(id)
+				.namespace(!Strings.isNullOrEmpty(id) ? SnomedIdentifiers.getNamespace(id) : null)
 				.sourceId(input.getSourceId())
 				.typeId(input.getTypeId())
 				.destinationId(input.getDestinationId())
@@ -86,9 +97,11 @@ public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument 
 	}
 	
 	public static Builder builder(Relationship relationship) {
+		String id = relationship.getId();
 		return builder()
 				.storageKey(CDOIDUtils.asLong(relationship.cdoID()))
-				.id(relationship.getId())
+				.id(id)
+				.namespace(!Strings.isNullOrEmpty(id) ? SnomedIdentifiers.getNamespace(id) : null)
 				.active(relationship.isActive())
 				.sourceId(relationship.getSource().getId())
 				.typeId(relationship.getType().getId())
@@ -104,9 +117,11 @@ public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument 
 	}
 	
 	public static Builder builder(SnomedRelationshipIndexEntry input) {
+		String id = input.getId();
 		return builder()
 				.storageKey(CDOIDUtils.asLong(input.cdoID()))
-				.id(input.getId())
+				.id(id)
+				.namespace(!Strings.isNullOrEmpty(id) ? SnomedIdentifiers.getNamespace(id) : null)
 				.active(input.isActive())
 				.sourceId(input.getSourceId())
 				.typeId(input.getTypeId())
@@ -119,15 +134,6 @@ public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument 
 				.destinationNegated(input.isDestinationNegated())
 				.moduleId(input.getModuleId())
 				.effectiveTime(input.getEffectiveTime());
-	}
-	
-	public static Collection<SnomedRelationshipIndexEntry> fromRelationships(Iterable<SnomedRelationship> relationships) {
-		return FluentIterable.from(relationships).transform(new Function<SnomedRelationship, SnomedRelationshipIndexEntry>() {
-			@Override
-			public SnomedRelationshipIndexEntry apply(SnomedRelationship input) {
-				return builder(input).build();
-			}
-		}).toSet();
 	}
 	
 	public static final class Expressions extends SnomedComponentDocument.Expressions {
@@ -193,48 +199,6 @@ public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument 
 		
 		public static Expression destinationNegated() {
 			return match(Fields.DESTINATION_NEGATED, true);
-		}
-		
-	}
-	
-	public static final class Views extends RevisionDocument.Views {
-		
-		public static class StatementWithId extends RevisionDocument.Views.IdOnly {
-
-			private final String sourceId;
-			private final String destinationId;
-
-			@JsonCreator
-			public StatementWithId(@JsonProperty("id") final String id, @JsonProperty("sourceId") final String sourceId, @JsonProperty("destinationId") final String destinationId) {
-				super(id);
-				this.sourceId = sourceId;
-				this.destinationId = destinationId;
-			}
-			
-			public String getSourceId() {
-				return sourceId;
-			}
-			
-			public String getDestinationId() {
-				return destinationId;
-			}
-			
-			@Override
-			public int hashCode() {
-				return Objects.hash(getId(), getSourceId(), getDestinationId());
-			}
-			
-			@Override
-			public boolean equals(Object obj) {
-				if (this == obj) return true;
-				if (obj == null) return false;
-				if (getClass() != obj.getClass()) return false;
-				final StatementWithId other = (StatementWithId) obj;
-				return Objects.equals(getId(), other.getId())
-						&& Objects.equals(getSourceId(), other.getSourceId())
-						&& Objects.equals(getDestinationId(), other.getDestinationId());
-			}
-			
 		}
 		
 	}
@@ -330,8 +294,8 @@ public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument 
 					unionGroup, 
 					destinationNegated,
 					namespace,
-					referringRefSets,
-					referringMappingRefSets);
+					memberOf,
+					activeMemberOf);
 			doc.setScore(score);
 			doc.setBranchPath(branchPath);
 			doc.setCommitTimestamp(commitTimestamp);
@@ -405,17 +369,14 @@ public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument 
 		return super.getIconId();
 	}
 	
-	@Override
 	public String getSourceId() {
 		return sourceId;
 	}
 
-	@Override
 	public String getTypeId() {
 		return typeId;
 	}
 
-	@Override
 	public String getDestinationId() {
 		return destinationId;
 	}

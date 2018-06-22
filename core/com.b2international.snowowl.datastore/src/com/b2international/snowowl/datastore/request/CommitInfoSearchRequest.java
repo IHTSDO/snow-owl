@@ -21,15 +21,12 @@ import static com.b2international.snowowl.datastore.commitinfo.CommitInfoDocumen
 import static com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument.Expressions.timeStamp;
 import static com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument.Expressions.userId;
 
-import java.io.IOException;
 import java.util.List;
 
 import com.b2international.index.Hits;
-import com.b2international.index.Searcher;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.query.Query;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfoConverter;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument;
@@ -39,7 +36,7 @@ import com.google.common.collect.Lists;
 /**
  * @since 5.2
  */
-final class CommitInfoSearchRequest extends SearchResourceRequest<RepositoryContext, CommitInfos> {
+final class CommitInfoSearchRequest extends SearchIndexResourceRequest<RepositoryContext, CommitInfos, CommitInfoDocument> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -55,35 +52,37 @@ final class CommitInfoSearchRequest extends SearchResourceRequest<RepositoryCont
 	CommitInfoSearchRequest() {}
 
 	@Override
-	protected CommitInfos doExecute(final RepositoryContext context) throws IOException {
-		final Searcher searcher = context.service(Searcher.class);
-		final ExpressionBuilder builder = Expressions.builder();
-		
-		addIdFilter(builder, CommitInfoDocument.Expressions::ids);
-		addBranchClause(builder);
-		addUserIdClause(builder);
-		addCommentClause(builder);
-		addTimeStampClause(builder);
-		
-		final Query<CommitInfoDocument> query = select(CommitInfoDocument.class)
-				.where(builder.build())
-				.withScores(containsKey(OptionKey.COMMENT))
-				.sortBy(sortBy())
-				.offset(offset())
-				.limit(limit())
-				.build();
-		
-		final Hits<CommitInfoDocument> hits = searcher.search(query);
-		
+	protected Class<CommitInfoDocument> getDocumentType() {
+		return CommitInfoDocument.class;
+	}
+	
+	@Override
+	protected Expression prepareQuery(RepositoryContext context) {
+		ExpressionBuilder queryBuilder = Expressions.builder();
+		addIdFilter(queryBuilder, CommitInfoDocument.Expressions::ids);
+		addBranchClause(queryBuilder);
+		addUserIdClause(queryBuilder);
+		addCommentClause(queryBuilder);
+		addTimeStampClause(queryBuilder);
+		return queryBuilder.build();
+	}
+	
+	@Override
+	protected boolean trackScores() {
+		return containsKey(OptionKey.COMMENT);
+	}
+
+	@Override
+	protected CommitInfos toCollectionResource(RepositoryContext context, Hits<CommitInfoDocument> hits) {
 		if (limit() < 1 || hits.getTotal() < 1) {
-			return new CommitInfos(context.id(), offset(), limit(), hits.getTotal());
+			return new CommitInfos(context.id(), limit(), hits.getTotal());
 		} else {
-			return new CommitInfoConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
+			return new CommitInfoConverter(context, expand(), locales()).convert(hits.getHits(), hits.getScrollId(), hits.getSearchAfter(), limit(), hits.getTotal());
 		}
 	}
 	
 	@Override
-	protected CommitInfos createEmptyResult(int offset, int limit) {
+	protected CommitInfos createEmptyResult(int limit) {
 		throw new UnsupportedOperationException("Missing repositoryId parameter at this point");
 	}
 	

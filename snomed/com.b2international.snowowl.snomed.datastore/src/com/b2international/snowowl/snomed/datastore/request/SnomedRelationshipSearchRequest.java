@@ -19,22 +19,21 @@ package com.b2international.snowowl.snomed.datastore.request;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry.Expressions.group;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry.Expressions.unionGroup;
 
-import java.io.IOException;
-
 import com.b2international.index.Hits;
+import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 
 /**
  * @since 4.5
  */
-final class SnomedRelationshipSearchRequest extends SnomedComponentSearchRequest<SnomedRelationships> {
+final class SnomedRelationshipSearchRequest extends SnomedComponentSearchRequest<SnomedRelationships, SnomedRelationshipIndexEntry> {
 
 	enum OptionKey {
 		SOURCE,
@@ -50,16 +49,22 @@ final class SnomedRelationshipSearchRequest extends SnomedComponentSearchRequest
 	SnomedRelationshipSearchRequest() {}
 
 	@Override
-	protected SnomedRelationships doExecute(BranchContext context) throws IOException {
-		final RevisionSearcher searcher = context.service(RevisionSearcher.class);
-		
+	protected Class<SnomedRelationshipIndexEntry> getDocumentType() {
+		return SnomedRelationshipIndexEntry.class;
+	}
+	
+	@Override
+	protected Expression prepareQuery(BranchContext context) {
 		final ExpressionBuilder queryBuilder = Expressions.builder();
+		
 		addActiveClause(queryBuilder);
+		addReleasedClause(queryBuilder);
 		addIdFilter(queryBuilder, RevisionDocument.Expressions::ids);
-		addModuleClause(queryBuilder);
+		addEclFilter(context, queryBuilder, SnomedSearchRequest.OptionKey.MODULE, SnomedDocument.Expressions::modules);
 		addNamespaceFilter(queryBuilder);
 		addEffectiveTimeClause(queryBuilder);
-		addActiveMemberOfClause(queryBuilder);
+		addActiveMemberOfClause(context, queryBuilder);
+		addMemberOfClause(context, queryBuilder);
 		addEclFilter(context, queryBuilder, OptionKey.SOURCE, SnomedRelationshipIndexEntry.Expressions::sourceIds);
 		addEclFilter(context, queryBuilder, OptionKey.TYPE, SnomedRelationshipIndexEntry.Expressions::typeIds);
 		addEclFilter(context, queryBuilder, OptionKey.DESTINATION, SnomedRelationshipIndexEntry.Expressions::destinationIds);
@@ -76,23 +81,21 @@ final class SnomedRelationshipSearchRequest extends SnomedComponentSearchRequest
 			queryBuilder.filter(unionGroup(get(OptionKey.UNION_GROUP, Integer.class)));
 		}
 		
-		final Hits<SnomedRelationshipIndexEntry> hits = searcher.search(select(SnomedRelationshipIndexEntry.class)
-				.where(queryBuilder.build())
-				.sortBy(sortBy())
-				.offset(offset())
-				.limit(limit())
-				.build());
-		final int totalHits = hits.getTotal();
-		
-		if (limit() < 1 || totalHits < 1) {
-			return new SnomedRelationships(offset(), limit(), totalHits);
-		}
-		
-		return SnomedConverters.newRelationshipConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), totalHits);
+		return queryBuilder.build();
 	}
 	
 	@Override
-	protected SnomedRelationships createEmptyResult(int offset, int limit) {
-		return new SnomedRelationships(offset, limit, 0);
+	protected SnomedRelationships toCollectionResource(BranchContext context, Hits<SnomedRelationshipIndexEntry> hits) {
+		final int totalHits = hits.getTotal();
+		if (limit() < 1 || totalHits < 1) {
+			return new SnomedRelationships(limit(), totalHits);
+		} else {
+			return SnomedConverters.newRelationshipConverter(context, expand(), locales()).convert(hits.getHits(), hits.getScrollId(), hits.getSearchAfter(), limit(), totalHits);
+		}
+	}
+	
+	@Override
+	protected SnomedRelationships createEmptyResult(int limit) {
+		return new SnomedRelationships(limit, 0);
 	}
 }

@@ -18,27 +18,29 @@ package com.b2international.snowowl.datastore.request.job;
 import static com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry.Expressions.user;
 import static com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry.Fields.USER;
 
-import java.io.IOException;
 import java.util.Collections;
 
+import com.b2international.index.Hits;
+import com.b2international.index.Searcher;
+import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobTracker;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobs;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
+import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 
 /**
  * @since 5.7
  */
-final class SearchJobRequest extends SearchResourceRequest<ServiceProvider, RemoteJobs> {
+final class SearchJobRequest extends SearchIndexResourceRequest<ServiceProvider, RemoteJobs, RemoteJobEntry> {
 
 	SearchJobRequest() {
 	}
-	
+
 	@Override
-	protected RemoteJobs doExecute(ServiceProvider context) throws IOException {
+	protected Expression prepareQuery(ServiceProvider context) {
 		final ExpressionBuilder queryBuilder = Expressions.builder();
 		
 		addIdFilter(queryBuilder, RemoteJobEntry.Expressions::ids);
@@ -47,12 +49,27 @@ final class SearchJobRequest extends SearchResourceRequest<ServiceProvider, Remo
 			queryBuilder.filter(user(options().getString(USER)));
 		}
 		
-		return context.service(RemoteJobTracker.class).search(queryBuilder.build(), fields(), sortBy(), offset(), limit());
+		return queryBuilder.build();
+	}
+	
+	@Override
+	protected RemoteJobs toCollectionResource(ServiceProvider context, Hits<RemoteJobEntry> hits) {
+		return new RemoteJobs(hits.getHits(), hits.getScrollId(), hits.getSearchAfter(), hits.getLimit(), hits.getTotal());
 	}
 
 	@Override
-	protected RemoteJobs createEmptyResult(int offset, int limit) {
-		return new RemoteJobs(Collections.emptyList(), offset, limit, 0);
+	protected Searcher searcher(ServiceProvider context) {
+		return context.service(RemoteJobTracker.class).searcher();
+	}
+	
+	@Override
+	protected Class<RemoteJobEntry> getDocumentType() {
+		return RemoteJobEntry.class;
+	}
+	
+	@Override
+	protected RemoteJobs createEmptyResult(int limit) {
+		return new RemoteJobs(Collections.emptyList(), null, null, limit, 0);
 	}
 	
 }

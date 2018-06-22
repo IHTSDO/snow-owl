@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,6 @@ public final class ReadBranchChildrenRequest extends BranchRequest<Branches> {
 			return new Branches(ImmutableList.copyOf(branch.immediateChildren()), 0, immediateChildren.size(), immediateChildren.size());
 		}
 		final List<Branch> children = ImmutableList.copyOf(branch.children());
-		return new Branches(children, 0, children.size(), children.size());
+		return new Branches(children, null, null, children.size(), children.size());
 	}
 }

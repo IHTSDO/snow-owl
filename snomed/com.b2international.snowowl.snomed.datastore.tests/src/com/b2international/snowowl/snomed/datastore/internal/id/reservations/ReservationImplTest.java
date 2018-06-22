@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.Test;
 
@@ -60,12 +62,12 @@ public class ReservationImplTest {
 		final ISnomedIdentifierService identifierService = new DefaultSnomedIdentifierService(store, new ItemIdGenerationStrategy() {
 			int counter = 200;
 			@Override
-			public String generateItemId(String namespace, ComponentCategory category) {
-				return String.valueOf(counter++);
+			public Set<String> generateItemIds(String namespace, ComponentCategory category, int quantity, int attempt) {
+				return IntStream.range(counter, counter + quantity).mapToObj(String::valueOf).collect(Collectors.toSet());
 			}
 		}, new SnomedIdentifierReservationServiceImpl(), new SnomedIdentifierConfiguration());
 		final Set<ComponentCategory> components = Collections.singleton(ComponentCategory.CONCEPT);
-		final Reservation range = Reservations.range(200, 300, null, components);
+		final Reservation range = Reservations.range(200, 300, "", components);
 		final Set<String> componentIds = identifierService.generate(null, ComponentCategory.CONCEPT, 300 - 200 + 1);
 		
 		for (String id : componentIds) { 

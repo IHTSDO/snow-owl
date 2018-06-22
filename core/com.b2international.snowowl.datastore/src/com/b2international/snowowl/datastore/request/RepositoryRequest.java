@@ -17,7 +17,11 @@ package com.b2international.snowowl.datastore.request;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
+
 import com.b2international.snowowl.core.ServiceProvider;
+import com.b2international.snowowl.core.domain.DelegatingContext;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.domain.RepositoryContextProvider;
 import com.b2international.snowowl.core.events.DelegatingRequest;
@@ -39,6 +43,16 @@ public final class RepositoryRequest<B> extends DelegatingRequest<ServiceProvide
 	
 	@Override
 	public B execute(final ServiceProvider context) {
-		return next(context.service(RepositoryContextProvider.class).get(repositoryId));
+		DelegatingContext.Builder<? extends RepositoryContext> repositoryContext = context.service(RepositoryContextProvider.class).get(repositoryId).inject();
+		
+		// by default add a NullProgressMonitor binding to the context
+		// if the previous context is a delegate context, injecting all services can override this safely 
+		repositoryContext.bind(IProgressMonitor.class, new NullProgressMonitor());
+		
+		if (context instanceof DelegatingContext) {
+			repositoryContext.bindAll((DelegatingContext) context);
+		}
+		
+		return next(repositoryContext.build());
 	}
 }

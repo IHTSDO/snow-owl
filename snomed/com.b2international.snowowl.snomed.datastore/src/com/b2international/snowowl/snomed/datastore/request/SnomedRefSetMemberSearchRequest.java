@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,52 +16,44 @@
 package com.b2international.snowowl.snomed.datastore.request;
 
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.acceptabilityIds;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.attributeNames;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.characteristicTypeIds;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.correlationIds;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.dataTypes;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.descriptionFormats;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.mapCategoryIds;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.mapTargetDescriptions;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.mapTargets;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.operatorIds;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.refSetTypes;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.referenceSetId;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.referencedComponentIds;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.targetComponents;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.mapTargets;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.unitIds;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.valueIds;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.valueRange;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Expressions.values;
-import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 
-import java.io.IOException;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.b2international.collections.longs.LongSet;
-import com.b2international.commons.collect.LongSets;
-import com.b2international.commons.functions.LongToStringFunction;
 import com.b2international.commons.options.Options;
 import com.b2international.index.Hits;
+import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.query.Query;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
 import com.b2international.snowowl.core.exceptions.NotImplementedException;
+import com.b2international.snowowl.core.request.SearchResourceRequest;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
-import com.b2international.snowowl.datastore.request.SearchResourceRequest;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
-import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
-import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
-import com.b2international.snowowl.snomed.dsl.query.RValue;
 import com.b2international.snowowl.snomed.snomedrefset.DataType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.collect.Iterables;
@@ -69,7 +61,7 @@ import com.google.common.collect.Iterables;
 /**
  * @since 4.5
  */
-final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedReferenceSetMembers> {
+final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedReferenceSetMembers, SnomedRefSetMemberIndexEntry> {
 
 	/**
 	 * @since 4.5
@@ -104,10 +96,12 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 	SnomedRefSetMemberSearchRequest() {}
 	
 	@Override
-	protected SnomedReferenceSetMembers doExecute(BranchContext context) throws IOException {
-		final RevisionSearcher searcher = context.service(RevisionSearcher.class);
-
-		final Collection<String> referenceSetIds = getCollection(OptionKey.REFSET, String.class);
+	protected Class<SnomedRefSetMemberIndexEntry> getDocumentType() {
+		return SnomedRefSetMemberIndexEntry.class;
+	}
+	
+	@Override
+	protected Expression prepareQuery(BranchContext context) {
 		final Collection<String> referencedComponentIds = getCollection(OptionKey.REFERENCED_COMPONENT, String.class);
 		final Collection<SnomedRefSetType> refSetTypes = getCollection(OptionKey.REFSET_TYPE, SnomedRefSetType.class);
 		final Options propsFilter = getOptions(OptionKey.PROPS);
@@ -115,24 +109,11 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 		ExpressionBuilder queryBuilder = Expressions.builder();
 		
 		addActiveClause(queryBuilder);
-		addModuleClause(queryBuilder);
+		addReleasedClause(queryBuilder);
+		addEclFilter(context, queryBuilder, SnomedSearchRequest.OptionKey.MODULE, SnomedDocument.Expressions::modules);
 		addIdFilter(queryBuilder, RevisionDocument.Expressions::ids);
 		addEffectiveTimeClause(queryBuilder);
-		
-		if (!referenceSetIds.isEmpty()) {
-			// if only one refset ID is defined, check if it's an ESCG expression and expand it, otherwise use as is
-			final List<String> selectedRefSetIds;
-			if (referenceSetIds.size() == 1) {
-				final String escg = Iterables.get(referenceSetIds, 0);
-				final RValue expression = context.service(EscgRewriter.class).parseRewrite(escg);
-				final LongSet matchingConceptIds = new ConceptIdQueryEvaluator2(searcher).evaluate(expression);
-				selectedRefSetIds = LongToStringFunction.copyOf(LongSets.toList(matchingConceptIds));
-			} else {
-				selectedRefSetIds = newArrayList(referenceSetIds);
-			}
-			
-			queryBuilder.filter(referenceSetId(selectedRefSetIds));
-		}
+		addEclFilter(context, queryBuilder, OptionKey.REFSET, SnomedRefSetMemberIndexEntry.Expressions::referenceSetId);
 		
 		if (!referencedComponentIds.isEmpty()) {
 			queryBuilder.filter(referencedComponentIds(referencedComponentIds));
@@ -168,6 +149,9 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 			if (propKeys.remove(SnomedRf2Headers.FIELD_MAP_TARGET)) {
 				queryBuilder.filter(mapTargets(propsFilter.getCollection(SnomedRf2Headers.FIELD_MAP_TARGET, String.class)));
 			}
+			if (propKeys.remove(SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION)) {
+				queryBuilder.filter(mapTargetDescriptions(propsFilter.getCollection(SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION, String.class)));
+			}
 			if (propKeys.remove(SnomedRf2Headers.FIELD_UNIT_ID)) {
 				queryBuilder.filter(unitIds(propsFilter.getCollection(SnomedRf2Headers.FIELD_UNIT_ID, String.class)));
 			}
@@ -175,7 +159,9 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 				queryBuilder.filter(valueIds(propsFilter.getCollection(SnomedRf2Headers.FIELD_VALUE_ID, String.class)));
 			}
 			if (propKeys.remove(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME)) {
-				addEclFilter(context, queryBuilder, propsFilter.getCollection(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, String.class), SnomedRefSetMemberIndexEntry.Expressions::attributeNames);
+				// TODO: Restore ECL filter when concrete domain attributes are represented with SCTIDs
+				// addEclFilter(context, queryBuilder, propsFilter.getCollection(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, String.class), SnomedRefSetMemberIndexEntry.Expressions::attributeNames);
+				queryBuilder.filter(attributeNames(propsFilter.getCollection(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, String.class)));
 			}
 			final Collection<DataType> dataTypes = propsFilter.getCollection(SnomedRefSetMemberIndexEntry.Fields.DATA_TYPE, DataType.class);
 			if (propKeys.remove(SnomedRefSetMemberIndexEntry.Fields.DATA_TYPE)) {
@@ -225,20 +211,16 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 			}
 		}
 		
-		final Query<SnomedRefSetMemberIndexEntry> query = select(SnomedRefSetMemberIndexEntry.class)
-			.where(queryBuilder.build())
-			.sortBy(sortBy())
-			.offset(offset())
-			.limit(limit())
-			.build();
+		return queryBuilder.build();
+	}
 
-		final Hits<SnomedRefSetMemberIndexEntry> hits = searcher.search(query);
+	@Override
+	protected SnomedReferenceSetMembers toCollectionResource(BranchContext context, Hits<SnomedRefSetMemberIndexEntry> hits) {
 		if (limit() < 1 || hits.getTotal() < 1) {
-			return new SnomedReferenceSetMembers(offset(), limit(), hits.getTotal());
+			return new SnomedReferenceSetMembers(limit(), hits.getTotal());
 		} else {
-			return SnomedConverters.newMemberConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
+			return SnomedConverters.newMemberConverter(context, expand(), locales()).convert(hits.getHits(), hits.getScrollId(), hits.getSearchAfter(), limit(), hits.getTotal());
 		}
-
 	}
 
 	private static void checkRangeValue(final Collection<Object> attributeValues) {
@@ -248,8 +230,8 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 	}
 	
 	@Override
-	protected SnomedReferenceSetMembers createEmptyResult(int offset, int limit) {
-		return new SnomedReferenceSetMembers(offset, limit, 0);
+	protected SnomedReferenceSetMembers createEmptyResult(int limit) {
+		return new SnomedReferenceSetMembers(limit, 0);
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,8 @@ import java.util.Map.Entry;
 
 import com.b2international.commons.StringUtils;
 import com.b2international.index.Doc;
+import com.b2international.index.Keyword;
+import com.b2international.index.RevisionHash;
 import com.b2international.index.query.Expression;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.date.DateFormats;
@@ -49,7 +51,6 @@ import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetUtil;
 import com.b2international.snowowl.snomed.snomedrefset.DataType;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedAnnotationRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAssociationRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAttributeValueRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedComplexMapRefSetMember;
@@ -61,6 +62,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMAttributeRangeR
 import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMDomainRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMModuleScopeRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedModuleDependencyRefSetMember;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedOWLExpressionRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedQueryRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
@@ -82,11 +84,40 @@ import com.google.common.collect.ImmutableMap;
  */
 @Doc
 @JsonDeserialize(builder = SnomedRefSetMemberIndexEntry.Builder.class)
+@RevisionHash({ 
+	SnomedDocument.Fields.ACTIVE, 
+	SnomedDocument.Fields.EFFECTIVE_TIME, 
+	SnomedDocument.Fields.MODULE_ID, 
+	SnomedRefSetMemberIndexEntry.Fields.TARGET_COMPONENT,
+	SnomedRefSetMemberIndexEntry.Fields.VALUE_ID,
+	SnomedRefSetMemberIndexEntry.Fields.ATTRIBUTE_NAME,
+	SnomedRefSetMemberIndexEntry.Fields.STRING_VALUE,
+	SnomedRefSetMemberIndexEntry.Fields.BOOLEAN_VALUE,
+	SnomedRefSetMemberIndexEntry.Fields.INTEGER_VALUE,
+	SnomedRefSetMemberIndexEntry.Fields.DECIMAL_VALUE,
+	SnomedRefSetMemberIndexEntry.Fields.OPERATOR_ID,
+	SnomedRefSetMemberIndexEntry.Fields.CHARACTERISTIC_TYPE_ID,
+	SnomedRefSetMemberIndexEntry.Fields.UNIT_ID,
+	SnomedRefSetMemberIndexEntry.Fields.DESCRIPTION_LENGTH,
+	SnomedRefSetMemberIndexEntry.Fields.DESCRIPTION_FORMAT,
+	SnomedRefSetMemberIndexEntry.Fields.ACCEPTABILITY_ID,
+	SnomedRefSetMemberIndexEntry.Fields.SOURCE_EFFECTIVE_TIME,
+	SnomedRefSetMemberIndexEntry.Fields.TARGET_EFFECTIVE_TIME,
+	SnomedRefSetMemberIndexEntry.Fields.MAP_TARGET,
+	SnomedRefSetMemberIndexEntry.Fields.MAP_TARGET_DESCRIPTION,
+	SnomedRefSetMemberIndexEntry.Fields.MAP_CATEGORY_ID,
+	SnomedRefSetMemberIndexEntry.Fields.CORRELATION_ID,
+	SnomedRefSetMemberIndexEntry.Fields.MAP_ADVICE,
+	SnomedRefSetMemberIndexEntry.Fields.MAP_RULE,
+	SnomedRefSetMemberIndexEntry.Fields.MAP_GROUP,
+	SnomedRefSetMemberIndexEntry.Fields.MAP_PRIORITY,
+	SnomedRefSetMemberIndexEntry.Fields.QUERY
+})
 public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 
 	private static final long serialVersionUID = 5198766293865046258L;
 
-	public static class Fields {
+	public static class Fields extends SnomedDocument.Fields {
 		// known RF2 fields
 		public static final String REFERENCE_SET_ID = "referenceSetId"; // XXX different than the RF2 header field name
 		public static final String REFERENCED_COMPONENT_ID = SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID;
@@ -232,7 +263,7 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 						.field(Fields.DATA_VALUE, concreteDataTypeMember.getSerializedValue())
 						.field(Fields.CHARACTERISTIC_TYPE_ID, concreteDataTypeMember.getCharacteristicTypeId())
 						.field(Fields.OPERATOR_ID, concreteDataTypeMember.getOperatorComponentId())
-						.field(Fields.UNIT_ID, Strings.nullToEmpty(concreteDataTypeMember.getUomComponentId()));
+						.field(Fields.UNIT_ID, concreteDataTypeMember.getUomComponentId());
 			}
 
 			@Override
@@ -278,11 +309,11 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 						.field(Fields.SOURCE_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(member.getSourceEffectiveTime()))
 						.field(Fields.TARGET_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(member.getTargetEffectiveTime()));
 			}
-			
+
 			@Override
-			public Builder caseSnomedAnnotationRefSetMember(SnomedAnnotationRefSetMember member) {
+			public Builder caseSnomedOWLExpressionRefSetMember(SnomedOWLExpressionRefSetMember member) {
 				return builder
-						.field(Fields.OWL_EXPRESSION, member.getAnnotation());
+						.field(Fields.OWL_EXPRESSION, member.getOwlExpression());
 			};
 			
 			@Override
@@ -371,6 +402,10 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		
 		public static Expression mapTargets(Collection<String> mapTargets) {
 			return matchAny(Fields.MAP_TARGET, mapTargets);
+		}
+		
+		public static Expression mapTargetDescriptions(Collection<String> mapTargetDescriptions) {
+			return matchAny(Fields.MAP_TARGET_DESCRIPTION, mapTargetDescriptions);
 		}
 
 		public static Expression referencedComponentIds(Collection<String> referencedComponentIds) {
@@ -461,12 +496,7 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		}
 		
 		public static Expression refSetTypes(Collection<SnomedRefSetType> refSetTypes) {
-			return matchAny(Fields.REFSET_TYPE, FluentIterable.from(refSetTypes).transform(new Function<SnomedRefSetType, String>() {
-				@Override
-				public String apply(SnomedRefSetType input) {
-					return input.name();
-				}
-			}).toSet());
+			return matchAny(Fields.REFSET_TYPE, FluentIterable.from(refSetTypes).transform(type -> type.name()).toSet());
 		}
 		
 	}
@@ -990,9 +1020,11 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 	private Integer mapGroup;
 	private Integer mapPriority;
 	// QUERY
+	@Keyword(index = false)
 	private String query;
 	// OWL Axiom
 	private String owlExpression;
+
 	// MRCM Domain
 	private String domainConstraint;
 	private String parentDomain;

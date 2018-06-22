@@ -28,7 +28,8 @@ import org.hibernate.validator.constraints.NotEmpty;
 import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.IComponent;
-import com.b2international.snowowl.datastore.request.ResourceRequest;
+import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.core.request.ResourceRequest;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
@@ -38,6 +39,7 @@ import com.b2international.snowowl.snomed.core.domain.refset.MemberChangeImpl;
 import com.b2international.snowowl.snomed.core.domain.refset.QueryRefSetMemberEvaluation;
 import com.b2international.snowowl.snomed.core.domain.refset.QueryRefSetMemberEvaluationImpl;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedQueryRefSetMember;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Maps;
@@ -57,15 +59,24 @@ public final class EvaluateQueryRefSetMemberRequest extends ResourceRequest<Bran
 	@Override
 	public QueryRefSetMemberEvaluation execute(BranchContext context) {
 		// TODO support pre-population???
-		final SnomedReferenceSetMember member = SnomedRequests
-				.prepareGetMember(memberId)
-				.build()
-				.execute(context);
-		final String query = (String) member.getProperties().get(SnomedRf2Headers.FIELD_QUERY);
-		final String targetReferenceSet = member.getReferencedComponent().getId();
+		final String query;
+		final String targetReferenceSet;
+		if (context instanceof TransactionContext) {
+			SnomedQueryRefSetMember member = ((TransactionContext) context).lookup(memberId, SnomedQueryRefSetMember.class);
+			query = member.getQuery();
+			targetReferenceSet = member.getReferencedComponentId();
+		} else {
+			final SnomedReferenceSetMember member = SnomedRequests
+					.prepareGetMember(memberId)
+					.build()
+					.execute(context);
+			query = (String) member.getProperties().get(SnomedRf2Headers.FIELD_QUERY);
+			targetReferenceSet = member.getReferencedComponent().getId();
+		}
+		
 
 		// GET matching members of a query
-		final SnomedConcepts matchingConcepts = SnomedRequests.prepareSearchConcept().filterByEscg(query).all().build().execute(context);
+		final SnomedConcepts matchingConcepts = SnomedRequests.prepareSearchConcept().filterByEcl(query).all().build().execute(context);
 		
 		final Map<String, SnomedConcept> conceptsToAdd = newHashMap();
 		final Collection<SnomedReferenceSetMember> membersToRemove = newHashSet();
@@ -142,7 +153,7 @@ public final class EvaluateQueryRefSetMemberRequest extends ResourceRequest<Bran
 //		for (String id : conceptsToActivate.keySet()) {
 //			changes.add(new Diff(MemberChangeKind.ACTIVATE, id, conceptsToActivate.get(id)));
 //		}
-		return new QueryRefSetMemberEvaluationImpl(targetReferenceSet, changes);
+		return new QueryRefSetMemberEvaluationImpl(memberId, targetReferenceSet, changes);
 	}
 
 }

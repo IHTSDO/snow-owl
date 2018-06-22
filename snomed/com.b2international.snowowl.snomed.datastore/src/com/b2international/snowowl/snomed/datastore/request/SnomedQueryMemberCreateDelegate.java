@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ final class SnomedQueryMemberCreateDelegate extends SnomedRefSetMemberCreateDele
 		// add all matching members 
 		final SnomedConcepts queryResults = SnomedRequests.prepareSearchConcept()
 				.all()
-				.filterByEscg(getProperty(SnomedRf2Headers.FIELD_QUERY))
+				.filterByEcl(getProperty(SnomedRf2Headers.FIELD_QUERY))
 				.build()
 				.execute(context);
 

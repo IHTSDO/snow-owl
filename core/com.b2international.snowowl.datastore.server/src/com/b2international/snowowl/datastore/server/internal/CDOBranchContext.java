@@ -42,9 +42,9 @@ public class CDOBranchContext extends DefaultBranchContext implements Transactio
 	}
 	
 	@Override
-	public TransactionContext get(BranchContext context) {
+	public TransactionContext get(BranchContext context, String userId, String commitComment, String parentContextDescription) {
 		final CDOEditingContext ec = service(EditingContextFactory.class).createEditingContext(branch().branchPath());
-		return new CDOTransactionContext(context, ec);
+		return new CDOTransactionContext(context, ec, userId, commitComment, parentContextDescription);
 	}
 	
 }

@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>snowowl-parent</artifactId>
-		<version>5.14.0-SNAPSHOT</version>
+		<version>6.5.0</version>
 	</parent>
 	
 	<modules>
@@ -31,14 +31,10 @@
 		<module>com.b2international.snowowl.snomed.datastore</module>
 		<module>com.b2international.snowowl.snomed.datastore.tests</module>
 		<module>com.b2international.snowowl.snomed.datastore.server</module>
-		<module>com.b2international.snowowl.snomed.refset.core</module>
 		
 		<!-- SNOMED CT Classification Support -->
 		<module>com.b2international.snowowl.snomed.reasoner</module>
 		<module>com.b2international.snowowl.snomed.reasoner.server</module>
-		
-		<!-- SNOMED CT Validation -->
-		<module>com.b2international.snowowl.snomed.validation.constraints</module>
 		
 		<!-- SNOMED CT SemanticEngine -->
 		<module>com.b2international.snowowl.snomed.semanticengine</module>
@@ -47,9 +43,6 @@
 		<module>com.b2international.snowowl.snomed.semanticengine.simpleast.test</module>
 		
 		<!-- SNOMED CT MRCM Support -->
-		<module>com.b2international.snowowl.snomed.mrcm.core</module>
-		<module>com.b2international.snowowl.snomed.mrcm.core.server</module>
-		<module>com.b2international.snowowl.snomed.mrcm.core.server.tests</module>
 		<module>com.b2international.snowowl.snomed.mrcm.model</module>
 		
 		<!-- SNOMED CT Import-Export -->
@@ -59,13 +52,15 @@
 		
 		<!-- SNOMED CT DSLs -->
 		<module>com.b2international.snowowl.snomed.dsl</module>
-		<module>com.b2international.snowowl.snomed.escg</module>
 		<module>com.b2international.snowowl.snomed.scg</module>
 		<module>com.b2international.snowowl.snomed.ecl</module>
 		<module>com.b2international.snowowl.snomed.ecl.tests</module>
 		
 		<!-- SNOMED CT Core Features -->
 		<module>com.b2international.snowowl.snomed.core.feature</module>
+		
+		<!-- SNOMED CT Generic Validation Rules -->
+		<module>com.b2international.snowowl.validation.snomed</module>
 	</modules>
 	
 </project>

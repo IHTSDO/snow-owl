@@ -37,7 +37,7 @@ public class SnomedCDOChangeProcessorFactory implements CDOChangeProcessorFactor
 		final RevisionIndex index = context.getService(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
 		return new SnomedCDOChangeProcessor(branchPath, index);
 	}
-
+	
 	@Override
 	public String getFactoryName() {
 		return FACTORY_NAME;
