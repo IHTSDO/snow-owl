@@ -427,7 +427,7 @@ final class SnomedEclRefinementEvaluator {
 			final Collection<String> destinationConceptFilter = Collections.singleton(serializer.serializeWithoutTerms(((AttributeComparison) comparison).getConstraint()));
 			final Collection<String> focusConceptFilter = refinement.isReversed() ? destinationConceptFilter : null;
 			final Collection<String> valueConceptFilter = refinement.isReversed() ? focusConcepts.resolve(context).getSync() : destinationConceptFilter;
-			return evalRelationships(context, focusConceptFilter, typeConceptFilter, valueConceptFilter, grouped);
+			return evalRelationships(context, focusConceptFilter, typeConceptFilter, valueConceptFilter, grouped, expressionForm);
 		} else if (comparison instanceof DataTypeComparison) {
 			if (grouped) {
 				throw new BadRequestException("Group refinement is not supported in data type based comparison (string/numeric)");

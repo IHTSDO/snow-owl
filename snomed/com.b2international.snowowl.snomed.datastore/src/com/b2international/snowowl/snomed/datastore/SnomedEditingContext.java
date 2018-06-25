@@ -118,7 +118,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	private String nameSpace;
 	private boolean uniquenessCheckEnabled = true;
 	private Set<String> newComponentIds = Collections.synchronizedSet(Sets.<String>newHashSet());
-	private final SnomedDeletionPlan deletionPlan = new SnomedDeletionPlan();
+	private SnomedDeletionPlan deletionPlan = new SnomedDeletionPlan();
 
 	/**
 	 * Creates a new SNOMED CT core components editing context on the specified branch of the SNOMED CT repository.

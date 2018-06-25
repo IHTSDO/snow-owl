@@ -115,10 +115,6 @@ final class SnomedRf2ExportRequest implements Request<RepositoryContext, Rf2Expo
 
 	@JsonProperty
 	@NotEmpty
-	private String userId;
-	
-	@JsonProperty
-	@NotEmpty
 	private String codeSystem;
 
 	@JsonProperty
@@ -157,9 +153,6 @@ final class SnomedRf2ExportRequest implements Request<RepositoryContext, Rf2Expo
 
 	@JsonProperty
 	private Collection<String> refSets;
-	
-	@JsonProperty
-	private Collection<String> componentTypes;
 
 	@JsonProperty
 	private boolean conceptsAndRelationshipsOnly;
@@ -237,10 +230,6 @@ final class SnomedRf2ExportRequest implements Request<RepositoryContext, Rf2Expo
 	
 	void setConceptsAndRelationshipsOnly(boolean conceptsAndRelationshipsOnly) {
 		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
-	}
-	
-	void setComponentTypes(Collection<String> componentTypes) {
-		this.componentTypes = componentTypes;
 	}
 	
 	void setLanguageAware(boolean languageAware) {
@@ -596,7 +585,7 @@ final class SnomedRf2ExportRequest implements Request<RepositoryContext, Rf2Expo
 			.stream()
 			.map(IComponent::getId)
 			.collect(Collectors.toSet());
-		
+				
 		final Rf2DescriptionExporter descriptionExporter = new Rf2DescriptionExporter(releaseType, 
 				countryNamespaceElement,
 				namespaceFilter,

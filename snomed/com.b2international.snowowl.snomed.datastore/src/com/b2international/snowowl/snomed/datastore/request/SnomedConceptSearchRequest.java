@@ -309,23 +309,12 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		final Map<String, Float> conceptMap = newHashMap();
 		
 		for (SnomedDescription description : items) {
-			Map<String, Acceptability> acceptabilityMap = description.getAcceptabilityMap();
-			if (!description.isActive() || descriptionAcceptable(acceptabilityMap, languageRefSetIds()))
 			if (!conceptMap.containsKey(description.getConceptId())) {
 				conceptMap.put(description.getConceptId(), description.getScore());
 			}
 		}
 		
 		return conceptMap;
-	}
-
-	private boolean descriptionAcceptable(Map<String, Acceptability> acceptabilityMap, List<String> languageRefSetIds) {
-		for (String languageRefSetId : languageRefSetIds) {
-			if (acceptabilityMap.containsKey(languageRefSetId)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 }

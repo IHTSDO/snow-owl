@@ -24,7 +24,6 @@ import java.util.List;
 
 import com.b2international.commons.collections.Collections3;
 import com.b2international.index.query.Expression;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Strings;
 
@@ -59,14 +58,6 @@ public abstract class SnomedComponentDocument extends SnomedDocument {
 		
 		public static final Expression activeMemberOf(Iterable<String> referenceSetIds) {
 			return matchAny(Fields.ACTIVE_MEMBER_OF, referenceSetIds);
-		}
-		
-		public static Expression referringRefSets(Iterable<String> referringRefSets) {
-			return matchAny(Fields.REFERRING_REFSETS, referringRefSets);
-		}
-		
-		public static Expression referringMappingRefSets(Iterable<String> referringMappingRefSets) {
-			return matchAny(Fields.REFERRING_MAPPING_REFSETS, referringMappingRefSets);
 		}
 		
 	}
