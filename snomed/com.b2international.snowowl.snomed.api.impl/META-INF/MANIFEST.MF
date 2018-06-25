@@ -24,7 +24,7 @@ Require-Bundle: org.eclipse.core.runtime,
  com.b2international.snowowl.snomed.importer.rf2,
  org.ihtsdo.drools.snomed-drools-engine,
  org.apache.commons.collections;bundle-version="3.2.0",
- org.snomed.otf.snomed-owl-toolkit
+ org.snomed.otf.snomed-owl-toolkit,
  com.b2international.org.apache.lucene;bundle-version="5.5.0",
  com.b2international.snowowl.snomed.reasoner.server
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
