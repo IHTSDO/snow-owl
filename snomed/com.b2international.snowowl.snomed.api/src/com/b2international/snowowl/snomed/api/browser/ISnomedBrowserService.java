@@ -74,9 +74,8 @@ public interface ISnomedBrowserService {
 	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
-	List<ISnomedBrowserParentConcept> getConceptParents(String branchPath, String componentId, List<ExtendedLocale> extendedLocales);
+	List<ISnomedBrowserParentConcept> getConceptParents(String branchPath, String componentId, List<ExtendedLocale> extendedLocales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType);
 	
-	List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef ref, List<ExtendedLocale> extendedLocales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType);
 	/**
 	 * Retrieves a list of child concepts for a single identifier.
 	 * 
@@ -92,7 +91,7 @@ public interface ISnomedBrowserService {
 	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
-	List<ISnomedBrowserChildConcept> getConceptChildren(String branchPath, String componentId, List<ExtendedLocale> extendedLocales, boolean stated);
+	List<ISnomedBrowserChildConcept> getConceptChildren(String branchPath, String componentId, List<ExtendedLocale> extendedLocales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType);
 	
 	/**
 	 * Retrieves a list of descriptions matching the entered query string.
@@ -108,7 +107,7 @@ public interface ISnomedBrowserService {
 	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws IllegalArgumentException if the query is {@code null} or too short
 	 */
-	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, ISnomedBrowserDescriptionResult.TermType resultConceptTermType, String scrollKeepAlive, String scrollId, int limit);
+	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, String scrollKeepAlive, String scrollId, int limit);
 
 	/**
 	 * Retrieves a map of enum constants and corresponding concepts.
