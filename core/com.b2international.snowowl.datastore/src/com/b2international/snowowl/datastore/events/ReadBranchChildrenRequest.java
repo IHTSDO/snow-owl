@@ -29,8 +29,6 @@ import com.google.common.collect.ImmutableList;
  */
 public final class ReadBranchChildrenRequest extends BranchRequest<Branches> {
 	
-	private static final long serialVersionUID = 1L;
-
 	private boolean immediateChildrenOnly;
 	
 	public ReadBranchChildrenRequest(String branchPath, boolean immediateChildrenOnly) {
@@ -43,7 +41,7 @@ public final class ReadBranchChildrenRequest extends BranchRequest<Branches> {
 		final Branch branch = context.service(BranchManager.class).getBranch(getBranchPath());
 		if (immediateChildrenOnly) {
 			Collection<? extends Branch> immediateChildren = branch.immediateChildren();
-			return new Branches(ImmutableList.copyOf(branch.immediateChildren()), 0, immediateChildren.size(), immediateChildren.size());
+			return new Branches(ImmutableList.copyOf(immediateChildren), null, null, immediateChildren.size(), immediateChildren.size());
 		}
 		final List<Branch> children = ImmutableList.copyOf(branch.children());
 		return new Branches(children, null, null, children.size(), children.size());

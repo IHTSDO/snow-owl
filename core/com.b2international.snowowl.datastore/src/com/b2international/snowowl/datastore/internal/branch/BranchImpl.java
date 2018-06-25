@@ -203,6 +203,11 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 	}
 
 	@Override
+	public Collection<? extends Branch> immediateChildren() {
+		return branchManager.getImmediateChildren(this);
+	}
+	
+	@Override
 	public String name() {
 		return name;
 	}
