@@ -96,7 +96,6 @@ import com.b2international.snowowl.datastore.server.cdo.CDOConflictProcessorBrok
 import com.b2international.snowowl.datastore.server.internal.merge.MergeServiceImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewManagerImpl;
-import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -246,7 +245,6 @@ public final class CDOBasedRepository extends DelegatingContext implements Inter
 		final Collection<Class<?>> types = newArrayList();
 		types.add(BranchDocument.class);
 		types.add(Review.class);
-		types.add(ReviewImpl.class);
 		types.add(MergeReview.class);
 		types.add(MergeReviewImpl.class);
 		types.add(ConceptChanges.class);

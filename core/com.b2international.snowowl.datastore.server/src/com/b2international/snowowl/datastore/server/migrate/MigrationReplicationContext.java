@@ -44,7 +44,6 @@ import org.eclipse.net4j.util.om.monitor.Monitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.index.Script;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.domain.RepositoryContext;
@@ -58,7 +57,9 @@ import com.b2international.snowowl.terminologymetadata.TerminologymetadataPackag
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 
+import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
+import groovy.lang.Script;
 
 /**
  * @since 5.11

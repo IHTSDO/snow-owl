@@ -29,12 +29,12 @@ import com.b2international.index.Searcher;
 import com.b2international.index.Writer;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.datastore.internal.InternalRepository;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.MergeReviewManager;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
-import com.b2international.snowowl.datastore.server.internal.InternalRepository;
 import com.google.common.collect.ImmutableMap;
 
 /**
