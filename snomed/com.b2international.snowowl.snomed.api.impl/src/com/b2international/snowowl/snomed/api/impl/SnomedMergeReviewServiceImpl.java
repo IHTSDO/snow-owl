@@ -45,8 +45,8 @@ import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
-import com.b2international.snowowl.core.exceptions.InvalidStateException;
 import com.b2international.snowowl.core.exceptions.MergeConflictException;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.core.merge.Merge.Status;
@@ -942,7 +942,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		final List<ISnomedBrowserConcept> conceptUpdates = new ArrayList<ISnomedBrowserConcept>();
 		for (final String conceptId : relevantIntersection) {
 			if (!getManualConceptMergeService().exists(targetPath, mergeReviewId, conceptId)) {
-				throw new InvalidStateException("Manually merged concept " + conceptId + " does not exist for merge review " + mergeReviewId);
+				throw new BadRequestException("Manually merged concept %s does not exist for merge review %s", conceptId, mergeReviewId);
 			} else {
 				conceptUpdates.add(getManualConceptMergeService().retrieve(targetPath, mergeReviewId, conceptId));
 			}

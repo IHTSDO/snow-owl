@@ -25,7 +25,7 @@ public class ExternalClassificationServiceError implements Error {
 
 	@Override
 	public ApiException toApiException(int status) {
-		return new ExternalClassificationServiceException(String.format("External classification service returned code: %s", getMessage(status)));
+		return new ExternalClassificationServiceException(status, String.format("External classification service returned code: %s", getMessage(status)));
 	}
 
 	private String getMessage(int status) {

@@ -23,9 +23,22 @@ import com.b2international.snowowl.core.exceptions.ApiException;
 public class ExternalClassificationServiceException extends ApiException {
 
 	private static final long serialVersionUID = 3659761907306808816L;
+	private static final int DEFAULT_STATUS_CODE = 500;
+	
+	private int statusCode;
 
 	public ExternalClassificationServiceException(final String template, final Object...args) {
+		this(DEFAULT_STATUS_CODE, template, args);
+	}
+	
+	public ExternalClassificationServiceException(final int statusCode, final String template, final Object...args) {
 		super(template, args);
+		this.statusCode = statusCode;
+	}
+	
+	@Override
+	protected Integer getStatus() {
+		return statusCode;
 	}
 	
 }
