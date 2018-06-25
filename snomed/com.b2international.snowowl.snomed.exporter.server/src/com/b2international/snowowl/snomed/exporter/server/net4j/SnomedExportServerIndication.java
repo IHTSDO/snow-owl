@@ -73,7 +73,6 @@ import com.b2international.snowowl.snomed.exporter.server.SnomedExportContextImp
 import com.b2international.snowowl.snomed.exporter.server.SnomedRefSetExporterFactory;
 import com.b2international.snowowl.snomed.exporter.server.rf1.Id2Rf1PropertyMapper;
 import com.b2international.snowowl.snomed.exporter.server.rf1.SnomedRf1ConceptExporter;
-import com.b2international.snowowl.snomed.exporter.server.rf1.SnomedRf1DescriptionExporter;
 import com.b2international.snowowl.snomed.exporter.server.rf1.SnomedRf1RelationshipExporter;
 import com.b2international.snowowl.snomed.exporter.server.rf2.SimpleSnomedLanguageRefsetExporter;
 import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedExporter;
@@ -554,7 +553,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 				
 				logActivity(String.format("Exporting %sSNOMED CT language reference set members into RF2 format",
 						exportContext.isUnpublishedExport() ? "unpublished " : ""));
-				new SimpleSnomedLanguageRefsetExporter(exportContext, revisionSearcher).execute();
+				new SnomedLanguageRefSetExporter(exportContext, revisionSearcher, "en").execute(); // TODO
 
 				if (monitor.isCanceled()) {
 					return;
@@ -564,25 +563,6 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 				
 			}
 			
-		}
-		
-		if (languageCodesInUse.size() == 1) {
-			String languageCode = Iterables.getOnlyElement(languageCodesInUse);
-			logActivity(String.format("Exporting %sSNOMED CT language reference set members with language code '%s' into RF2 format",
-					exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
-			new SimpleSnomedLanguageRefsetExporter(exportContext, revisionSearcher, languageCode).execute();
-		} else {
-			for (String languageCode : languageCodesInUse) {
-				logActivity(String.format("Exporting %sSNOMED CT language reference set members with language code '%s' into RF2 format",
-						exportContext.isUnpublishedExport() ? "unpublished " : "", languageCode));
-				new SnomedLanguageRefSetExporter(exportContext, revisionSearcher, languageCode).execute();
-			}
-		}
-		
-		if (monitor.isCanceled()) {
-			return;
-		} else {
-			monitor.worked(2);
 		}
 		
 		logActivity(String.format("Exporting non-stated %sSNOMED CT relationships into RF2 format", exportContext.isUnpublishedExport() ? "unpublished " : ""));
@@ -612,19 +592,6 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 				return;
 			} else {
 				monitor.worked(2);
-			}
-			
-			if (!conceptsAndRelationshipsOnly) {
-				
-				logActivity("Exporting SNOMED CT descriptions into RF1 format");
-				new SnomedRf1DescriptionExporter(exportContext, revisionSearcher, includeExtendedDescriptionTypes).execute();
-				
-				if (monitor.isCanceled()) {
-					return;
-				} else {
-					monitor.worked(2);
-				}
-				
 			}
 			
 			logActivity("Exporting SNOMED CT relationships into RF1 format");

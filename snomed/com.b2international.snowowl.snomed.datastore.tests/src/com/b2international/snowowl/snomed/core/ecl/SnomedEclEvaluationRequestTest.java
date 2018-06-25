@@ -23,8 +23,6 @@ import static com.b2international.snowowl.snomed.core.tests.util.DocumentBuilder
 import static com.b2international.snowowl.snomed.core.tests.util.DocumentBuilders.relationship;
 import static com.b2international.snowowl.snomed.core.tests.util.DocumentBuilders.stringMember;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.activeMemberOf;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.referringMappingRefSets;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.referringRefSets;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Fields.ACTIVE_MEMBER_OF;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.ancestors;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.parents;
@@ -220,26 +218,12 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	public void memberOfNested() throws Exception {
 		indexRevision(MAIN, nextStorageKey(), concept(Concepts.SYNONYM)
 				.parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.REFSET_DESCRIPTION_TYPE)))
-				.ancestors(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
-				.build());
-		final Expression actual = eval("^(<" + Concepts.REFSET_DESCRIPTION_TYPE + ")");
-		final Expression expected = activeMemberOf(Collections.singleton(Concepts.SYNONYM));
-		assertEquals(expected, actual);
-	}
-	
-	@Test
-	public void memberOfNested() throws Exception {
-		indexRevision(MAIN, nextStorageKey(), concept(Concepts.SYNONYM)
-				.parents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.REFSET_DESCRIPTION_TYPE)))
 				.statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(Concepts.REFSET_DESCRIPTION_TYPE)))
 				.ancestors(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
 				.statedAncestors(PrimitiveSets.newLongOpenHashSet(IComponent.ROOT_IDL))
 				.build());
 		final Expression actual = eval("^(<" + Concepts.REFSET_DESCRIPTION_TYPE + ")");
-		final Expression expected = Expressions.builder()
-				.should(referringRefSets(Collections.singleton(Concepts.SYNONYM)))
-				.should(referringMappingRefSets(Collections.singleton(Concepts.SYNONYM)))
-				.build();
+		final Expression expected = activeMemberOf(Collections.singleton(Concepts.SYNONYM));
 		assertEquals(expected, actual);
 	}
 	
@@ -1257,10 +1241,6 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 		indexRevision(MAIN, nextStorageKey(), decimalMember(DRUG_1D_MG, PREFERRED_STRENGTH, BigDecimal.valueOf(1.0d)).build());
 	}
 
-	private static Expression and(Expression left, Expression right) {
-		return Expressions.builder().filter(left).filter(right).build();
-	}
-		
 	private static Expression and(Expression left, Expression right) {
 		return Expressions.builder().filter(left).filter(right).build();
 	}

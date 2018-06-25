@@ -37,6 +37,7 @@ import com.b2international.snowowl.identity.domain.PermissionIdConstant;
 import com.b2international.snowowl.identity.domain.User;
 import com.b2international.snowowl.identity.request.UserRequests;
 import com.b2international.snowowl.server.console.CommandLineAuthenticator;
+import com.google.common.base.Optional;
 import com.google.common.collect.Sets;
 
 /**
@@ -75,6 +76,8 @@ public class MrcmCommandProvider implements CommandProvider {
 			return;
 		}
 		
+		final String targetPath = Optional.fromNullable(interpreter.nextArgument()).or("MAIN");
+		
 		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
 		
 		if (!authenticator.authenticate(interpreter)) {
@@ -89,7 +92,7 @@ public class MrcmCommandProvider implements CommandProvider {
 
 		final Path file = Paths.get(filePath);
 		try (final InputStream content = Files.newInputStream(file, StandardOpenOption.READ)) {
-			new XMIMrcmImporter().doImport(authenticator.getUsername(), content);
+			new XMIMrcmImporter().doImport(targetPath, authenticator.getUsername(), content);
 		} catch (IOException e) {
 			interpreter.printStackTrace(e);
 		}
@@ -123,6 +126,7 @@ public class MrcmCommandProvider implements CommandProvider {
 			return;
 		}
 		
+		final String sourcePath = Optional.fromNullable(interpreter.nextArgument()).or("MAIN");
 		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
 		
 		if (!authenticator.authenticate(interpreter)) {
@@ -135,8 +139,6 @@ public class MrcmCommandProvider implements CommandProvider {
 			return;
 		}
 		
-		final String username = User.SYSTEM.getUsername();
-
 		interpreter.println("Exporting MRCM rules (" + selectedFormat.name() + ")...");
 		
 		final Path outputFolder = Paths.get(destinationFolder);
@@ -145,9 +147,9 @@ public class MrcmCommandProvider implements CommandProvider {
 		
 		try (final OutputStream stream = Files.newOutputStream(exportPath, StandardOpenOption.CREATE)) {
 			if (selectedFormat == MrcmExportFormat.XMI) {
-				new XMIMrcmExporter().doExport(username, stream);
+				new XMIMrcmExporter().doExport(sourcePath, authenticator.getUsername(), stream);
 			} else if (selectedFormat == MrcmExportFormat.CSV) {
-				new CsvMrcmExporter().doExport(username, stream);
+				new CsvMrcmExporter().doExport(sourcePath, authenticator.getUsername(), stream);
 			}
 			interpreter.println("Exported MRCM rules to " + exportPath + " in " 
 			+ selectedFormat.name() + " format.");

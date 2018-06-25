@@ -30,11 +30,13 @@ import static com.google.common.collect.Lists.newArrayList;
 import java.util.List;
 
 import com.b2international.snowowl.core.SnowOwlApplication;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.RequestBuilder;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
@@ -221,6 +223,15 @@ public class SnomedConcreteDomainImportPostProcessor implements ISnomedImportPos
 				.addDescription(createDescription(identifierConceptId, ptTerm, SYNONYM, Acceptability.PREFERRED, branch))
 				.addRelationship(createIsaRelationship(identifierConceptId, parent, CharacteristicType.STATED_RELATIONSHIP, branch))
 				.addRelationship(createIsaRelationship(identifierConceptId, parent, CharacteristicType.INFERRED_RELATIONSHIP, branch));
+	}
+	
+	private Branch getBranch(final String branchPath) {
+		return RepositoryRequests
+					.branching()
+					.prepareGet(branchPath)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getServiceForClass(IEventBus.class))
+					.getSync();
 	}
 	
 	private SnomedDescriptionCreateRequestBuilder createDescription(final String conceptId, final String term, final String type, final Acceptability acceptability, final String branch) {
