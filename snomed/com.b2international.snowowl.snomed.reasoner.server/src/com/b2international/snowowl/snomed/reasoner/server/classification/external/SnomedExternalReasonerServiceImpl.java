@@ -53,12 +53,12 @@ import com.b2international.snowowl.retrofit.AuthenticationInterceptor;
 import com.b2international.snowowl.retrofit.PromiseCallAdapterFactory;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
+import com.b2international.snowowl.snomed.core.domain.Rf2ExportResult;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
-import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
 import com.b2international.snowowl.snomed.reasoner.classification.EquivalenceSet;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
@@ -148,14 +148,7 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 
 	@Override
 	public GetResultResponse getResult(String classificationId) {
-		
-		GetResultResponseChanges changes = classificationResultRegistry.getIfPresent(classificationId);
-		
-		if (null == changes) {
-			return new GetResultResponse(GetResultResponse.Type.NOT_AVAILABLE);
-		}
-
-		return new GetResultResponse(Type.SUCCESS, changes); // FIXME?
+		return new GetResultResponse(classificationResultRegistry.getIfPresent(classificationId));
 	}
 
 	@Override
@@ -168,16 +161,19 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
         
 		try {
         	
-        	UUID fileId = SnomedRequests.rf2().prepareExport()
+			Rf2ExportResult exportResult = SnomedRequests.rf2().prepareExport()
         			.setReleaseType(Rf2ReleaseType.DELTA)
-        			.setIncludeUnpublished(true)
-        			.setConceptsAndRelationshipOnly(true)
+        			.setIncludePreReleaseContent(true)
+        			//.setConceptsAndRelationshipOnly(true) FIXME
         			.setUserId(userId)
-        			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+        			.setReferenceBranch(branchPath)
+        			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
         			.execute(getEventBus())
         			.getSync();
         	
-        	File rf2Delta = fileRegistry.getFile(fileId);
+        	UUID fileId = exportResult.getRegistryId();
+        	
+			File rf2Delta = fileRegistry.getFile(fileId);
         	
         	Branch branch = RepositoryRequests.branching()
         			.prepareGet(branchPath)

@@ -52,7 +52,7 @@ public class ExternalClassifyRequest implements Request<ServiceProvider, ApiErro
 	
 	@JsonProperty
 	public String getBranch() {
-		return settings.getSnomedBranchPath().getPath();
+		return settings.getBranchPath();
 	}
 	
 	@Override
@@ -70,9 +70,9 @@ public class ExternalClassifyRequest implements Request<ServiceProvider, ApiErro
 			
 			SnomedExternalReasonerService reasonerService = context.service(SnomedExternalReasonerService.class);
 			
-			LOG.info("Initiating external classification request for {}", settings.getSnomedBranchPath().getPath());
+			LOG.info("Initiating external classification request for {}", settings.getBranchPath());
 			
-			String externalClassificationId = reasonerService.sendExternalRequest(settings.getSnomedBranchPath().getPath(), settings.getReasonerId(), settings.getUserId());
+			String externalClassificationId = reasonerService.sendExternalRequest(settings.getBranchPath(), settings.getReasonerId(), settings.getUserId());
 			Path results = reasonerService.getExternalResults(externalClassificationId);
 			reasonerService.registerExternalResults(internalClassificationId, results);
 			
