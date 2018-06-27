@@ -19,10 +19,10 @@ import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.MetadataHolder;
 import com.b2international.snowowl.core.MetadataHolderMixin;
 import com.b2international.snowowl.core.MetadataMixin;
+import com.b2international.snowowl.datastore.review.MergeReview;
+import com.b2international.snowowl.datastore.review.MergeReviewMixin;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewMixin;
-import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
-import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImplMixin;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -37,7 +37,7 @@ public class JsonSupport {
 		mapper.addMixIn(Metadata.class, MetadataMixin.class);
 		mapper.addMixIn(MetadataHolder.class, MetadataHolderMixin.class);
 		mapper.addMixIn(Review.class, ReviewMixin.class);
-		mapper.addMixInAnnotations(MergeReviewImpl.class, MergeReviewImplMixin.class);
+		mapper.addMixIn(MergeReview.class, MergeReviewMixin.class);
 		return mapper;
 	}
 	

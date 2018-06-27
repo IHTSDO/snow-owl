@@ -15,63 +15,160 @@
  */
 package com.b2international.snowowl.datastore.review;
 
-import java.util.Set;
-
 import com.b2international.index.Doc;
-
 
 /**
  * Represents a terminology review comparing bidirectional changes on branches while catering for manual merges.
  */
 @Doc(type="merge_review")
-public interface MergeReview {
+public class MergeReview {
 
+	private final String id;
+	private final String sourcePath;
+	private final String targetPath;
+	private final String sourceToTargetReviewId;
+	private final String targetToSourceReviewId;
+	private final ReviewStatus status;
+	
+	public static Builder builder() {
+		return new Builder();
+	}
+	
+	public static Builder builder(MergeReview mergeReviewToCopy) {
+		return builder()
+				.id(mergeReviewToCopy.id())
+				.sourcePath(mergeReviewToCopy.sourcePath())
+				.targetPath(mergeReviewToCopy.targetPath())
+				.sourceToTargetReviewId(mergeReviewToCopy.sourceToTargetReviewId())
+				.targetToSourceReviewId(mergeReviewToCopy.targetToSourceReviewId())
+				.status(mergeReviewToCopy.status());
+	}
+	
+	public static class Builder {
+		
+		private String id;
+		private String sourcePath;
+		private String targetPath;
+		private String sourceToTargetReviewId;
+		private String targetToSourceReviewId;
+		private ReviewStatus status = ReviewStatus.PENDING; // default status
+		
+		public Builder id(String id) {
+			this.id = id;
+			return this;
+		}
+		
+		public Builder sourcePath(String sourcePath) {
+			this.sourcePath = sourcePath;
+			return this;
+		}
+		
+		public Builder targetPath(String targetPath) {
+			this.targetPath = targetPath;
+			return this;
+		}
+		
+		public Builder sourceToTargetReviewId(String sourceToTargetReviewId) {
+			this.sourceToTargetReviewId = sourceToTargetReviewId;
+			return this;
+		}
+		
+		public Builder targetToSourceReviewId(String targetToSourceReviewId) {
+			this.targetToSourceReviewId = targetToSourceReviewId;
+			return this;
+		}
+		
+		public Builder status(ReviewStatus status) {
+			this.status = status;
+			return this;
+		}
+		
+		public MergeReview build() {
+			return new MergeReview(this.id, this.sourcePath, this.targetPath, this.sourceToTargetReviewId, this.targetToSourceReviewId, this.status);
+		}
+		
+	}
+	
+	private MergeReview(final String id, final String sourcePath, final String targetPath, 
+			final String sourceToTargetReviewId, final String targetToSourceReviewId, ReviewStatus status) {
+		this.id = id;
+		this.sourcePath = sourcePath;
+		this.targetPath = targetPath;
+		this.sourceToTargetReviewId = sourceToTargetReviewId;
+		this.targetToSourceReviewId = targetToSourceReviewId;
+		this.status = status;
+	}
+	
 	/**
 	 * Returns the unique identifier of this review.
 	 */
-	String id();
-
-	/**
-	 * Returns the current status of this review.
-	 */
-	ReviewStatus status();
-
-	/**
-	 * Returns the branch used as the comparison source.
-	 */
-	String sourcePath();
+	public String id() {
+		return this.id;
+	}
 
 	/**
 	 * Returns the branch used as the comparison target.
 	 */
-	String targetPath();
+	public String targetPath() {
+		return targetPath;
+	}
 
 	/**
-	 * Deletes this review and corresponding concept changes from the review repository.
+	 * Returns the branch used as the comparison source.
 	 */
-	MergeReview delete();
-
-	/**
-	 * Returns the last update time in ISO8601 format. Update time is registered at creation and whenever the review's
-	 * state changes.
-	 * 
-	 * @return the time of last update
-	 */
-	String lastUpdated();
+	public String sourcePath() {
+		return sourcePath;
+	}
 	
 	/**
 	 * Returns the unique identifier of the source to target review
 	 */
-	String sourceToTargetReviewId();
-	
+	public String sourceToTargetReviewId() {
+		return sourceToTargetReviewId;
+	}
+
 	/**
 	 * Returns the unique identifier of the target to source review
 	 */
-	String targetToSourceReviewId();
+	public String targetToSourceReviewId() {
+		return targetToSourceReviewId;
+	}
 
 	/**
-	 * Retrieve the intersection of concepts modified in both source and target
-	 **/
-	Set<String> mergeReviewIntersection(); 
-	
+	 * Returns the current status of this merge review.
+	 */
+	public ReviewStatus status() {
+		return status;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((id == null) ? 0 : id.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		MergeReview other = (MergeReview) obj;
+		if (id == null) {
+			if (other.id != null) {
+				return false;
+			}
+		} else if (!id.equals(other.id)) {
+			return false;
+		}
+		return true;
+	}
+
 }

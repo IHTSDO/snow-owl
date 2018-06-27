@@ -19,12 +19,11 @@ import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.datastore.events.DeleteMergeReviewRequest;
-import com.b2international.snowowl.datastore.review.MergeReview;
 
 /**
  * @since 5.0
  */
-public final class MergeReviewDeleteRequestBuilder extends BaseRequestBuilder<MergeReviewDeleteRequestBuilder, RepositoryContext, MergeReview> implements RepositoryRequestBuilder<MergeReview> {
+public final class MergeReviewDeleteRequestBuilder extends BaseRequestBuilder<MergeReviewDeleteRequestBuilder, RepositoryContext, Boolean> implements RepositoryRequestBuilder<Boolean> {
 
 	private final String reviewId;
 
@@ -33,7 +32,7 @@ public final class MergeReviewDeleteRequestBuilder extends BaseRequestBuilder<Me
 	}
 	
 	@Override
-	protected Request<RepositoryContext, MergeReview> doBuild() {
+	protected Request<RepositoryContext, Boolean> doBuild() {
 		return new DeleteMergeReviewRequest(reviewId);
 	}
 }

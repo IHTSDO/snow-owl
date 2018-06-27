@@ -18,8 +18,10 @@ package com.b2international.snowowl.snomed.api.rest;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.net.URI;
 import java.security.Principal;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
@@ -39,6 +41,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.collections.Procedure;
+import com.b2international.commons.http.AcceptHeader;
+import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
@@ -132,11 +136,21 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 			
 			@PathVariable("id") final String mergeReviewId,
 			
-			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String languageSetting) throws InterruptedException, ExecutionException {
 		
-		return mergeReviewService.getMergeReviewDetails(mergeReviewId, getExtendedLocales(languageSetting));
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
+		return mergeReviewService.getMergeReviewDetails(mergeReviewId, extendedLocales);
 	}
 	
 	@ApiOperation(
@@ -181,16 +195,29 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 	})
 	@RequestMapping(value="/{id}/apply", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void mergeAndApply(@PathVariable("id") final String mergeReviewId, 
+	public void mergeAndApply(
+			
+			@PathVariable("id")
+			final String mergeReviewId, 
 			
 			final Principal principal,
 
-			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String languageSetting) throws IOException, InterruptedException, ExecutionException, ConflictException {
+			final String languageSetting) throws ConflictException, IOException, InterruptedException, ExecutionException {
 
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
 		final String userId = principal.getName();
-		mergeReviewService.mergeAndReplayConceptUpdates(mergeReviewId, userId, getExtendedLocales(languageSetting));
+		mergeReviewService.mergeAndReplayConceptUpdates(mergeReviewId, userId, extendedLocales);
 	}
 	
 	private URI getLocationHeader(ControllerLinkBuilder linkBuilder, final MergeReview mergeReview) {

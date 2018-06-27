@@ -16,6 +16,7 @@
 package com.b2international.snowowl.datastore.server.internal.review;
 
 import static com.google.common.collect.Sets.newHashSet;
+import static java.util.stream.Collectors.toSet;
 
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -135,14 +136,11 @@ public class ReviewManagerImpl implements ReviewManager {
 						
 						
 						if (affectedReviews.getTotal() > 0) {
-							final Set<String> ids = newHashSet();
-							for (Review r : affectedReviews) {
-								ids.add(r.id());
-							}
-						
+							Set<String> ids = affectedReviews.stream().map(Review::id).collect(toSet());
+							
 							index.removeAll(ImmutableMap.of(
-									Review.class, ids,
-									ConceptChanges.class, ids
+										Review.class, ids,
+										ConceptChanges.class, ids
 									));
 							
 							index.commit();
@@ -231,9 +229,13 @@ public class ReviewManagerImpl implements ReviewManager {
 				
 				if (affectedReviews.getTotal() > 0) {
 					for (final Review affectedReview : affectedReviews) {
-						Review newReview = updateStatus(affectedReview, ReviewStatus.STALE);
-						if (newReview != null) {
-							index.put(newReview.id(), newReview);
+						if (ReviewStatus.STALE != affectedReview.status()) {
+							Review updatedReview = Review.builder(affectedReview)
+								.status(ReviewStatus.STALE)
+								.refreshLastUpdated()
+								.build();
+								
+							index.put(updatedReview.id(), updatedReview);
 						}
 					}
 					index.commit();
@@ -268,27 +270,17 @@ public class ReviewManagerImpl implements ReviewManager {
 		return review;
 	}
 
-	void updateReviewStatus(final String id, final ReviewStatus newReviewStatus) {
+	private void updateReviewStatus(final String id, final ReviewStatus newStatus) {
 		try {
-			final Review oldReview = (Review) getReview(id);
-			final Review newReview = updateStatus(oldReview, newReviewStatus);
-			if (newReview != null) {
-				putReview(newReview);
+			Review current = getReview(id);
+			if (!ReviewStatus.STALE.equals(current.status()) && newStatus != current.status()) {
+				putReview(Review.builder(current)
+					.status(newStatus)
+					.refreshLastUpdated()
+					.build());
 			}
 		} catch (final NotFoundException ignored) {
 			// No need to update if a review has been removed in the meantime 
-		}
-	}
-
-	private Review updateStatus(Review current, ReviewStatus newStatus) {
-		if (!ReviewStatus.STALE.equals(current.status())) {
-			return Review.builder(current)
-					.status(newStatus)
-					.refreshLastUpdated()
-					.build();
-		} else {
-			// XXX null means no change here
-			return null;
 		}
 	}
 

@@ -16,13 +16,12 @@
 package com.b2international.snowowl.datastore.events;
 
 import com.b2international.snowowl.core.domain.RepositoryContext;
-import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.MergeReviewManager;
 
 /**
  * Sent when a user requests a review to be deleted.
  */
-public class DeleteMergeReviewRequest extends ReviewRequest<MergeReview> {
+public class DeleteMergeReviewRequest extends ReviewRequest<Boolean> {
 
 	private static final long serialVersionUID = 1L;
 
@@ -31,7 +30,8 @@ public class DeleteMergeReviewRequest extends ReviewRequest<MergeReview> {
 	}
 	
 	@Override
-	public MergeReview execute(RepositoryContext context) {
-		return context.service(MergeReviewManager.class).getMergeReview(getReviewId()).delete();
+	public Boolean execute(RepositoryContext context) {
+		context.service(MergeReviewManager.class).deleteMergeReview(getReviewId());
+		return Boolean.TRUE;
 	}
 }

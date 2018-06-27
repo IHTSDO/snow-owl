@@ -15,22 +15,18 @@
  */
 package com.b2international.snowowl.datastore.server.internal.review;
 
-import static com.google.common.collect.Sets.newHashSet;
-
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Set;
 import java.util.UUID;
 
+import com.b2international.index.DocSearcher;
 import com.b2international.index.Index;
 import com.b2international.index.IndexRead;
 import com.b2international.index.IndexWrite;
-import com.b2international.index.Searcher;
 import com.b2international.index.Writer;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.internal.InternalRepository;
-import com.b2international.snowowl.datastore.review.ConceptChanges;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.MergeReviewManager;
 import com.b2international.snowowl.datastore.review.Review;
@@ -42,23 +38,27 @@ import com.google.common.collect.ImmutableMap;
  */
 public class MergeReviewManagerImpl implements MergeReviewManager {
 
-	private final ReviewManagerImpl reviews;
-	private final Index index;
+	private final ReviewManagerImpl reviewManager;
+	private final Index store;
 
-	public MergeReviewManagerImpl(InternalRepository repository, ReviewManagerImpl reviews) {
-		this.index = repository.getIndex();
-		this.reviews = reviews;
+	public MergeReviewManagerImpl(InternalRepository repository, ReviewManagerImpl reviewManager) {
+		this.store = repository.getIndex();
+		this.reviewManager = reviewManager;
 	}
 	
 	@Override
 	public MergeReview createMergeReview(Branch source, Branch target) {	
-		Review sourceToTarget = reviews.createReview(source, target);
-		Review targetToSource = reviews.createReview(target, source);
+		Review sourceToTarget = reviewManager.createReview(source, target);
+		Review targetToSource = reviewManager.createReview(target, source);
 
-		MergeReviewImpl mergeReview = new MergeReviewImpl(UUID.randomUUID().toString(), source.path(), target.path(), sourceToTarget.id(), targetToSource.id());
-		mergeReview.setMergeReviewManager(this);
-		mergeReview.setReviewManager(reviews);
-
+		MergeReview mergeReview = MergeReview.builder()
+			.id(UUID.randomUUID().toString())
+			.sourcePath(source.path())
+			.targetPath(target.path())
+			.sourceToTargetReviewId(sourceToTarget.id())
+			.targetToSourceReviewId(targetToSource.id())
+			.build();
+		
 		put(mergeReview);
 		
 		return mergeReview;
@@ -66,74 +66,83 @@ public class MergeReviewManagerImpl implements MergeReviewManager {
 
 	@Override
 	public MergeReview getMergeReview(String id) {
-		final MergeReviewImpl mergeReview = get(id);
-
-		if (mergeReview == null) {
-			throw new NotFoundException(MergeReview.class.getSimpleName(), id);
-		} 
-
-		mergeReview.setMergeReviewManager(this);
-		mergeReview.setReviewManager(reviews);
-		return mergeReview;
-	}
-	
-	@Override
-	public Set<String> getMergeReviewIntersection(MergeReview mergeReview) {
-		// Get the concept changes for both source to target 
-		// and target to source reviews
 		
-		// Are we all complete and still relevant?
-		if (!mergeReview.status().equals(ReviewStatus.CURRENT)){
-			throw new IllegalStateException ("Merge Review in invalid state - " + mergeReview.status());
+		MergeReview mergeReview = get(id);
+		ReviewStatus newMergeReviewStatus = getMergeReviewStatus(mergeReview);
+		
+		if (mergeReview.status() != newMergeReviewStatus) { // FIXME
+			
+			MergeReview updatedMergeReview = MergeReview.builder(mergeReview)
+				.status(newMergeReviewStatus)
+				.build();
+			
+			put(updatedMergeReview);
+			
+			mergeReview = updatedMergeReview;
 		}
 		
-		ConceptChanges sourceChanges = reviews.getConceptChanges(mergeReview.sourceToTargetReviewId());
-		ConceptChanges targetChanges = reviews.getConceptChanges(mergeReview.targetToSourceReviewId());
-		
-		Set<String>commonChanges = newHashSet(sourceChanges.changedConcepts());
-		// If concepts are new then they won't intersect.  Also if they're deleted, they won't
-		// conflict, so we're only interested in the change set.
-		commonChanges.retainAll(targetChanges.changedConcepts());
-		
-		return commonChanges;
-	}
-	
-	public MergeReview deleteMergeReview(MergeReviewImpl mergeReview) {
-		Review sourceToTargetReview = reviews.getReview(mergeReview.sourceToTargetReviewId());
-		Review targetToSourceReview = reviews.getReview(mergeReview.targetToSourceReviewId());
-		sourceToTargetReview.delete();
-		targetToSourceReview.delete();
-		
-		remove(mergeReview.id());
-		
 		return mergeReview;
 	}
+	
+	private ReviewStatus getMergeReviewStatus(MergeReview currentMergeReview) {
+		try {
+			Review left = reviewManager.getReview(currentMergeReview.sourceToTargetReviewId());
+			Review right = reviewManager.getReview(currentMergeReview.targetToSourceReviewId());
+			if (left.status() == ReviewStatus.FAILED || right.status() == ReviewStatus.FAILED) {
+				return ReviewStatus.FAILED;
+			} else if (left.status() == ReviewStatus.PENDING || right.status() == ReviewStatus.PENDING) {
+				return ReviewStatus.PENDING;
+			} else if (left.status() == ReviewStatus.STALE || right.status() == ReviewStatus.STALE) {
+				return ReviewStatus.STALE;
+			} else  if (left.status() == ReviewStatus.CURRENT && right.status() == ReviewStatus.CURRENT) {
+				return ReviewStatus.CURRENT;
+			} else {
+				throw new IllegalStateException("Unexpected state combination: " + left.status() + " / " + right.status());
+			}
+		} catch (NotFoundException e) {
+			return ReviewStatus.STALE;
+		}
+	}
 
-	private void put(final MergeReviewImpl newMergeReview) {
-		index.write(new IndexWrite<Void>() {
+	@Override
+	public void deleteMergeReview(String mergeReviewId) {
+		MergeReview mergeReview = get(mergeReviewId);
+		reviewManager.delete(mergeReview.sourceToTargetReviewId());
+		reviewManager.delete(mergeReview.targetToSourceReviewId());
+		delete(mergeReview.id());
+	}
+
+	private void put(final MergeReview mergeReview) {
+		store.write(new IndexWrite<Void>() {
 			@Override
 			public Void execute(Writer index) throws IOException {
-				index.put(newMergeReview.id(), newMergeReview);
+				index.put(mergeReview.id(), mergeReview);
 				index.commit();
 				return null;
 			}
 		});
 	}
 	
-	private MergeReviewImpl get(final String id) {
-		return index.read(new IndexRead<MergeReviewImpl>() {
+	private MergeReview get(final String id) {
+		MergeReview mergeReview = store.read(new IndexRead<MergeReview>() {
 			@Override
-			public MergeReviewImpl execute(Searcher index) throws IOException {
-				return index.get(MergeReviewImpl.class, id);
+			public MergeReview execute(DocSearcher index) throws IOException {
+				return index.get(MergeReview.class, id);
 			}
 		});
+		
+		if (mergeReview == null) {
+			throw new NotFoundException(MergeReview.class.getSimpleName(), id);
+		}
+		
+		return mergeReview;
 	}
 	
-	private void remove(final String id) {
-		index.write(new IndexWrite<Void>() {
+	private void delete(final String mergeReviewId) {
+		store.write(new IndexWrite<Void>() {
 			@Override
 			public Void execute(Writer index) throws IOException {
-				index.removeAll(ImmutableMap.<Class<?>, Set<String>>of(MergeReviewImpl.class, Collections.singleton(id)));
+				index.removeAll(ImmutableMap.of(MergeReview.class, Collections.singleton(mergeReviewId)));
 				index.commit();
 				return null;
 			}

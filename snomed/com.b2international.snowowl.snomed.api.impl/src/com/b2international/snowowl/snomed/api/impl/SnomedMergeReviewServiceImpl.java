@@ -194,15 +194,20 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	
 	protected static class MergeReviewDeleteHandler implements IHandler<Merge> {
 		
-		private final MergeReview mergeReview;
+		private final String id;
 		
-		private MergeReviewDeleteHandler(MergeReview mergeReview) {
-			this.mergeReview = mergeReview;
+		private MergeReviewDeleteHandler(String mergeReviewId) {
+			this.id = mergeReviewId;
 		}
 		
 		@Override
 		public void handle(Merge merge) {
-			mergeReview.delete();
+			RepositoryRequests
+				.mergeReviews()
+				.prepareDelete(id)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.getSync();
 		}
 	}
 
@@ -958,7 +963,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		MergeReviewCompletionHandler mergeReviewCompletionHandler = new MergeReviewCompletionHandler(address, bus, latch,
 				// Set up one-shot handlers that will be notified when the merge completes successfully
 				new ConceptUpdateHandler(conceptUpdates, userId, extendedLocales, getBrowserService()), 
-				new MergeReviewDeleteHandler(mergeReview),
+				new MergeReviewDeleteHandler(mergeReview.id()),
 				new ManualMergeDeleteHandler(getManualConceptMergeService(), mergeReviewId));
 		
 		mergeReviewCompletionHandler.register();

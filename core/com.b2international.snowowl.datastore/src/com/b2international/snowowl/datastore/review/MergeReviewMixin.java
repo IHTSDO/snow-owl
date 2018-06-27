@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.b2international.snowowl.datastore.server.internal.review;
+package com.b2international.snowowl.datastore.review;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public abstract class MergeReviewImplMixin {
+public abstract class MergeReviewMixin {
 
     @JsonCreator
-    private MergeReviewImplMixin(
+    private MergeReviewMixin(
     		@JsonProperty("id") final String id, 
     		@JsonProperty("sourcePath") final String sourcePath,
     		@JsonProperty("targetPath") final String targetPath, 
