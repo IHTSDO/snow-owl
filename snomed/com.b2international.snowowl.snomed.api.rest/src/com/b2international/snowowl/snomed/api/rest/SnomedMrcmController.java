@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +29,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b2international.commons.http.AcceptHeader;
+import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.CollectionResource;
-import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.impl.SnomedMrcmService;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
@@ -44,13 +48,7 @@ import com.wordnik.swagger.annotations.ApiResponses;
 public class SnomedMrcmController extends AbstractSnomedRestService {
 
 	@Autowired
-	private IEventBus bus;
-	
-	@Autowired
 	private SnomedMrcmService mrcmService;
-	
-	@Autowired
-	private SnomedResourceExpander resourceExpander;
 	
 	@ApiOperation(
 		value = "Retrieve MRCM relationship rules for a concept.", 
@@ -89,7 +87,17 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 		
-		return mrcmService.getDomainAttributes(branchPath, parentIds, offset, limit, getExtendedLocales(acceptLanguage), expand);
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
+		return mrcmService.getDomainAttributes(branchPath, parentIds, offset, limit, extendedLocales, expand);
 	}
 
 	@RequestMapping(value="/{path:**}/attribute-values/{attributeId}", method=RequestMethod.GET)
@@ -122,8 +130,18 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 		
-		return mrcmService.getAttributeValues(branchPath, attributeId.toString(), termPrefix, 
-				offset, limit, getExtendedLocales(acceptLanguage), expand);
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
+		return mrcmService.getAttributeValues(branchPath, attributeId.toString(), termPrefix, offset, limit,
+				extendedLocales, expand);
 	}
 
 }
