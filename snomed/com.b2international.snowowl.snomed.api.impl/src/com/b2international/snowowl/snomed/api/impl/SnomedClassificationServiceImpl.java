@@ -180,7 +180,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				sourceIds.removeAll(moduleMap.keySet());
 				populateModuleMap(branchPath, sourceIds, moduleMap);
 				
-				for (IRelationshipChange change : relationshipChanges.getChanges()) {
+				for (IRelationshipChange change : relationshipChanges.getItems()) {
 					
 					switch (change.getChangeNature()) {
 						case INFERRED:
@@ -223,7 +223,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					removeOrDeactivate(builder, defaultModuleId, removeOrDeactivateRelationships, referringMembers);
 				}
 				
-				offset += relationshipChanges.getChanges().size();
+				offset += relationshipChanges.getItems().size();
 				relationshipChanges = getRelationshipChanges(branchPath, classificationId, offset, RELATIONSHIP_BLOCK_SIZE);
 			}
 			
@@ -241,7 +241,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 		private Set<String> getInferredSourceIds(final IRelationshipChangeList relationshipChanges) {
 			final Set<String> sourceIds = Sets.newHashSet();
-			for (final IRelationshipChange change : relationshipChanges.getChanges()) {
+			for (final IRelationshipChange change : relationshipChanges.getItems()) {
 				if (ChangeNature.INFERRED.equals(change.getChangeNature())) {
 					sourceIds.add(change.getSourceId());
 				}
@@ -505,7 +505,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	
 	@SuppressWarnings("unchecked")
 	private boolean isExternalClassificationRequest(RemoteJobEntry remoteJobEntry) {
-		Map<String, Object> settings = (Map<String, Object>) remoteJobEntry.getParameters().get("settings");
+		Map<String, Object> settings = (Map<String, Object>) remoteJobEntry.getParameters(mapper).get("settings");
 		return (Boolean) settings.get("useExternalService");
 	}
 
@@ -624,7 +624,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		checkServices();
 		Branch branch = getBranchIfExists(branchPath);
 
-		final ClassificationSettings settings = new ClassificationSettings(userId, branch.branchPath())
+		final ClassificationSettings settings = new ClassificationSettings(userId, BranchPathUtils.createPath(branchPath))
 				.withParentContextDescription(DatastoreLockContextDescriptions.ROOT)
 				.withExternalService(useExternalService)
 				.withReasonerId(reasonerId);
@@ -638,7 +638,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		classificationRun.setStatus(ClassificationStatus.SCHEDULED);
 		
 		try {
-			indexService.upsertClassificationRun(branch.branchPath(), classificationRun);
+			indexService.upsertClassificationRun(branchPath, classificationRun);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
