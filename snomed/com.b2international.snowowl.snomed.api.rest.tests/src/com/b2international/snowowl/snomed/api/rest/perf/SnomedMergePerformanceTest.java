@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
@@ -40,9 +41,6 @@ import com.b2international.snowowl.identity.domain.User;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.AllSnomedApiTests;
-import com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests;
-import com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests;
-import com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
@@ -84,27 +82,34 @@ public class SnomedMergePerformanceTest extends AbstractSnomedApiTest {
 	public void testPerf() throws Exception {
 		IBranchPath branch = BranchPathUtils.createPath(branchPath, "merge-test");
 		createBranch(branch).statusCode(201);
+		
+		Branch b = RepositoryRequests.branching()
+			.prepareGet(branch.getPath())
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+			.execute(getBus())
+			.getSync();
+		
 		BulkRequestBuilder<TransactionContext> bulk = BulkRequest.create();
 		final int numberOfConceptsToWorkWith = 10_000;
 		for (int i = 0; i < numberOfConceptsToWorkWith; i++) {
 			bulk.add(SnomedRequests.prepareNewConcept()
-						.setIdFromNamespace(null /*INT*/)
+						.setIdFromNamespace(null /*INT*/, b)
 						.setActive(true)
 						.setModuleId(Concepts.MODULE_SCT_CORE)
 						.addDescription(SnomedRequests.prepareNewDescription()
-								.setIdFromNamespace(null /*INT*/)
+								.setIdFromNamespace(null /*INT*/, b)
 								.setTerm("MergeTest FSN " + i)
 								.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
 								.setLanguageCode("en")
 								.preferredIn(Concepts.REFSET_LANGUAGE_TYPE_UK))
 						.addDescription(SnomedRequests.prepareNewDescription()
-								.setIdFromNamespace(null /*INT*/)
+								.setIdFromNamespace(null /*INT*/, b)
 								.setTerm("MergeTest PT " + i)
 								.setTypeId(Concepts.SYNONYM)
 								.setLanguageCode("en")
 								.preferredIn(Concepts.REFSET_LANGUAGE_TYPE_UK))
 						.addRelationship(SnomedRequests.prepareNewRelationship()
-								.setIdFromNamespace(null /*INT*/)
+								.setIdFromNamespace(null /*INT*/, b)
 								.setCharacteristicType(CharacteristicType.STATED_RELATIONSHIP)
 								.setTypeId(Concepts.IS_A)
 								.setDestinationId(Concepts.ROOT_CONCEPT)));
@@ -200,7 +205,7 @@ public class SnomedMergePerformanceTest extends AbstractSnomedApiTest {
 		// add new relationships to concepts
 		for (String conceptIdToUpdate : idsOfCreatedConcepts) {
 			bulk.add(SnomedRequests.prepareNewRelationship()
-					.setIdFromNamespace(null /*INT*/)
+					.setIdFromNamespace(null /*INT*/, b)
 					.setSourceId(conceptIdToUpdate)
 					.setTypeId(Concepts.IS_A)
 					.setDestinationId("404684003" /*CLINICAL FINDING*/)

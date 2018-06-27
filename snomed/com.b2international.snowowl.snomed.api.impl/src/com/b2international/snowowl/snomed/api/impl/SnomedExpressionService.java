@@ -3,8 +3,10 @@ package com.b2international.snowowl.snomed.api.impl;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Resource;
 
@@ -21,6 +23,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpre
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionGroup;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.tree.TerminologyTree;
@@ -88,9 +91,26 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 			expression.addConcept(getCreateConcept(superType, concepts));
 		}
 		
-		SnomedServiceHelper.populateConceptTerms(Collections2.transform(concepts.values(), expressionToConceptMinFunction), extendedLocales, descriptionService);
+		populateConceptTerms(Collections2.transform(concepts.values(), expressionToConceptMinFunction), extendedLocales, descriptionService);
 		
 		return expression;
+	}
+	
+	private void populateConceptTerms(Collection<ISnomedConceptMin> concepts, List<ExtendedLocale> extendedLocales, DescriptionService descriptionService) {
+		
+		Set<String> allConceptIds = new HashSet<>();
+		for (ISnomedConceptMin conceptMin : concepts) {
+			allConceptIds.add(conceptMin.getId());
+		}
+		final Map<String, SnomedDescription> fsns = descriptionService.getFullySpecifiedNames(allConceptIds, extendedLocales);
+		for (ISnomedConceptMin conceptMin : concepts) {
+			final SnomedDescription iSnomedDescription = fsns.get(conceptMin.getId());
+			if (iSnomedDescription != null && iSnomedDescription.getTerm() != null) {
+				conceptMin.setTerm(iSnomedDescription.getTerm());
+			} else {
+				conceptMin.setTerm(conceptMin.getId());
+			}
+		}
 	}
 	
 	private SnomedRelationships getActiveInferredRelationships(String branchPath, String conceptId) {

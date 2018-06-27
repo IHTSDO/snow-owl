@@ -402,40 +402,6 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 			return ImmutableMap.<String, Object>builder()
 					.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, RULE_REFSET_ID)
 					.build();
-		case OWL_AXIOM:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, OWL_EXPRESSION_1)
-					.build();
-		case MRCM_DOMAIN:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, DOMAIN_CONSTRAINT)
-					.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, PARENT_DOMAIN)
-					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, PROXIMAL_PRIMITIVE_CONSTRAINT)
-					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, PROXIMAL_PRIMITIVE_REFINEMENT)
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, DOMAIN_TEMPLATE_FOR_PRECOORDINATION)
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, DOMAIN_TEMPLATE_FOR_POSTCOORDINATION)
-					.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, EDITORIAL_GUIDE_REFERENCE)
-					.build();
-		case MRCM_ATTRIBUTE_DOMAIN:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, DOMAIN_ID)
-					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, ATTRIBUTE_CARDINALITY)
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, ATTRIBUTE_IN_GROUP_CARDINALITY)
-					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, RULE_STRENGTH_ID)
-					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, CONTENT_TYPE_ID)
-					.build();
-		case MRCM_ATTRIBUTE_RANGE:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, RANGE_CONSTRAINT)
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, ATTRIBUTE_RULE)
-					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, RULE_STRENGTH_ID)
-					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, CONTENT_TYPE_ID)
-					.build();
-		case MRCM_MODULE_SCOPE:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, RULE_REFSET_ID)
-					.build();
 		default:
 			throw new IllegalStateException("Unexpected reference set type '" + refSetType + "'.");
 		}
@@ -502,40 +468,6 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 		case OWL_ONTOLOGY:
 			return ImmutableMap.<String, Object>builder()
 					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, OWL_ONTOLOGY_2)
-					.build();
-		case MRCM_DOMAIN:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, DOMAIN_CONSTRAINT_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "") // unset on purpose
-					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, PROXIMAL_PRIMITIVE_CONSTRAINT_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "") // unset on purpose
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, DOMAIN_TEMPLATE_FOR_PRECOORDINATION_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, DOMAIN_TEMPLATE_FOR_POSTCOORDINATION_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "") // unset on purpose
-					.build();
-		case MRCM_ATTRIBUTE_DOMAIN:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, DOMAIN_ID_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.FALSE)
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, ATTRIBUTE_CARDINALITY_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, ATTRIBUTE_IN_GROUP_CARDINALITY_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, RULE_STRENGTH_ID_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, CONTENT_TYPE_ID_2)
-					.build();
-		case MRCM_ATTRIBUTE_RANGE:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, RANGE_CONSTRAINT_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, ATTRIBUTE_RULE_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, RULE_STRENGTH_ID_2)
-					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, CONTENT_TYPE_ID_2)
-					.build();
-		case MRCM_MODULE_SCOPE:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, RULE_REFSET_ID_2)
-					.build();
-		case OWL_AXIOM:
-			return ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, OWL_EXPRESSION_2)
 					.build();
 		case MRCM_DOMAIN:
 			return ImmutableMap.<String, Object>builder()

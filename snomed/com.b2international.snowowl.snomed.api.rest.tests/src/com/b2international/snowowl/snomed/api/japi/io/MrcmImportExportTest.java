@@ -95,8 +95,8 @@ public class MrcmImportExportTest {
 		} 
 		
 		// verify CDO content
-		try (MrcmEditingContext context = new MrcmEditingContext(branchPath)) {
-			assertEquals(58, context.getOrCreateConceptModel().getConstraints().size());
+		try (SnomedEditingContext context = new SnomedEditingContext(branchPath)) {
+			assertEquals(58, context.getConstraints().size());
 		}
 		
 		// verify index

@@ -38,6 +38,7 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.file.FileRegistry;
 import com.b2international.snowowl.datastore.request.CommitResult;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
@@ -86,12 +87,15 @@ public class SnomedRefSetDSVExportTest {
 	private FileRegistry fileRegistry;
 
 	private File tempDir;
+
+	private Branch mainBranch;
 	
 	@Before
 	public void setup() {
 		bus = ApplicationContext.getInstance().getService(IEventBus.class);
 		fileRegistry = ApplicationContext.getInstance().getService(FileRegistry.class);
 		tempDir = Files.createTempDir();
+		mainBranch = RepositoryRequests.branching().prepareGet(MAIN_BRANCH).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus).getSync();
 	}
 	
 	@After
@@ -289,7 +293,7 @@ public class SnomedRefSetDSVExportTest {
 
 	private SnomedRelationshipCreateRequestBuilder toRelationshipRequest(String typeId, CharacteristicType characteristicType, String desctinationId) {
 		return SnomedRequests.prepareNewRelationship()
-				.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+				.setIdFromNamespace(Concepts.B2I_NAMESPACE, mainBranch)
 				.setModuleId(Concepts.MODULE_SCT_CORE)
 				.setDestinationId(desctinationId)
 				.setTypeId(typeId)
@@ -298,7 +302,7 @@ public class SnomedRefSetDSVExportTest {
 
 	private SnomedDescriptionCreateRequestBuilder toDescriptionRequest(String typeId, String term) {
 		return SnomedRequests.prepareNewDescription()
-				.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+				.setIdFromNamespace(Concepts.B2I_NAMESPACE, mainBranch)
 				.setModuleId(Concepts.MODULE_SCT_CORE)
 				.setTerm(term)
 				.setTypeId(typeId)

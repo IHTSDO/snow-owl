@@ -17,6 +17,8 @@ package com.b2international.snowowl.snomed.api.rest;
 
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.net.URI;
 import java.security.Principal;
 import java.util.List;
@@ -35,10 +37,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.domain.CollectionResource;
-import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
@@ -48,6 +50,7 @@ import com.b2international.snowowl.snomed.api.domain.classification.IClassificat
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
+import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChangeList;
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRestInput;
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRunRestUpdate;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
@@ -168,8 +171,17 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
+		
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
 
-		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
 		return CollectionResource.of(delegate.getEquivalentConceptSets(branchPath, classificationId, extendedLocales));
 	}
 
@@ -209,10 +221,23 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 
 		final IRelationshipChangeList relationshipChangeList = delegate.getRelationshipChanges(branchPath, classificationId, offset, limit);
 		List<IRelationshipChange> changes = relationshipChangeList.getItems();
+		
 		if (!changes.isEmpty()) {
-			changes = resourceExpander.expandRelationshipChanges(branchPath, changes, getExtendedLocales(acceptLanguage), expand);
+			
+			final List<ExtendedLocale> extendedLocales;
+			
+			try {
+				extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+			} catch (IOException e) {
+				throw new BadRequestException(e.getMessage());
+			} catch (IllegalArgumentException e) {
+				throw new BadRequestException(e.getMessage());
+			}
+			
+			changes = resourceExpander.expandRelationshipChanges(branchPath, changes, extendedLocales, expand);
 		}
-		return PageableCollectionResource.of(changes, offset, limit, relationshipChangeList.getTotal());
+		
+		return new RelationshipChangeList(changes, offset, limit, relationshipChangeList.getTotal());
 	}
 
 	@ApiOperation(
@@ -236,11 +261,21 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@PathVariable(value="conceptId")
 			final String conceptId,
 
-			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
 			final String acceptLanguage) {
 
-		return delegate.getConceptPreview(branchPath, classificationId, conceptId, getExtendedLocales(acceptLanguage));
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
+		return delegate.getConceptPreview(branchPath, classificationId, conceptId, extendedLocales);
 	}
 
 	@ApiOperation(
