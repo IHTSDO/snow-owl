@@ -21,8 +21,6 @@ import java.util.Set;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
-import com.b2international.snowowl.core.domain.exceptions.CodeSystemNotFoundException;
-import com.b2international.snowowl.core.domain.exceptions.CodeSystemVersionNotFoundException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
@@ -41,11 +39,9 @@ public interface ISnomedBrowserService {
 	 * Retrieves information strongly connected to a concept in a single request.
 	 * 
 	 * @param branchPath - the branch to use
-	 * @param componentId - the concept id to use
-	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN and preferred synonym, in decreasing order of preference
+	 * @param conceptId - the concept id to use
+	 * @param extendedLocales - the {@link ExtendedLocale}s to inspect when determining FSN and preferred synonym, in decreasing order of preference
 	 * @return the aggregated content for the requested concept
-	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
-	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
 	ISnomedBrowserConcept getConceptDetails(final String branchPath, final String conceptId, List<ExtendedLocale> extendedLocales);
@@ -53,12 +49,10 @@ public interface ISnomedBrowserService {
 	/**
 	 * Retrieves information strongly connected to a concept in bulk.
 	 * 
-	 * @param branchPath
-	 * @param conceptIds
-	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN and preferred synonym, in decreasing order of preference
+	 * @param branchPath - the branch to use
+	 * @param conceptIds - the concept ids to use
+	 * @param extendedLocales - the {@link ExtendedLocale}s to inspect when determining FSN and preferred synonym, in decreasing order of preference
 	 * @return the aggregated content for the requested concept
-	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
-	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
 	Set<ISnomedBrowserConcept> getConceptDetailsInBulk(final String branchPath, final Set<String> conceptIds, List<ExtendedLocale> extendedLocales);
@@ -67,65 +61,63 @@ public interface ISnomedBrowserService {
 	 * Retrieves a list of parent concepts for a single identifier.
 	 * 
 	 * @param branchPath - the branch to use
-	 * @param componentId - the concept id to use
-	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
+	 * @param conceptId - the concept id to use
+	 * @param extendedLocales - the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
+	 * @param isStatedForm - {@code true} if stated children should be returned, {@code false} if inferred
+	 * @param preferredDescriptionType
 	 * @return the parent concept list for the requested concept
-	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
-	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
-	List<ISnomedBrowserParentConcept> getConceptParents(String branchPath, String componentId, List<ExtendedLocale> extendedLocales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType);
+	List<ISnomedBrowserParentConcept> getConceptParents(String branchPath, String conceptId, List<ExtendedLocale> extendedLocales, boolean isStatedForm, SnomedBrowserDescriptionType preferredDescriptionType);
 	
 	/**
 	 * Retrieves a list of child concepts for a single identifier.
 	 * 
 	 * @param branchPath - the branch to use
-	 * @param componentId - the parent concept id to use to fetch his children
+	 * @param conceptId - the parent concept id to use to fetch his children
 	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
-	 * @param stated {@code true} if stated children should be returned, {@code false} if inferred
+	 * @param isStatedForm {@code true} if stated children should be returned, {@code false} if inferred
 	 * @param preferredDescriptionType 
-	 * @param offset 
-	 * @param limit 
+	 * @param offset
+	 * @param scrollKeepAlive
+	 * @param scrollId
+	 * @param limit - the maximal number of results to return
 	 * @return the child concept list for the requested concept
-	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
-	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
-	List<ISnomedBrowserChildConcept> getConceptChildren(String branchPath, String componentId, List<ExtendedLocale> extendedLocales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType);
+	List<ISnomedBrowserChildConcept> getConceptChildren(String branchPath, String conceptId, List<ExtendedLocale> extendedLocales, boolean isStatedForm, SnomedBrowserDescriptionType preferredDescriptionType, int offset, String scrollKeepAlive, String scrollId, int limit);
 	
 	/**
 	 * Retrieves a list of descriptions matching the entered query string.
 	 * 
 	 * @param branchPath - the branch to use
-	 * @param query the query text (must be at least 3 characters long)
-	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
+	 * @param query - the query text (must be at least 3 characters long)
+	 * @param extendedLocales - the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
+	 * @param preferredDescriptionType
+	 * @param offset
 	 * @param scrollKeepAlive
 	 * @param scrollId
-	 * @param limit the maximal number of results to return
+	 * @param limit - the maximal number of results to return
 	 * @return the search result list of descriptions
-	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
-	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws IllegalArgumentException if the query is {@code null} or too short
 	 */
-	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, String scrollKeepAlive, String scrollId, int limit);
+	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, int offset, String scrollKeepAlive, String scrollId, int limit);
 
 	/**
 	 * Retrieves a map of enum constants and corresponding concepts.
 	 *
-	 * @param storageRef the storage reference locating the version and branch to inspect (may not be {@code null})
-	 * @param locales the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
-	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
-	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
+	 * @param branchPath - the branch to use
+	 * @param extendedLocales - the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
 	 * @return a map with keys as constant identifiers, and values as corresponding concept ID-FSN pairs
 	 */
-	Map<String, ISnomedBrowserConstant> getConstants(String branch, List<ExtendedLocale> locales);
+	Map<String, ISnomedBrowserConstant> getConstants(String branchPath, List<ExtendedLocale> extendedLocales);
 
-	ISnomedBrowserConcept create(String branch, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> extendedLocales);
+	ISnomedBrowserConcept createConcept(String branchPath, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> extendedLocales);
 
-	void update(String branch, List<? extends ISnomedBrowserConcept> concept, String userId, List<ExtendedLocale> extendedLocales);
+	void updateConcept(String branchPath, List<? extends ISnomedBrowserConcept> concept, String userId, List<ExtendedLocale> extendedLocales);
 	
-	ISnomedBrowserBulkChangeRun beginBulkChange(String branch, List<? extends ISnomedBrowserConcept> newVersionConcepts, Boolean allowCreate, String userId, List<ExtendedLocale> locales);
+	ISnomedBrowserBulkChangeRun beginBulkChange(String branchPath, List<? extends ISnomedBrowserConcept> newVersionConcepts, Boolean allowCreate, String userId, List<ExtendedLocale> extendedLocales);
 
-	ISnomedBrowserBulkChangeRun getBulkChange(String branch, String bulkChangeId, List<ExtendedLocale> locales, Options expand);
+	ISnomedBrowserBulkChangeRun getBulkChange(String branchPath, String bulkChangeId, List<ExtendedLocale> extendedLocales, Options expand);
 
 }

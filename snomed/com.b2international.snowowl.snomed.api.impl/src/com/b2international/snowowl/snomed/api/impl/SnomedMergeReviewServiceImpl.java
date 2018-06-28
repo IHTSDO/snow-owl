@@ -172,7 +172,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		
 		@Override
 		public void handle(Merge merge) {
-			browserService.update(merge.getTarget(), updates, userId, extendedLocales);
+			browserService.updateConcept(merge.getTarget(), updates, userId, extendedLocales);
 		}
 	}
 	

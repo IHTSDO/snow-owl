@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.api.impl.traceability;
 
 import static com.b2international.snowowl.snomed.api.impl.SnomedClassificationServiceImpl.CLASSIFIED_ONTOLOGY;
 import static com.google.common.collect.Sets.newHashSet;
+import static java.util.stream.Collectors.toSet;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -64,12 +65,12 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescr
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.impl.SnomedBrowserAxiomExpander;
-import com.b2international.snowowl.snomed.api.impl.SnomedBrowserService;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
@@ -337,7 +338,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					}
 					
 					// Lookup and expand axioms
-					AxiomRelationshipConversionService axiomConversionService = SnomedBrowserService.getAxiomConversionService(branch, bus);
+					AxiomRelationshipConversionService axiomConversionService = getAxiomConversionService(branch, bus);
 					new SnomedBrowserAxiomExpander().expandAxioms(convertedConcepts, axiomConversionService, getLocales(), branch, bus);
 				}
 			}
@@ -347,6 +348,27 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		} finally {
 			traceabilityTimer.stop();
 		}
+	}
+	
+	private AxiomRelationshipConversionService getAxiomConversionService(final String branchPath, IEventBus eventBus) {
+		
+		Set<Long> ungroupedAttributes = SnomedRequests.prepareSearchMember()
+				.all()
+				.filterByActive(true)
+				.filterByRefSet(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(eventBus)
+				.then( members -> {
+					return members.getItems().stream()
+						.filter(member -> {
+							return !((Boolean) member.getProperties().get(SnomedRf2Headers.FIELD_MRCM_GROUPED));
+						})
+						.map(member -> Long.valueOf(member.getReferencedComponentId()))
+						.collect(toSet());
+				})
+				.getSync();
+		
+		return new org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService(ungroupedAttributes);
 	}
 	
 	private List<ExtendedLocale> getLocales() {
