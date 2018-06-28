@@ -78,12 +78,14 @@ public class SnomedBrowserAxiomExpander {
 						String owlExpression = (String) axiomMember.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION);
 						Long conceptId = Long.parseLong(concept.getId());
 						AxiomRepresentation axiomRepresentation = conversionService.convertAxiomToRelationships(conceptId, owlExpression);
-						if (conceptId.equals(axiomRepresentation.getLeftHandSideNamedConcept())) {
-							// Concept ID on the left means it's an additional axiom
-							additionalAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getRightHandSideRelationships(), typesToFetch, targetsToFetch));
-						} else if (conceptId.equals(axiomRepresentation.getRightHandSideNamedConcept())) {
-							// Concept ID on the right means it's a GCI axiom
-							gciAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getLeftHandSideRelationships(), typesToFetch, targetsToFetch));
+						if (axiomRepresentation != null) {// Will be null if the axiom is an Ontology Axiom for example a property chain or transitive axiom rather than an Additional Axiom or GCI.
+							if (conceptId.equals(axiomRepresentation.getLeftHandSideNamedConcept())) {
+								// Concept ID on the left means it's an additional axiom
+								additionalAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getRightHandSideRelationships(), typesToFetch, targetsToFetch));
+							} else if (conceptId.equals(axiomRepresentation.getRightHandSideNamedConcept())) {
+								// Concept ID on the right means it's a GCI axiom
+								gciAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getLeftHandSideRelationships(), typesToFetch, targetsToFetch));
+							}
 						}
 					}
 				} catch (ConversionException | NumberFormatException e) {
