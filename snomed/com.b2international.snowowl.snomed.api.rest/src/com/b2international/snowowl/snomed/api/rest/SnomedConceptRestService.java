@@ -175,7 +175,6 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				definitionStatusFilter,
 				termFilter,
 				descriptionActiveFilter,
-				escgFilter,
 				eclFilter,
 				statedEclFilter,
 				conceptIds,
@@ -225,7 +224,6 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				body.getDefinitionStatusFilter(),
 				body.getTermFilter(),
 				body.getDescriptionActiveFilter(),
-				body.getEscgFilter(),
 				body.getEclFilter(),
 				body.getStatedEclFilter(),
 				body.getConceptIds(),
@@ -245,7 +243,6 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final String definitionStatusFilter,
 			final String termFilter,
 			final Boolean descriptionActiveFilter,
-			final String escgFilter,
 			final String eclFilter,
 			final String statedEclFilter,
 			final Set<String> conceptIds, 
@@ -280,8 +277,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				SnomedRequests
 					.prepareSearchConcept()
 					.setLimit(limit)
-					.setScroll(scrollKeepAlive)
-					.setScrollId(scrollId)
+//					.setScroll(scrollKeepAlive)
+//					.setScrollId(scrollId)
 					.filterByActive(activeFilter)
 					.filterByModule(moduleFilter)
 					.filterByEffectiveTime(effectiveTimeFilter)
@@ -289,10 +286,9 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.filterByNamespace(namespaceFilter)
 					.filterByTerm(termFilter)
 					.filterByDescriptionActive(descriptionActiveFilter)
-					.filterByEscg(escgFilter)
 					.filterByEcl(eclFilter)
 					.filterByStatedEcl(statedEclFilter)
-					.filterByExtendedLocales(extendedLocales)
+					.filterByDescriptionLanguageRefSet(extendedLocales)
 					.setExpand(expand)
 					.setLocales(extendedLocales)
 					.sortBy(sortField)

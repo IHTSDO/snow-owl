@@ -44,16 +44,14 @@ import com.b2international.snowowl.snomed.api.rest.domain.SnomedInboundRelations
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedOutboundRelationships;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Sets;
-import com.mangofactory.swagger.models.Collections;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -69,6 +67,9 @@ import com.wordnik.swagger.annotations.ApiResponses;
 		produces={ AbstractRestService.SO_MEDIA_TYPE })
 public class SnomedConceptSubResourcesController extends AbstractSnomedRestService {
 
+	private static final String STATED_FORM = "stated";
+	private static final String INFERRED_FORM = "inferred";
+	
 	@Autowired
 	protected SnomedResourceExpander resourceExpander;
 	
@@ -146,11 +147,19 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
 
-			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
 		
 		final StringBuilder newExpand = new StringBuilder();
 		for (String expandParam : expand) {
@@ -168,7 +177,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				SnomedRequests
 					.prepareSearchRelationship()
 					.filterByDestination(conceptId)
-					.setOffset(offset)
+					//.setOffset(offset)
 					.setLimit(limit)
 					.setExpand(newExpand.toString())
 					.setLocales(extendedLocales)
@@ -220,7 +229,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				SnomedRequests
 					.prepareSearchRelationship()
 					.filterBySource(conceptId)
-					.setOffset(offset)
+					//.setOffset(offset)
 					.setLimit(limit)
 					.build(repositoryId, branchPath)
 					.execute(bus)
@@ -271,7 +280,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@RequestParam(value="direct", defaultValue="false", required=false) 
 			final boolean direct,
 			
-			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage,
 		
@@ -279,9 +288,26 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@RequestParam(value="form", defaultValue="inferred", required=false)
 			final String form) {
 	
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
+		if (!STATED_FORM.equals(form) && !INFERRED_FORM.equals(form)) {
+			throw new BadRequestException("Form must be either 'stated' or 'inferred'");
+		}
+		
+		String descendants = form.equals(STATED_FORM) ? "statedDescendants" : "descendants";
+		String fsnExpand = expand.contains("fsn") ? ",expand(fsn())" : "";
+		
 		return DeferredResults.wrap(SnomedRequests.prepareGetConcept(conceptId)
-				.setExpand(String.format("descendants(form:\"%s\",direct:%s,offset:%d,limit:%d" + (expand.contains("fsn") ? ",expand(fsn())" : "") + ")", form, direct, offset, limit))
-				.setLocales(getExtendedLocales(acceptLanguage))
+				.setExpand(String.format("%s(direct:%s,offset:%d,limit:%d%s)", descendants, direct, offset, limit, fsnExpand))
+				.setLocales(extendedLocales)
 				.build(repositoryId, branchPath)
 				.execute(bus)
 				.then(new Function<SnomedConcept, SnomedConcepts>() {
@@ -328,8 +354,14 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@RequestParam(value="form", defaultValue="inferred", required=false)
 			final String form) {
 
+		if (!STATED_FORM.equals(form) && !INFERRED_FORM.equals(form)) {
+			throw new BadRequestException("Form must be either 'stated' or 'inferred'");
+		}
+		
+		String ancestors = form.equals(STATED_FORM) ? "statedAncestors" : "ancestors";
+		
 		return DeferredResults.wrap(SnomedRequests.prepareGetConcept(conceptId)
-				.setExpand(String.format("ancestors(form:\"%s\",direct:%s,offset:%d,limit:%d)", form, direct, offset, limit))
+				.setExpand(String.format("%s(direct:%s,offset:%d,limit:%d)", ancestors, direct, offset, limit))
 				.build(repositoryId, branchPath)
 				.execute(bus)
 				.then(new Function<SnomedConcept, SnomedConcepts>() {
