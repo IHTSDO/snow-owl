@@ -99,8 +99,8 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedComponentSear
 	}
 
 	/**
-	 * Filter matches by the specified Expression Constraint Language (ECL) expression. 
-	 * The currently supported ECL version is v1.1. See <a href="http://snomed.org/ecl">ECL Specification and Guide</a> or
+	 * Filter matches in the inferred tree by the specified Expression Constraint Language (ECL) expression. 
+	 * The currently supported ECL version is v1.3. See <a href="http://snomed.org/ecl">ECL Specification and Guide</a> or
 	 * <a href="http://www.snomed.org/news-articles/expression-constraint-language">About ECL</a> for more information.
 	 * 
 	 * @param expression ECL expression

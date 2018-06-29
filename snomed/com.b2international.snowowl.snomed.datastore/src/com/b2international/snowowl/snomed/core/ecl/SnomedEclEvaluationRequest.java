@@ -149,7 +149,9 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 			return Promise.immediate(Expressions.exists(ACTIVE_MEMBER_OF));
 		} else if (inner instanceof NestedExpression) {
 			final String focusConceptExpression = context.service(EclSerializer.class).serializeWithoutTerms(inner);
-			return EclExpression.of(focusConceptExpression)
+			EclExpression eclExpression = EclExpression.of(focusConceptExpression);
+			eclExpression.setExpressionForm(expressionForm);
+			return eclExpression
 					.resolve(context)
 					.then(ids -> activeMemberOf(ids));
 		} else {

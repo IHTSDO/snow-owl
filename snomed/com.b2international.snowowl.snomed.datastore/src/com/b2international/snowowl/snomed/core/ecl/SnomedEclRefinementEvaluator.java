@@ -618,7 +618,7 @@ final class SnomedEclRefinementEvaluator {
 			final Collection<String> typeFilter,
 			final Collection<String> destinationFilter,
 			final boolean groupedRelationshipsOnly,
-			String expressionForm) {
+			final String expressionForm) {
 
 		final ImmutableList.Builder<String> fieldsToLoad = ImmutableList.builder();
 		fieldsToLoad.add(ID, SOURCE_ID,	DESTINATION_ID);

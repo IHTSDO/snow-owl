@@ -108,6 +108,7 @@ public final class EclExpression {
 	public Promise<Expression> resolveToExpression(final BranchContext context) {
 		if (expressionPromise == null) {
 			expressionPromise = SnomedRequests.prepareEclEvaluation(ecl)
+					.setExpressionForm(expressionForm)
 					.build()
 					.execute(context);
 		}

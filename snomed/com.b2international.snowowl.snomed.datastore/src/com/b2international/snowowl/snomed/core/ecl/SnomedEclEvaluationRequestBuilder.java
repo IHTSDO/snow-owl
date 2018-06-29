@@ -40,7 +40,7 @@ public final class SnomedEclEvaluationRequestBuilder
 	}
 
 	public SnomedEclEvaluationRequestBuilder setExpressionForm(String expressionForm) {
-		Preconditions.checkArgument(Trees.INFERRED_FORM.equals(expressionForm) || Trees.STATED_FORM.equals(expressionForm), String.format("Expression form must be either %s or %s but got %s", Trees.INFERRED_FORM, Trees.STATED_FORM, expressionForm));
+		Preconditions.checkArgument(Trees.INFERRED_FORM.equals(expressionForm) || Trees.STATED_FORM.equals(expressionForm));
 		this.expressionForm = expressionForm;
 		return getSelf();
 	}
