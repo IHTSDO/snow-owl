@@ -24,7 +24,6 @@ import org.junit.Test;
 
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.review.MergeReview;
-import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
 import com.b2international.snowowl.datastore.server.internal.JsonSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,17 +46,12 @@ public class MergeReviewSerializationTest {
 		final Branch target = mock(Branch.class);
 		when(target.path()).thenReturn("MAIN/a/b");
 		
-		ReviewManagerImpl reviewManager = mock(ReviewManagerImpl.class);
-		
-		when(reviewManager.createReview(source, target)).thenReturn(Review.builder("sourceToTargetReviewId", source, target).build());
-		when(reviewManager.createReview(target, source)).thenReturn(Review.builder("targetToSourceReviewId", target, source).build());
-		
 		this.mergeReview = MergeReview.builder()
 				.id("id")
 				.sourcePath(source.path())
 				.targetPath(target.path())
-				.sourceToTargetReviewId(reviewManager.createReview(source, target).id())
-				.targetToSourceReviewId(reviewManager.createReview(target, source).id())
+				.sourceToTargetReviewId("sourceToTargetReviewId")
+				.targetToSourceReviewId("targetToSourceReviewId")
 				.build();
 	}
 	

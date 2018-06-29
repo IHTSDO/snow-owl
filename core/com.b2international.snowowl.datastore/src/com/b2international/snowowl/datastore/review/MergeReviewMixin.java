@@ -26,7 +26,8 @@ public abstract class MergeReviewMixin {
     		@JsonProperty("sourcePath") final String sourcePath,
     		@JsonProperty("targetPath") final String targetPath, 
     		@JsonProperty("sourceToTargetReviewId") final String sourceToTargetReviewId, 
-    		@JsonProperty("targetToSourceReviewId") final String targetToSourceReviewId) {
+    		@JsonProperty("targetToSourceReviewId") final String targetToSourceReviewId,
+    		@JsonProperty("status") final ReviewStatus status) {
         // Empty constructor body for mixin
     }
 
@@ -44,4 +45,7 @@ public abstract class MergeReviewMixin {
 
     @JsonProperty
     public abstract String targetToSourceReviewId();
+    
+    @JsonProperty
+    public abstract ReviewStatus status();
 }
