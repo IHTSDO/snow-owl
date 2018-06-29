@@ -20,6 +20,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.util.Collection;
+import java.util.Objects;
 
 import com.b2international.commons.ClassUtils;
 import com.b2international.snowowl.core.Metadata;
@@ -133,7 +134,7 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 	
 	@Override
 	public final void update(final Metadata metadata) {
-		if (!metadata().equals(metadata)) {
+		if (!Objects.equals(metadata(), metadata)) {
 			branchManager.commit(branchManager.update(path(), BranchDocument.Scripts.WITH_METADATA, ImmutableMap.of("metadata", metadata)));
 			branchManager.sendChangeEvent(path());
 		}
