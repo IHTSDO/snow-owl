@@ -25,6 +25,7 @@ import java.util.Map;
 import org.junit.Test;
 
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -44,7 +45,9 @@ public class Issue3019FixDeletionOfReferringMembersTest extends AbstractSnomedAp
 				.put(SnomedRf2Headers.FIELD_MODULE_ID, Concepts.MODULE_SCT_CORE)
 				.put("referenceSetId", queryRefsetId)
 				.put(SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID, queryMemberRefsetId)
-				.put(SnomedRf2Headers.FIELD_QUERY, "<" + Concepts.REFSET_ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_QUERY, "<" + Concepts.REFSET_ROOT_CONCEPT)
+						.build())
 				.put("commitComment", "Created new query reference set member")
 				.build();
 		

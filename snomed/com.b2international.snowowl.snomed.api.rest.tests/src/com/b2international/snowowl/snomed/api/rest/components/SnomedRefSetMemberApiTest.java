@@ -170,13 +170,15 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		createNewRefSet(branchPath, SnomedRefSetType.MRCM_DOMAIN, newIdentifierConceptId);
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "parentDomain")
-				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "proximalPrimitiveRefinement")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
-				.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "editorialGuideReference")
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "parentDomain")
+					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "proximalPrimitiveRefinement")
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
+					.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "editorialGuideReference")
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
@@ -185,13 +187,13 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 
 		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
-			.body(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, equalTo("domainConstraint"))
-			.body(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, equalTo("parentDomain"))
-			.body(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, equalTo("proximalPrimitiveConstraint"))
-			.body(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, equalTo("proximalPrimitiveRefinement"))
-			.body(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, equalTo("domainTemplateForPrecoordination"))
-			.body(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, equalTo("domainTemplateForPostcoordination"))
-			.body(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, equalTo("editorialGuideReference"));
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, equalTo("domainConstraint"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, equalTo("parentDomain"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, equalTo("proximalPrimitiveConstraint"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, equalTo("proximalPrimitiveRefinement"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, equalTo("domainTemplateForPrecoordination"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, equalTo("domainTemplateForPostcoordination"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, equalTo("editorialGuideReference"));
 	}
 	
 	@Test
@@ -201,10 +203,12 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		createNewRefSet(branchPath, SnomedRefSetType.MRCM_DOMAIN, newIdentifierConceptId);
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
@@ -213,13 +217,13 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 
 		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
-			.body(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, equalTo("domainConstraint"))
-			.body(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, nullValue())
-			.body(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, equalTo("proximalPrimitiveConstraint"))
-			.body(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, nullValue())
-			.body(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, equalTo("domainTemplateForPrecoordination"))
-			.body(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, equalTo("domainTemplateForPostcoordination"))
-			.body(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, nullValue());
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, equalTo("domainConstraint"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, nullValue())
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, equalTo("proximalPrimitiveConstraint"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, nullValue())
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, equalTo("domainTemplateForPrecoordination"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, equalTo("domainTemplateForPostcoordination"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, nullValue());
 	}
 	
 	@Test
@@ -229,12 +233,14 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		createNewRefSet(branchPath, SnomedRefSetType.MRCM_ATTRIBUTE_DOMAIN, newIdentifierConceptId);
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
@@ -243,44 +249,50 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 
 		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
-			.body(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, equalTo(Concepts.ROOT_CONCEPT))
-			.body(SnomedRf2Headers.FIELD_MRCM_GROUPED, equalTo(Boolean.TRUE))
-			.body(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, equalTo("attributeCardinality"))
-			.body(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, equalTo("attributeInGroupCardinality"))
-			.body(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, equalTo(Concepts.ROOT_CONCEPT))
-			.body(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, equalTo(Concepts.ROOT_CONCEPT));
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, equalTo(Concepts.ROOT_CONCEPT))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_GROUPED, equalTo(Boolean.TRUE))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, equalTo("attributeCardinality"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, equalTo("attributeInGroupCardinality"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, equalTo(Concepts.ROOT_CONCEPT))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, equalTo(Concepts.ROOT_CONCEPT));
 		
 		Map<?, ?> requestBody2 = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, "159725002") // XXX batman should not be in the test dataset
-				.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, "159725002") // XXX batman should not be in the test dataset
+					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 		
 		createComponent(branchPath, SnomedComponentType.MEMBER, requestBody2).statusCode(400);
 		
 		Map<?, ?> requestBody3 = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, "159725002") // XXX batman should not be in the test dataset
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, "159725002") // XXX batman should not be in the test dataset
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 		
 		createComponent(branchPath, SnomedComponentType.MEMBER, requestBody3).statusCode(400);
 		
 		Map<?, ?> requestBody4 = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, "159725002") // XXX batman should not be in the test dataset
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, "159725002") // XXX batman should not be in the test dataset
+				.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 		
@@ -294,10 +306,12 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		createNewRefSet(branchPath, SnomedRefSetType.MRCM_ATTRIBUTE_RANGE, newIdentifierConceptId);
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, "rangeConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, "attributeRule")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, "rangeConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, "attributeRule")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
@@ -306,26 +320,30 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 
 		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
-			.body(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, equalTo("rangeConstraint"))
-			.body(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, equalTo("attributeRule"))
-			.body(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, equalTo(Concepts.ROOT_CONCEPT))
-			.body(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, equalTo(Concepts.ROOT_CONCEPT));
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, equalTo("rangeConstraint"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, equalTo("attributeRule"))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, equalTo(Concepts.ROOT_CONCEPT))
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, equalTo(Concepts.ROOT_CONCEPT));
 		
 		Map<?, ?> requestBody2 = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, "159725002") // XXX batman should not be in the test dataset
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, "159725002") // XXX batman should not be in the test dataset
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 		
 		createComponent(branchPath, SnomedComponentType.MEMBER, requestBody2).statusCode(400);
 		
 		Map<?, ?> requestBody3 = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, "159725002") // XXX batman should not be in the test dataset
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, "159725002") // XXX batman should not be in the test dataset
+					.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 		
@@ -339,7 +357,9 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		createNewRefSet(branchPath, SnomedRefSetType.MRCM_MODULE_SCOPE, newIdentifierConceptId);
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, Concepts.ROOT_CONCEPT)
+						.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
@@ -348,10 +368,12 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 
 		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
-			.body(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, equalTo(Concepts.ROOT_CONCEPT));
+			.body(ADDITIONAL_FIELD_PREFIX + SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, equalTo(Concepts.ROOT_CONCEPT));
 		
 		Map<?, ?> requestBody2 = createRefSetMemberRequestBody(newIdentifierConceptId, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, "159725002") // XXX batman should not be in the test dataset
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, "159725002") // XXX batman should not be in the test dataset
+						.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 		

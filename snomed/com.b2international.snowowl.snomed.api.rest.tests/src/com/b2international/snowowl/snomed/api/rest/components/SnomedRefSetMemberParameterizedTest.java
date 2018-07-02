@@ -170,7 +170,9 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 		String componentId = createNewComponent(branchPath, getFirstAllowedReferencedComponentType(refSetType));
 
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(refSetId, componentId)
-				.putAll(getInvalidProperties())
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getInvalidProperties())
+						.build())
 				.put("commitComment", "Created new reference set member with invalid additional properties")
 				.build();
 

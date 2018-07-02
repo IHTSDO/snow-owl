@@ -75,6 +75,7 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
@@ -1160,7 +1161,9 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		String owlExpression = "dummy expression";
 		
 		Map<?, ?> memberRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, Concepts.ROOT_CONCEPT)
-				.put("owlExpression", owlExpression)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put("owlExpression", owlExpression)
+						.build())
 				.put("commitComment", "Created new OWL axiom reference set member")
 				.build();
 
@@ -1223,15 +1226,16 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void exportUnpublishedMRCMReferenceSetMembers() throws Exception {
-		
 		Map<?, ?> mrcmDomainRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_DOMAIN_INTERNATIONAL, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "parentDomain")
-				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "proximalPrimitiveRefinement")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
-				.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "editorialGuideReference")
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, "domainConstraint")
+						.put(SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, "parentDomain")
+						.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, "proximalPrimitiveConstraint")
+						.put(SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, "proximalPrimitiveRefinement")
+						.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, "domainTemplateForPrecoordination")
+						.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, "domainTemplateForPostcoordination")
+						.put(SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE, "editorialGuideReference")
+						.build())
 				.put("commitComment", "Created new MRCM domain reference set member")
 				.build();
 
@@ -1240,12 +1244,14 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 		
 		Map<?, ?> mrcmAttributeDomainRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+					.build())
 				.put("commitComment", "Created new MRCM attribute domain reference set member")
 				.build();
 
@@ -1254,10 +1260,12 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 		
 		Map<?, ?> mrcmAttributeRangeRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_ATTRIBUTE_RANGE_INTERNATIONAL, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, "rangeConstraint")
-				.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, "attributeRule")
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, "rangeConstraint")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE, "attributeRule")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+					.build())
 				.put("commitComment", "Created new MRCM attribute range reference set member")
 				.build();
 
@@ -1266,7 +1274,9 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 		
 		Map<?, ?> mrcmModuleScopeRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_MODULE_SCOPE, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID, Concepts.ROOT_CONCEPT)
+						.build())
 				.put("commitComment", "Created new MRCM module scope reference set member")
 				.build();
 
@@ -1356,7 +1366,9 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 	public void exportUnpublishedOWLExpressionRefsetMembers() throws Exception {
 		
 		Map<?, ?> owlOntologyRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_ONTOLOGY, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "test expression")
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "test expression")
+						.build())
 				.put("commitComment", "Created new OWL Ontology reference set member")
 				.build();
 
@@ -1365,7 +1377,9 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.extract().header("Location"));
 		
 		Map<?, ?> owlAxiomRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, Concepts.ROOT_CONCEPT)
-				.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "test axiom")
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "test axiom")
+						.build())
 				.put("commitComment", "Created new OWL Axiom reference set member")
 				.build();
 

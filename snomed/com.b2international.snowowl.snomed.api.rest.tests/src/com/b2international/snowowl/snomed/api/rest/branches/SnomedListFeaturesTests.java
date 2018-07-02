@@ -44,6 +44,7 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
@@ -177,9 +178,11 @@ public class SnomedListFeaturesTests extends AbstractSnomedApiTest {
 		createBranch(a).statusCode(201);
 		
 		Map<?, ?> memberRequestBodyOnProject = createRefSetMemberRequestBody(Concepts.REFSET_LANGUAGE_TYPE_US, containerId)
-			.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE)
-			.put("commitComment", "add refset member on project")
-			.build();
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE)
+						.build())
+				.put("commitComment", "add refset member on project")
+				.build();
 		
 		String memberIdOnProject = lastPathSegment(createComponent(a, SnomedComponentType.MEMBER, memberRequestBodyOnProject)
 				.statusCode(201)
@@ -193,7 +196,9 @@ public class SnomedListFeaturesTests extends AbstractSnomedApiTest {
 		createBranch(b).statusCode(201);
 		
 		Map<?, ?> memberRequestBodyOnTask = createRefSetMemberRequestBody(newLanguageRefsetId, containerId)
-				.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE)
+						.build())
 				.put("commitComment", "add refset member on task")
 				.build();
 			
@@ -228,9 +233,11 @@ public class SnomedListFeaturesTests extends AbstractSnomedApiTest {
 		createBranch(a).statusCode(201);
 		
 		Map<?, ?> memberRequestBodyOnProject = createRefSetMemberRequestBody(refsetId, containerId)
-			.putAll(fields)
-			.put("commitComment", "add refset member on project")
-			.build();
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(fields)
+						.build())
+				.put("commitComment", "add refset member on project")
+				.build();
 		
 		String memberIdOnProject = lastPathSegment(createComponent(a, SnomedComponentType.MEMBER, memberRequestBodyOnProject)
 				.statusCode(201)
@@ -244,7 +251,9 @@ public class SnomedListFeaturesTests extends AbstractSnomedApiTest {
 		createBranch(b).statusCode(201);
 		
 		Map<?, ?> memberRequestBodyOnTask = createRefSetMemberRequestBody(refsetId, containerId)
-				.putAll(fields)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(fields)
+						.build())
 				.put("commitComment", "add refset member on task")
 				.build();
 			
@@ -257,7 +266,9 @@ public class SnomedListFeaturesTests extends AbstractSnomedApiTest {
 		assertTrue(hasMember(b, containerId, clazz, feature, memberIdOnTask));
 		
 		Map<?, ?> memberRequestBodyOnMain = createRefSetMemberRequestBody(refsetId, containerId)
-				.putAll(fields)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(fields)
+						.build())
 				.put("commitComment", "add refset member on main")
 				.build();
 			
