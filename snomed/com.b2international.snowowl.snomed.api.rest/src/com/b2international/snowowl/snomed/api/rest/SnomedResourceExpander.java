@@ -36,9 +36,6 @@ public class SnomedResourceExpander {
 
 		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 
-		if (expantions.isEmpty() || changes.isEmpty()) {
-			return changes;
-		}
 		List<IRelationshipChange> changesExtended = new ArrayList<IRelationshipChange>();
 		for (IRelationshipChange iRelationshipChange : changes) {
 			changesExtended.add(new ExpandableRelationshipChange(iRelationshipChange));

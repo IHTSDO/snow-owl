@@ -41,6 +41,7 @@ import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.domain.CollectionResource;
+import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
@@ -50,7 +51,6 @@ import com.b2international.snowowl.snomed.api.domain.classification.IClassificat
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
-import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChangeList;
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRestInput;
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRunRestUpdate;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
@@ -193,8 +193,8 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 200, message = "OK"),
 		@ApiResponse(code = 404, message = "Branch or classification not found", response=RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/classifications/{classificationId}/relationship-changes", method=RequestMethod.GET, produces={"application/json", "text/csv"})
-	public @ResponseBody IRelationshipChangeList getRelationshipChanges(
+	@RequestMapping(value="/{path:**}/classifications/{classificationId}/relationship-changes", method=RequestMethod.GET, produces={"application/json", AbstractRestService.TEXT_CSV_MEDIA_TYPE})
+	public @ResponseBody PageableCollectionResource<IRelationshipChange> getRelationshipChanges(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path") 
 			final String branchPath,
@@ -222,7 +222,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		final IRelationshipChangeList relationshipChangeList = delegate.getRelationshipChanges(branchPath, classificationId, offset, limit);
 		List<IRelationshipChange> changes = relationshipChangeList.getItems();
 		
-		if (!changes.isEmpty()) {
+		if (!changes.isEmpty() && !expand.isEmpty()) {
 			
 			final List<ExtendedLocale> extendedLocales;
 			
@@ -237,7 +237,9 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			changes = resourceExpander.expandRelationshipChanges(branchPath, changes, extendedLocales, expand);
 		}
 		
-		return new RelationshipChangeList(changes, offset, limit, relationshipChangeList.getTotal());
+		// TODO introduce scrolling
+		
+		return PageableCollectionResource.of(changes, null, null, limit, changes.size());
 	}
 
 	@ApiOperation(
