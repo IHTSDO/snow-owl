@@ -21,7 +21,6 @@ import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedCon
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedAncestors;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedParents;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument.Expressions.active;
-import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
@@ -62,6 +61,7 @@ import com.b2international.snowowl.snomed.core.domain.SubclassDefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.DescriptionRequestHelper;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionSearchRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Functions;
 import com.google.common.collect.FluentIterable;
@@ -76,10 +76,24 @@ import com.google.common.collect.TreeMultimap;
  */
 final class SnomedConceptConverter extends BaseRevisionResourceConverter<SnomedConceptDocument, SnomedConcept, SnomedConcepts> {
 
+	private DescriptionRequestHelper descriptionHelper;
 	private SnomedReferenceSetConverter referenceSetConverter;
 	
 	SnomedConceptConverter(final BranchContext context, Options expand, List<ExtendedLocale> locales) {
 		super(context, expand, locales);
+	}
+	
+	private DescriptionRequestHelper getDescriptionHelper() {
+		if (descriptionHelper == null) {
+			descriptionHelper = new DescriptionRequestHelper() {
+				@Override
+				protected SnomedDescriptions execute(SnomedDescriptionSearchRequestBuilder req) {
+					return req.build().execute(context());
+				}
+			};
+		}
+		
+		return descriptionHelper;
 	}
 	
 	private SnomedReferenceSetConverter getReferenceSetConverter() {
@@ -216,17 +230,8 @@ final class SnomedConceptConverter extends BaseRevisionResourceConverter<SnomedC
 		if (!expand().containsKey(SnomedConcept.Expand.PREFERRED_TERM)) {
 			return;
 		}
-		
-		final List<SnomedDescription> synonyms = newArrayList();
-		for (SnomedConcept result : results) {
-			for (SnomedDescription description : result.getPreferredDescriptions()) {
-				if (!Concepts.FULLY_SPECIFIED_NAME.equals(description.getTypeId())) {
-					synonyms.add(description);
-				}
-			}
-		}
-		
-		final Map<String, SnomedDescription> terms = DescriptionRequestHelper.indexBestPreferredByConceptId(synonyms, locales());
+			
+		final Map<String, SnomedDescription> terms = getDescriptionHelper().getPreferredTerms(conceptIds, locales());
 		for (SnomedConcept concept : results) {
 			concept.setPt(terms.get(concept.getId()));
 		}
@@ -237,27 +242,9 @@ final class SnomedConceptConverter extends BaseRevisionResourceConverter<SnomedC
 			return;
 		}
 		
-		final Map<String, SnomedDescription> firstFsnByConceptId = newHashMap();
-		final List<SnomedDescription> fsns = newArrayList();
+		final Map<String, SnomedDescription> terms = getDescriptionHelper().getFullySpecifiedNames(conceptIds, locales());
 		for (SnomedConcept concept : results) {
-			for (SnomedDescription description : concept.getPreferredDescriptions()) {
-				if (Concepts.FULLY_SPECIFIED_NAME.equals(description.getTypeId())) {
-					fsns.add(description);
-					if (!firstFsnByConceptId.containsKey(concept.getId())) {
-						firstFsnByConceptId.put(concept.getId(), description);
-					}
-				}
-			}
-		}
-		
-		final Map<String, SnomedDescription> terms = DescriptionRequestHelper.indexBestPreferredByConceptId(fsns, locales());
-		
-		for (SnomedConcept concept : results) {
-			SnomedDescription fsn = terms.get(concept.getId());
-			if (fsn == null) {
-				fsn = firstFsnByConceptId.get(concept.getId());
-			}
-			concept.setFsn(fsn);
+			concept.setFsn(terms.get(concept.getId()));
 		}
 	}
 
