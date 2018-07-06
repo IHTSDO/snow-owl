@@ -710,7 +710,7 @@
 				<repository>
 					<!-- This repository containing the previous target platform is a workaround for the fact that some of the required dependencies are now missing from the Eclipse repositories.-->
 					<id>tp</id>
-					<url>${target.platform.url}</url>
+					<url>${previous-target.platform.url}</url>
 					<layout>p2</layout>
 				</repository>
 			</repositories>
