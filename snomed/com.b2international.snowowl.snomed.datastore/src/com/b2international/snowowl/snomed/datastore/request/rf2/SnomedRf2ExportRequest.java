@@ -19,6 +19,7 @@ import static com.b2international.snowowl.core.ApplicationContext.getServiceForC
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 import static com.google.common.collect.Sets.newTreeSet;
+import static java.util.Collections.singleton;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -157,9 +158,6 @@ final class SnomedRf2ExportRequest implements Request<RepositoryContext, Rf2Expo
 	@JsonProperty
 	private boolean conceptsAndRelationshipsOnly;
 	
-	@JsonProperty
-	private boolean languageAware;
-	
 	private String transientEffectiveTime;
 
 	@JsonProperty 
@@ -232,10 +230,6 @@ final class SnomedRf2ExportRequest implements Request<RepositoryContext, Rf2Expo
 		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
 	}
 	
-	void setLanguageAware(boolean languageAware) {
-		this.languageAware = languageAware;
-	}
-	
 	void setRefSets(final Collection<String> refSets) {
 		/*
 		 * All reference sets should be exported if the input value is null; no component
@@ -284,6 +278,19 @@ final class SnomedRf2ExportRequest implements Request<RepositoryContext, Rf2Expo
 		final long effectiveTimeEnd =  endEffectiveTime != null ? endEffectiveTime.getTime() : Long.MAX_VALUE;
 		final List<String> branchesToExport = computeBranchesToExport(versionsToExport);
 			
+		if (conceptsAndRelationshipsOnly) {
+			
+			componentTypes = ImmutableSet.of(
+					SnomedTerminologyComponentConstants.CONCEPT,
+					SnomedTerminologyComponentConstants.RELATIONSHIP,
+					SnomedTerminologyComponentConstants.REFSET_MEMBER);
+			
+			refSets = ImmutableSet.of(
+					Concepts.REFSET_OWL_AXIOM,
+					Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL);
+			
+		}
+		
 		final Set<String> visitedComponentEffectiveTimes = newHashSet();
 		final UUID exportId = UUID.randomUUID();
 		Path exportDirectory = null;
@@ -648,7 +655,7 @@ final class SnomedRf2ExportRequest implements Request<RepositoryContext, Rf2Expo
 				archiveEffectiveTime, 
 				includePreReleaseContent, 
 				modules, 
-				characteristicTypes);
+				conceptsAndRelationshipsOnly ? singleton(Concepts.INFERRED_RELATIONSHIP) : characteristicTypes);
 
 		statedRelationshipExporter.exportBranch(releaseDirectory, context, branch, effectiveTimeFilterStart, effectiveTimeFilterEnd, visitedComponentEffectiveTimes);
 		relationshipExporter.exportBranch(releaseDirectory, context, branch, effectiveTimeFilterStart, effectiveTimeFilterEnd, visitedComponentEffectiveTimes);

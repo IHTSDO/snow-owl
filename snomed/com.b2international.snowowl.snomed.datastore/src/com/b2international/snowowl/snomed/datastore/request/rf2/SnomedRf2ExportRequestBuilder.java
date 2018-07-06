@@ -48,6 +48,7 @@ public final class SnomedRf2ExportRequestBuilder
 	private Collection<String> modules = null;
 	private Collection<String> refSets = null;
 	private String transientEffectiveTime;
+	private boolean conceptsAndRelationshipsOnly = false;
 	private boolean extensionOnly;
 	
 	SnomedRf2ExportRequestBuilder() {}
@@ -121,6 +122,11 @@ public final class SnomedRf2ExportRequestBuilder
 		this.transientEffectiveTime = transientEffectiveTime;
 		return getSelf();
 	}
+	
+	public SnomedRf2ExportRequestBuilder setConceptsAndRelationshipsOnly(final boolean conceptsAndRelationshipsOnly) {
+		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
+		return getSelf();
+	}
 
 	public SnomedRf2ExportRequestBuilder setExtensionOnly(final boolean extensionOnly) {
 		this.extensionOnly = extensionOnly;
@@ -144,6 +150,7 @@ public final class SnomedRf2ExportRequestBuilder
 		req.setModules(modules);
 		req.setRefSets(refSets);
 		req.setTransientEffectiveTime(transientEffectiveTime);
+		req.setConceptsAndRelationshipsOnly(conceptsAndRelationshipsOnly);
 		req.setExtensionOnly(extensionOnly);
 		return req;
 	}

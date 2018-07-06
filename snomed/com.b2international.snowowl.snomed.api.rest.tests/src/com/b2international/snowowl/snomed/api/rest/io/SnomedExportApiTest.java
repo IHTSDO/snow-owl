@@ -62,6 +62,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.b2international.commons.Pair;
@@ -754,6 +755,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		assertArchiveContainsFiles(exportArchive, files);
 	}
 	
+	@Ignore // this functionality will not be required
 	@Test
 	public void exportDescriptionsTextDefinitionsAndLanguageRefsetMembersWithOutLanguageCode() throws Exception {
 		final String codeSystemShortName = "SNOMEDCT-EXPORT-WITHOUT-LANGUAGE";
@@ -856,7 +858,6 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("startEffectiveTime", versionEffectiveTime)
 				.put("endEffectiveTime", versionEffectiveTime)
 				.put("includeUnpublished", true)
-				.put("languageAware", true)
 				.build();
 			
 		final String exportId = getExportId(createExport(config));
@@ -1013,7 +1014,6 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("type", Rf2ReleaseType.DELTA.name())
 				.put("branchPath", branchPath.getPath())
 				.put("includeUnpublished", true)
-				.put("languageAware", true)
 				.build();
 			
 		final String exportId = getExportId(createExport(config));
@@ -1089,7 +1089,6 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("startEffectiveTime", versionEffectiveTime)
 				.put("endEffectiveTime", versionEffectiveTime)
 				.put("includeUnpublished", true)
-				.put("languageAware", true)
 				.build();
 		
 		final String exportId = getExportId(createExport(config));
@@ -1167,10 +1166,26 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("commitComment", "Created new OWL axiom reference set member")
 				.build();
 
-		String memberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, memberRequestBody)
+		String owlMemberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, memberRequestBody)
 			.statusCode(201)
 			.body(equalTo(""))
 			.extract().header("Location"));
+		
+		Map<?, ?> mrcmAttributeDomainRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL, Concepts.ROOT_CONCEPT)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_GROUPED, Boolean.TRUE)
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY, "attributeCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, "attributeInGroupCardinality")
+					.put(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, Concepts.ROOT_CONCEPT)
+					.put(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID, Concepts.ROOT_CONCEPT)
+					.build())
+				.put("commitComment", "Created new MRCM attribute domain reference set member")
+				.build();
+
+		String mrcmAttributeDomainRefsetMemberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, mrcmAttributeDomainRequestBody)
+				.statusCode(201)
+				.extract().header("Location"));
 		
 		// export delta rf2
 		final Map<Object, Object> config = ImmutableMap.builder()
@@ -1197,8 +1212,12 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				Concepts.NAMESPACE_ROOT, "0", Concepts.PART_OF, CharacteristicType.ADDITIONAL_RELATIONSHIP.getConceptId(),
 				Concepts.EXISTENTIAL_RESTRICTION_MODIFIER);
 		
-		String owlMemberLine = TAB_JOINER.join(memberId, "", "1", Concepts.MODULE_SCT_CORE, Concepts.REFSET_OWL_AXIOM, Concepts.ROOT_CONCEPT,
+		String owlMemberLine = TAB_JOINER.join(owlMemberId, "", "1", Concepts.MODULE_SCT_CORE, Concepts.REFSET_OWL_AXIOM, Concepts.ROOT_CONCEPT,
 				owlExpression);
+
+		String mrcmMemberLine = TAB_JOINER.join(mrcmAttributeDomainRefsetMemberId, "", "1", Concepts.MODULE_SCT_CORE,
+				Concepts.REFSET_MRCM_ATTRIBUTE_DOMAIN_INTERNATIONAL, Concepts.ROOT_CONCEPT, Concepts.ROOT_CONCEPT, "1",
+				"attributeCardinality", "attributeInGroupCardinality", Concepts.ROOT_CONCEPT, Concepts.ROOT_CONCEPT);
 
 		final Map<String, Boolean> files = ImmutableMap.<String, Boolean>builder()
 				.put("sct2_Concept", true)
@@ -1208,7 +1227,8 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("sct2_TextDefinition", false)
 				.put("der2_cRefset_LanguageDelta", false)
 				.put("der2_ssRefset_ModuleDependency", false)
-				.put("der2_sRefset_OWLAxiomReferenceSet", true)
+				.put("der2_sRefset_OWLAxiom", true)
+				.put("der2_cissccRefset_MRCMAttributeDomain", true)
 				.build();
 				
 		assertArchiveContainsFiles(exportArchive, files);
@@ -1219,7 +1239,8 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		fileToLinesMap.put("sct2_StatedRelationship", Pair.of(true, statedLine));
 		fileToLinesMap.put("sct2_Relationship", Pair.of(true, inferredLine));
 		fileToLinesMap.put("sct2_Relationship", Pair.of(false, additionalLine));
-		fileToLinesMap.put("der2_sRefset_OWLAxiomReferenceSet", Pair.of(true, owlMemberLine));
+		fileToLinesMap.put("der2_sRefset_OWLAxiom", Pair.of(true, owlMemberLine));
+		fileToLinesMap.put("der2_cissccRefset_MRCMAttributeDomain", Pair.of(true, mrcmMemberLine));
 		
 		assertArchiveContainsLines(exportArchive, fileToLinesMap);
 	}
