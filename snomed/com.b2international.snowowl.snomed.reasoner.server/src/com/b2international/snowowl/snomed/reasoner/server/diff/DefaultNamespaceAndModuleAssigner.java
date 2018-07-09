@@ -32,12 +32,12 @@ import com.google.common.collect.Multiset;
  * 
  * @since 5.11.5
  */
-public final class DefaultNamespaceAndModuleAssigner implements SnomedNamespaceAndModuleAssigner {
+public class DefaultNamespaceAndModuleAssigner implements SnomedNamespaceAndModuleAssigner {
 
-	private Set<String> reservedIds;
-	private Iterator<String> relationshipIds;
-	private Concept defaultRelationshipModuleConcept;
-	private Concept defaultConcreteDomainModuleConcept;
+	protected Set<String> reservedIds;
+	protected Iterator<String> relationshipIds;
+	protected Concept defaultRelationshipModuleConcept;
+	protected Concept defaultConcreteDomainModuleConcept;
 
 	@Override
 	public String getRelationshipId(String sourceConceptId) {

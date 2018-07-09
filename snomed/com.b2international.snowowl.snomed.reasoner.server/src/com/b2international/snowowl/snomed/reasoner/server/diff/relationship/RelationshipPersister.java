@@ -15,20 +15,12 @@
  */
 package com.b2international.snowowl.snomed.reasoner.server.diff.relationship;
 
-import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.branch.Branch;
-import com.b2international.snowowl.datastore.request.RepositoryRequests;
-import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedFactory;
-import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
-import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.StatementFragment;
-import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.id.SnomedNamespaceAndModuleAssigner;
 import com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSet;
@@ -46,9 +38,6 @@ public class RelationshipPersister {
 	private final SnomedEditingContext context;
 	private final SnomedNamespaceAndModuleAssigner namespaceAndModuleAssigner;
 	
-	private final String defaultModuleId;
-	private final String defaultReasonerNamespace;
-	
 	public RelationshipPersister(final SnomedEditingContext context, final SnomedNamespaceAndModuleAssigner namespaceAndModuleAssigner) {
 		this.context = context;
 		this.namespaceAndModuleAssigner = namespaceAndModuleAssigner;
@@ -56,16 +45,6 @@ public class RelationshipPersister {
 		this.inferredRelationshipConcept = context.lookup(Concepts.INFERRED_RELATIONSHIP, Concept.class);
 		this.existentialRelationshipConcept = context.lookup(Concepts.EXISTENTIAL_RESTRICTION_MODIFIER, Concept.class);
 		this.universalRelationshipConcept = context.lookup(Concepts.UNIVERSAL_RESTRICTION_MODIFIER, Concept.class);
-		
-		final IEventBus eventBus = ApplicationContext.getServiceForClass(IEventBus.class);
-		final Branch editingContextBranch = RepositoryRequests.branching()
-				.prepareGet(context.getBranch())
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-				.execute(eventBus)
-				.getSync();
-		
-		this.defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(editingContextBranch, SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
-		this.defaultReasonerNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(editingContextBranch, SnomedCoreConfiguration.BRANCH_DEFAULT_REASONER_NAMESPACE_KEY);
 	}
 	
 	public void handleRemovedSubject(final String conceptId, final StatementFragment removedEntry) {
@@ -80,11 +59,6 @@ public class RelationshipPersister {
 		
 		final String relationshipId = namespaceAndModuleAssigner.getRelationshipId(conceptId);
 		final Concept moduleConcept = namespaceAndModuleAssigner.getRelationshipModule(conceptId);
-		
-		// FIXME
-		// Use module and/or namespace from source concept, if not given
-		final Concept module = (defaultModuleId != null) ? context.lookup(defaultModuleId, Concept.class) : sourceConcept.getModule();
-		final String namespace = (defaultReasonerNamespace != null) ? defaultReasonerNamespace : SnomedIdentifiers.create(conceptId).getNamespace();
 		
 		final Relationship inferredRelationship = SnomedFactory.eINSTANCE.createRelationship();
 		inferredRelationship.setId(relationshipId);

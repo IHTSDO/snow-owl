@@ -19,7 +19,6 @@ import static com.b2international.snowowl.core.ApplicationContext.getServiceForC
 import static com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW;
 import static com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions.SAVE_CLASSIFICATION_RESULTS;
 
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
@@ -30,12 +29,8 @@ import org.eclipse.emf.cdo.util.CommitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.collections.PrimitiveSets;
-import com.b2international.collections.longs.LongCollection;
 import com.b2international.collections.longs.LongSet;
-import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
@@ -49,9 +44,6 @@ import com.b2international.snowowl.datastore.oplock.impl.DatastoreOperationLockE
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
 import com.b2international.snowowl.datastore.oplock.impl.SingleRepositoryAndBranchLockTarget;
 import com.b2international.snowowl.datastore.server.snomed.index.ReasonerTaxonomyBuilder;
-import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.datastore.ConcreteDomainFragment;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
@@ -59,8 +51,6 @@ import com.b2international.snowowl.snomed.datastore.StatementFragment;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedNamespaceAndModuleAssigner;
 import com.b2international.snowowl.snomed.datastore.id.SnomedNamespaceAndModuleAssignerProvider;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.b2international.snowowl.snomed.reasoner.server.classification.EquivalentConceptMerger;
 import com.b2international.snowowl.snomed.reasoner.server.classification.ReasonerTaxonomy;
 import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChangeRecorder;
 import com.b2international.snowowl.snomed.reasoner.server.diff.concretedomain.ConcreteDomainPersister;
@@ -68,8 +58,6 @@ import com.b2international.snowowl.snomed.reasoner.server.diff.relationship.Rela
 import com.b2international.snowowl.snomed.reasoner.server.normalform.ConceptConcreteDomainNormalFormGenerator;
 import com.b2international.snowowl.snomed.reasoner.server.normalform.RelationshipNormalFormGenerator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Function;
-import com.google.common.collect.Lists;
 
 /**
  * @since 5.7
@@ -88,16 +76,12 @@ final class PersistChangesRequest implements Request<ServiceProvider, ApiError> 
 	private ReasonerTaxonomy taxonomy;
 	private DatastoreLockContext lockContext;
 	private IOperationLockTarget lockTarget;
-	private LongSet statedDescendantsOfSmp;
-
-	private boolean concreteDomainSupportEnabled;
 
 	PersistChangesRequest(String classificationId, ReasonerTaxonomy taxonomy, ReasonerTaxonomyBuilder taxonomyBuilder, String userId) {
 		this.classificationId = classificationId;
 		this.taxonomy = taxonomy;
 		this.taxonomyBuilder = taxonomyBuilder;
 		this.userId = userId;
-		this.concreteDomainSupportEnabled = ApplicationContext.getInstance().getServiceChecked(SnomedCoreConfiguration.class).isConcreteDomainSupported();
 	}
 	
 	private boolean isConcreteDomainSupported() {
@@ -237,52 +221,6 @@ final class PersistChangesRequest implements Request<ServiceProvider, ApiError> 
 		}
 	}
 
-	private void fixEquivalences(SnomedEditingContext editingContext) {
-		final IBranchPath branchPath = taxonomy.getBranchPath();
-		final List<LongCollection> equivalenciesToFix = Lists.newArrayList();
-		
-		for (LongCollection equivalentSet : taxonomy.getEquivalentConceptIds()) {
-			long firstConceptId = equivalentSet.iterator().next();
-			String firstConceptIdString = Long.toString(firstConceptId);
-	
-			// FIXME: make equivalence set to fix user-selectable, only subtype of SMP can be auto-merged
-			if (isSubTypeOfSMP(branchPath, firstConceptIdString)) {
-				equivalenciesToFix.add(equivalentSet);
-			}
-		}
-	
-		if (!equivalenciesToFix.isEmpty()) {
-			new EquivalentConceptMerger(editingContext, equivalenciesToFix).fixEquivalencies();
-		}
-	}
-
-	private boolean isSubTypeOfSMP(IBranchPath branchPath, String subTypeId) {
-		if (statedDescendantsOfSmp == null) {
-			statedDescendantsOfSmp = SnomedRequests.prepareGetConcept(Concepts.GENERATED_SINGAPORE_MEDICINAL_PRODUCT)
-					.setExpand("statedDescendants(limit:"+Integer.MAX_VALUE+",direct:false)")
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
-					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-					.then(new Function<SnomedConcept, LongSet>() {
-						@Override
-						public LongSet apply(SnomedConcept input) {
-							LongSet descendantIds = PrimitiveSets.newLongOpenHashSetWithExpectedSize(input.getStatedDescendants().getTotal());
-							for (SnomedConcept descendant : input.getStatedDescendants()) {
-								descendantIds.add(Long.parseLong(descendant.getId()));
-							}
-							return descendantIds;
-						}
-					})
-					.fail(new Function<Throwable, LongSet>() {
-						@Override
-						public LongSet apply(Throwable input) {
-							return PrimitiveSets.newLongOpenHashSet();
-						}
-					})
-					.getSync();
-		}
-		return statedDescendantsOfSmp.contains(Long.parseLong(subTypeId));
-	}
-
 	private void cleanup() {
 		try {
 
@@ -315,12 +253,6 @@ final class PersistChangesRequest implements Request<ServiceProvider, ApiError> 
 
 	private static IDatastoreOperationLockManager getLockManager() {
 		return getServiceForClass(IDatastoreOperationLockManager.class);
-	}
-
-	private static RevisionIndex getIndex() {
-		return getServiceForClass(RepositoryManager.class)
-				.get(SnomedDatastoreActivator.REPOSITORY_UUID)
-				.service(RevisionIndex.class);
 	}
 
 }
