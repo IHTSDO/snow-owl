@@ -155,7 +155,7 @@
 							<type>eclipse-plugin</type>
 							<id>org.eclipse.xtext.common.types</id>
 							<restrictTo>
-								<versionRange>[2.11.0,2.13.0)</versionRange>
+								<versionRange>${xtext.version}</versionRange>
 							</restrictTo>
 						</filter>
 						<filter>
@@ -190,7 +190,7 @@
 							<type>eclipse-plugin</type>
 							<id>org.eclipse.xtext.generator</id>
 							<restrictTo>
-								<versionRange>[2.11.0,2.13.0)</versionRange>
+								<versionRange>${xtext.version}</versionRange>
 							</restrictTo>
 						</filter>
 						<!-- Remove RAP -->
@@ -790,7 +790,6 @@
 			</properties>
 			<repositories>
 				<repository>
-					<!-- This repository containing the previous target platform is a workaround for the fact that some of the required dependencies are now missing from the Eclipse repositories.-->
 					<id>tp</id>
 					<url>${target.platform.url}</url>
 					<layout>p2</layout>
