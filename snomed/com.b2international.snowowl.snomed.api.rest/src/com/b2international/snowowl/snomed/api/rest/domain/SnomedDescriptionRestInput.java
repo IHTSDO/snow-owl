@@ -17,7 +17,6 @@ package com.b2international.snowowl.snomed.api.rest.domain;
 
 import java.util.Map;
 
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
@@ -108,8 +107,8 @@ public class SnomedDescriptionRestInput extends AbstractSnomedComponentRestInput
 	 * @return
 	 */
 	@Override
-	public SnomedDescriptionCreateRequestBuilder toRequestBuilder(final Branch branch) {
-		return super.toRequestBuilder(branch)
+	public SnomedDescriptionCreateRequestBuilder toRequestBuilder() {
+		return super.toRequestBuilder()
 				.setCaseSignificance(getCaseSignificance())
 				.setConceptId(getConceptId())
 				.setLanguageCode(getLanguageCode())

@@ -17,12 +17,12 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import javax.annotation.OverridingMethodsMustInvokeSuper;
 
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.snomed.core.domain.ConstantIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.IdGenerationStrategy;
+import com.b2international.snowowl.snomed.core.domain.MetadataIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.NamespaceIdStrategy;
 
 /**
@@ -45,16 +45,17 @@ public abstract class SnomedComponentCreateRequestBuilder<B extends SnomedCompon
 		return getSelf();
 	}
 	
-	public final B setIdFromNamespace(String namespace, Branch branch) {
-		this.idGenerationStrategy = new NamespaceIdStrategy(namespace, branch);
-		return getSelf();
-	}
-	public final B setIdGenerationStrategy(final IdGenerationStrategy idGenerationStrategy) {
-		this.idGenerationStrategy = idGenerationStrategy;
+	public final B setIdFromNamespace(final String namespace) {
+		this.idGenerationStrategy = new NamespaceIdStrategy(namespace);
 		return getSelf();
 	}
 	
-	public final B setId(IdGenerationStrategy idGenerationStrategy) {
+	public final B setIdFromMetadata() {
+		this.idGenerationStrategy = new MetadataIdStrategy();
+		return getSelf();
+	}
+	
+	public final B setIdGenerationStrategy(final IdGenerationStrategy idGenerationStrategy) {
 		this.idGenerationStrategy = idGenerationStrategy;
 		return getSelf();
 	}

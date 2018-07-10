@@ -293,7 +293,7 @@ public class SnomedRefSetDSVExportTest {
 
 	private SnomedRelationshipCreateRequestBuilder toRelationshipRequest(String typeId, CharacteristicType characteristicType, String desctinationId) {
 		return SnomedRequests.prepareNewRelationship()
-				.setIdFromNamespace(Concepts.B2I_NAMESPACE, mainBranch)
+				.setIdFromNamespace(Concepts.B2I_NAMESPACE)
 				.setModuleId(Concepts.MODULE_SCT_CORE)
 				.setDestinationId(desctinationId)
 				.setTypeId(typeId)
@@ -302,7 +302,7 @@ public class SnomedRefSetDSVExportTest {
 
 	private SnomedDescriptionCreateRequestBuilder toDescriptionRequest(String typeId, String term) {
 		return SnomedRequests.prepareNewDescription()
-				.setIdFromNamespace(Concepts.B2I_NAMESPACE, mainBranch)
+				.setIdFromNamespace(Concepts.B2I_NAMESPACE)
 				.setModuleId(Concepts.MODULE_SCT_CORE)
 				.setTerm(term)
 				.setTypeId(typeId)

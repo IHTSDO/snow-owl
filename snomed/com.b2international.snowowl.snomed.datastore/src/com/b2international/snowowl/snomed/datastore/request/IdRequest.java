@@ -39,21 +39,23 @@ import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotImplementedException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
-
 import com.b2international.snowowl.datastore.request.TransactionalRequest;
+import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.core.domain.ConstantIdStrategy;
-import com.b2international.snowowl.snomed.core.domain.IdGenerationStrategy;
+import com.b2international.snowowl.snomed.core.domain.MetadataIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.NamespaceIdStrategy;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.id.action.IdActionRecorder;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Multimap;
 
@@ -103,40 +105,65 @@ final class IdRequest<C extends BranchContext, R> extends DelegatingRequest<C, C
 					idGenerationTimer.start();
 
 					for (final ComponentCategory category : componentCreateRequests.keySet()) {
+						
 						final Class<? extends SnomedComponentDocument> documentClass = getDocumentClass(category);
-						final Collection<SnomedComponentCreateRequest> categoryRequests = componentCreateRequests.get(category);
+						
+						final Collection<BaseSnomedComponentCreateRequest> categoryRequests = FluentIterable.from(componentCreateRequests.get(category))
+								.filter(BaseSnomedComponentCreateRequest.class)
+								.toSet();
 						
 						final Set<String> userSuppliedIds = FluentIterable.from(categoryRequests)
-								.filter(SnomedCoreComponentCreateRequest.class)
 								.filter(request -> request.getIdGenerationStrategy() instanceof ConstantIdStrategy)
 								.transform(request -> ((ConstantIdStrategy) request.getIdGenerationStrategy()).getId())
 								.toSet();
 						
-						
 						if (!userSuppliedIds.isEmpty()) {
 							final Set<String> existingIds = getExistingIds(context, userSuppliedIds, documentClass);
 							if (!existingIds.isEmpty()) {
-								// TODO: Report all existing identifiers
-								throw new AlreadyExistsException(category.getDisplayName(), Iterables.getFirst(existingIds, null));
-							} else if (!userSuppliedIds.isEmpty()) {
-								recorder.register(userSuppliedIds);
+								throw new AlreadyExistsException(category.getDisplayName(), existingIds);
 							}
+							recorder.register(userSuppliedIds);
 						}
 						
-						final Multimap<String, BaseSnomedComponentCreateRequest> requestsByNamespace = FluentIterable.from(categoryRequests)
-								.filter(BaseSnomedComponentCreateRequest.class)
-								.filter(request -> request.getIdGenerationStrategy() instanceof NamespaceIdStrategy)
-								.index(request -> getNamespaceKey(request));
+						final Multimap<String, BaseSnomedComponentCreateRequest> requestsByNamespace = HashMultimap.create();
+						
+						FluentIterable.from(categoryRequests)
+							.filter(request -> request.getIdGenerationStrategy() instanceof NamespaceIdStrategy)
+							.forEach(request -> {
+									NamespaceIdStrategy strategy = (NamespaceIdStrategy) request.getIdGenerationStrategy();
+									String namespace = Strings.isNullOrEmpty(strategy.getNamespace())
+											|| SnomedIdentifiers.INT_NAMESPACE.equals(strategy.getNamespace())
+													? SnomedIdentifiers.INT_NAMESPACE
+													: strategy.getNamespace();
+									requestsByNamespace.put(namespace, request);
+							});
+						
+						Set<BaseSnomedComponentCreateRequest> metadataBasedIdRequests = FluentIterable.from(categoryRequests)
+							.filter(request -> request.getIdGenerationStrategy() instanceof MetadataIdStrategy)
+							.toSet();
+						
+						if (!metadataBasedIdRequests.isEmpty()) {
+							
+							String namespaceFromMetadata = BranchMetadataResolver.getEffectiveBranchMetadataValue(
+									context.branch(), SnomedCoreConfiguration.BRANCH_DEFAULT_NAMESPACE_KEY);
 
+							String namespace = Strings.isNullOrEmpty(namespaceFromMetadata)
+									? SnomedIdentifiers.INT_NAMESPACE
+									: namespaceFromMetadata;
+
+							metadataBasedIdRequests.forEach(request -> requestsByNamespace.put(namespace, request));
+							
+						}
+						
 						for (final String namespace : requestsByNamespace.keySet()) {
 							final String convertedNamespace = namespace.equals(SnomedIdentifiers.INT_NAMESPACE) ? null : namespace;
-							final Collection<BaseSnomedComponentCreateRequest> namespaceRequests = requestsByNamespace.get(namespace);
-							final int count = namespaceRequests.size();
+							final Collection<BaseSnomedComponentCreateRequest> requests = requestsByNamespace.get(namespace);
+							final int count = requests.size();
 							
 							final Set<String> uniqueIds = getUniqueIds(context, recorder, category, documentClass, count, convertedNamespace);
 
 							final Iterator<String> idsToUse = Iterators.consumingIterator(uniqueIds.iterator());
-							for (final BaseSnomedComponentCreateRequest createRequest : namespaceRequests) {
+							for (final BaseSnomedComponentCreateRequest createRequest : requests) {
 								createRequest.setIdGenerationStrategy(new ConstantIdStrategy(idsToUse.next()));
 							}
 
@@ -154,7 +181,6 @@ final class IdRequest<C extends BranchContext, R> extends DelegatingRequest<C, C
 			return commitInfo;
 
 		} catch (final Exception e) {
-			
 			recorder.rollback();
 			throw e;
 		}
@@ -240,13 +266,4 @@ final class IdRequest<C extends BranchContext, R> extends DelegatingRequest<C, C
 		}
 	}
 
-	/**
-	 * @return a namespace key intended to be used as a key in a collection;
-	 *         <code>null</code> values are converted to {@link SnomedIdentifiers#INT_NAMESPACE}.
-	 */
-	private String getNamespaceKey(final SnomedCoreComponentCreateRequest createRequest) {
-		final IdGenerationStrategy idGenerationStrategy = createRequest.getIdGenerationStrategy();
-		final String namespace = idGenerationStrategy.getNamespace();
-		return namespace == null ? SnomedIdentifiers.INT_NAMESPACE : namespace;
-	}
 }

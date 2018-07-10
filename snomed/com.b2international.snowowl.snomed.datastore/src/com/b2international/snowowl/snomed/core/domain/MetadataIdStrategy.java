@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
  */
 package com.b2international.snowowl.snomed.core.domain;
 
-import java.io.Serializable;
-
 /**
- * Implementations allow clients to generate component identifiers conforming to
- * the specified constraints.
+ *
+ * @since 6.6.1 
  */
-public interface IdGenerationStrategy extends Serializable {
+public class MetadataIdStrategy implements IdGenerationStrategy {
+
+	private static final long serialVersionUID = -3550273588490837331L;
+	
 }

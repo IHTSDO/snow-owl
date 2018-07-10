@@ -187,8 +187,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 							final SnomedRelationshipCreateRequestBuilder inferredRelationshipBuilder = createInferredRelationship(change, 
 									moduleMap, 
 									defaultModuleId, 
-									defaultNamespace, 
-									branch);
+									defaultNamespace);
 							
 							builder.add(inferredRelationshipBuilder);
 							break;
@@ -270,8 +269,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		private SnomedRelationshipCreateRequestBuilder createInferredRelationship(IRelationshipChange relationshipChange,
 				final Map<String, String> moduleMap, 
 				final String defaultModuleId,
-				final String defaultNamespace,
-				final Branch branch) {
+				final String defaultNamespace) {
 		
 			// Use module and/or namespace from source concept, if not given
 			final String moduleId = (defaultModuleId != null) 
@@ -293,7 +291,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					.setTypeId(relationshipChange.getTypeId())
 					.setUnionGroup(relationshipChange.getUnionGroup())
 					.setModuleId(moduleId)
-					.setIdFromNamespace(namespace, branch);
+					.setIdFromNamespace(namespace);
 			
 			return inferredRelationshipBuilder;
 		}

@@ -82,34 +82,27 @@ public class SnomedMergePerformanceTest extends AbstractSnomedApiTest {
 	public void testPerf() throws Exception {
 		IBranchPath branch = BranchPathUtils.createPath(branchPath, "merge-test");
 		createBranch(branch).statusCode(201);
-		
-		Branch b = RepositoryRequests.branching()
-			.prepareGet(branch.getPath())
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-			.execute(getBus())
-			.getSync();
-		
 		BulkRequestBuilder<TransactionContext> bulk = BulkRequest.create();
 		final int numberOfConceptsToWorkWith = 10_000;
 		for (int i = 0; i < numberOfConceptsToWorkWith; i++) {
 			bulk.add(SnomedRequests.prepareNewConcept()
-						.setIdFromNamespace(null /*INT*/, b)
+						.setIdFromNamespace(null /*INT*/)
 						.setActive(true)
 						.setModuleId(Concepts.MODULE_SCT_CORE)
 						.addDescription(SnomedRequests.prepareNewDescription()
-								.setIdFromNamespace(null /*INT*/, b)
+								.setIdFromNamespace(null /*INT*/)
 								.setTerm("MergeTest FSN " + i)
 								.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
 								.setLanguageCode("en")
 								.preferredIn(Concepts.REFSET_LANGUAGE_TYPE_UK))
 						.addDescription(SnomedRequests.prepareNewDescription()
-								.setIdFromNamespace(null /*INT*/, b)
+								.setIdFromNamespace(null /*INT*/)
 								.setTerm("MergeTest PT " + i)
 								.setTypeId(Concepts.SYNONYM)
 								.setLanguageCode("en")
 								.preferredIn(Concepts.REFSET_LANGUAGE_TYPE_UK))
 						.addRelationship(SnomedRequests.prepareNewRelationship()
-								.setIdFromNamespace(null /*INT*/, b)
+								.setIdFromNamespace(null /*INT*/)
 								.setCharacteristicType(CharacteristicType.STATED_RELATIONSHIP)
 								.setTypeId(Concepts.IS_A)
 								.setDestinationId(Concepts.ROOT_CONCEPT)));
@@ -205,7 +198,7 @@ public class SnomedMergePerformanceTest extends AbstractSnomedApiTest {
 		// add new relationships to concepts
 		for (String conceptIdToUpdate : idsOfCreatedConcepts) {
 			bulk.add(SnomedRequests.prepareNewRelationship()
-					.setIdFromNamespace(null /*INT*/, b)
+					.setIdFromNamespace(null /*INT*/)
 					.setSourceId(conceptIdToUpdate)
 					.setTypeId(Concepts.IS_A)
 					.setDestinationId("404684003" /*CLINICAL FINDING*/)

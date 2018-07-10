@@ -50,7 +50,6 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
@@ -178,22 +177,22 @@ public class SnomedBranchRequestTest {
 				.getSync();
 		
 		final SnomedDescriptionCreateRequestBuilder fsnBuilder = SnomedRequests.prepareNewDescription()
-				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE, first)
+				.setIdFromMetadata()
 				.setModuleId(Concepts.MODULE_ROOT)
 				.setTerm("FSN " + branchA)
 				.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
 				.setAcceptability(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED));
 		
 		final SnomedDescriptionCreateRequestBuilder ptBuilder = SnomedRequests.prepareNewDescription()
-				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE, first)
+				.setIdFromMetadata()
 				.setModuleId(Concepts.MODULE_ROOT)
 				.setTerm("PT " + branchA)
 				.setTypeId(Concepts.SYNONYM)
 				.setAcceptability(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED));
 		
 		final AsyncRequest<CommitResult> conceptRequest = SnomedRequests.prepareNewConcept()
+				.setIdFromMetadata()
 				.setModuleId(Concepts.MODULE_ROOT)
-				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE, first)
 				.addParent(Concepts.ROOT_CONCEPT)
 				.addDescription(fsnBuilder)
 				.addDescription(ptBuilder)

@@ -2,21 +2,13 @@ package com.b2international.snowowl.snomed.api.impl.domain;
 
 import java.util.Map;
 
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponent;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 
 public abstract class AbstractInputCreator {
-
-	private Branch branch;
-
-	public AbstractInputCreator(final Branch branch) {
-		this.branch = branch;
-	}
 
 	protected String getModuleOrDefault(ISnomedBrowserComponent component) {
 		final String moduleId = component.getModuleId();
@@ -31,11 +23,4 @@ public abstract class AbstractInputCreator {
 		return multimap != null ? multimap : ImmutableMultimap.<K, V>of();
 	}
 
-	protected String getDefaultNamespace() {
-		return SnomedIdentifiers.INT_NAMESPACE;
-	}
-	
-	protected Branch getBranch() {
-		return branch;
-	}
 }

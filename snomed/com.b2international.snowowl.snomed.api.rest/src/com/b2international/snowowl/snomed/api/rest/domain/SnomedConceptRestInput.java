@@ -18,7 +18,6 @@ package com.b2international.snowowl.snomed.api.rest.domain;
 import java.util.Collections;
 import java.util.List;
 
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
@@ -61,8 +60,8 @@ public class SnomedConceptRestInput extends AbstractSnomedComponentRestInput<Sno
 	}
 	
 	@Override
-	public SnomedConceptCreateRequestBuilder toRequestBuilder(Branch branch) {
-		final SnomedConceptCreateRequestBuilder req = super.toRequestBuilder(branch);
+	public SnomedConceptCreateRequestBuilder toRequestBuilder() {
+		final SnomedConceptCreateRequestBuilder req = super.toRequestBuilder();
 		
 		for (SnomedRelationshipRestInput restRelationship : getRelationships()) {
 			// Propagate namespace from concept if not present
@@ -70,7 +69,7 @@ public class SnomedConceptRestInput extends AbstractSnomedComponentRestInput<Sno
 				restRelationship.setNamespaceId(getNamespaceId());
 			}
 			
-			req.addRelationship(restRelationship.toRequestBuilder(branch));
+			req.addRelationship(restRelationship.toRequestBuilder());
 		}
 		
 		for (SnomedDescriptionRestInput restDescription : getDescriptions()) {
@@ -79,7 +78,7 @@ public class SnomedConceptRestInput extends AbstractSnomedComponentRestInput<Sno
 				restDescription.setNamespaceId(getNamespaceId());
 			}
 			
-			req.addDescription(restDescription.toRequestBuilder(branch));
+			req.addDescription(restDescription.toRequestBuilder());
 		}
 		
 		for (SnomedRefSetMemberRestInput restMember : getMembers()) {

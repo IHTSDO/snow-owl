@@ -3,7 +3,6 @@ package com.b2international.snowowl.snomed.api.impl.domain;
 import java.util.Map;
 
 import com.b2international.commons.ClassUtils;
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
@@ -20,11 +19,6 @@ import com.google.common.collect.Multimap;
 
 public class DescriptionInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedDescriptionCreateRequest, SnomedDescriptionUpdateRequest, SnomedBrowserDescription> {
 
-	
-	public DescriptionInputCreator(final Branch branch) {
-		super(branch);
-	}
-	
 	@Override
 	public SnomedDescriptionCreateRequest createInput(final SnomedBrowserDescription description, final InputFactory inputFactory) {
 		final SnomedDescriptionCreateRequestBuilder builder = SnomedRequests.prepareNewDescription()
@@ -38,7 +32,7 @@ public class DescriptionInputCreator extends AbstractInputCreator implements Com
 		if (description.getDescriptionId() != null) {
 			builder.setId(description.getDescriptionId());
 		} else {
-			builder.setIdFromNamespace(getDefaultNamespace(), getBranch());
+			builder.setIdFromMetadata();
 		}
 		
 		return (SnomedDescriptionCreateRequest) builder.build();

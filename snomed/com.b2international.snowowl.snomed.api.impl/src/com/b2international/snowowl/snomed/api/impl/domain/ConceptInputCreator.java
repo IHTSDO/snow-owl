@@ -1,6 +1,5 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserAxiom;
@@ -25,8 +24,7 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 	
 	private final SnomedBrowserAxiomUpdateHelper axiomUpdateHelper;
 	
-	public ConceptInputCreator(final Branch branch, SnomedBrowserAxiomUpdateHelper axiomUpdateHelper) {
-		super(branch);
+	public ConceptInputCreator(SnomedBrowserAxiomUpdateHelper axiomUpdateHelper) {
 		this.axiomUpdateHelper = axiomUpdateHelper;
 	}
 	
@@ -42,7 +40,7 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 		if (conceptId != null) {
 			builder.setId(conceptId);
 		} else {
-			builder.setIdFromNamespace(getDefaultNamespace(), getBranch());
+			builder.setIdFromMetadata();
 		}
 
 		boolean hasActiveStatedIsaRelationship = concept.getRelationships().stream()
@@ -56,11 +54,11 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 		}
 		
 		for (ISnomedBrowserRelationship relationship : concept.getRelationships()) {
-			builder.addRelationship(inputFactory.createComponentInput(getBranch().path(), relationship, SnomedRelationshipCreateRequest.class));
+			builder.addRelationship(inputFactory.createComponentInput(relationship, SnomedRelationshipCreateRequest.class));
 		}
 		
 		for (ISnomedBrowserDescription description : concept.getDescriptions()) {
-			builder.addDescription(inputFactory.createComponentInput(getBranch().path(), description, SnomedDescriptionCreateRequest.class));
+			builder.addDescription(inputFactory.createComponentInput(description, SnomedDescriptionCreateRequest.class));
 		}
 		
 		// An SCTID is required for generating axiom OWL expressions

@@ -46,9 +46,11 @@ public final class SnomedConceptCreateRequestBuilder extends SnomedComponentCrea
 	}
 	
 	// Relationship List builders
-	
+
+	/**
+	 * XXX: Id generation strategy for the concept create request must be set before invoking this method
+	 */
 	public SnomedConceptCreateRequestBuilder addParent(String parentId) {
-		
 		return addRelationship(SnomedRequests.prepareNewRelationship()
 				.setIdGenerationStrategy(getIdGenerationStrategy())
 				.setDestinationId(parentId)

@@ -42,11 +42,9 @@ import org.springframework.web.context.request.async.DeferredResult;
 import com.b2international.commons.StringUtils;
 import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.request.SearchResourceRequest.SortField;
-import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.ChangeRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
@@ -231,14 +229,9 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 		
 		final String commitComment = body.getCommitComment();
 		
-		Branch branch = RepositoryRequests.branching()
-								.prepareGet(branchPath)
-								.build(repositoryId)
-								.execute(bus).getSync();
-		
 		final String createdDescriptionId = body
 			.getChange()
-			.toRequestBuilder(branch)
+			.toRequestBuilder()
 			.build(repositoryId, branchPath, principal.getName(), commitComment)
 			.execute(bus)
 			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS)

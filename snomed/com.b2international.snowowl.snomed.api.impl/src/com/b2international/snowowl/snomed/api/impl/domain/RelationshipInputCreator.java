@@ -1,7 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
 import com.b2international.commons.ClassUtils;
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedCoreComponentCreateRequest;
@@ -12,12 +11,6 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUp
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class RelationshipInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedRelationshipCreateRequest, SnomedRelationshipUpdateRequest, SnomedBrowserRelationship> {
-	
-	
-
-	public RelationshipInputCreator(final Branch branch) {
-		super(branch);
-	}
 	
 	@Override
 	public SnomedRelationshipCreateRequest createInput(SnomedBrowserRelationship relationship, InputFactory inputFactory) {
@@ -34,8 +27,7 @@ public class RelationshipInputCreator extends AbstractInputCreator implements Co
 		if (relationship.getRelationshipId() != null) {
 			builder.setId(relationship.getRelationshipId());
 		} else {
-			
-			builder.setIdFromNamespace(getDefaultNamespace(), getBranch());
+			builder.setIdFromMetadata();
 		}
 		
 		return (SnomedRelationshipCreateRequest) builder.build();

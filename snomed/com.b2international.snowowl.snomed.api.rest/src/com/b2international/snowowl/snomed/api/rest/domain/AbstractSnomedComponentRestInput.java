@@ -15,11 +15,13 @@
  */
 package com.b2international.snowowl.snomed.api.rest.domain;
 
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.core.domain.ConstantIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.IdGenerationStrategy;
+import com.b2international.snowowl.snomed.core.domain.MetadataIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.NamespaceIdStrategy;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequestBuilder;
+import com.google.common.base.Strings;
 
 /**
  * @since 4.0
@@ -65,19 +67,21 @@ public abstract class AbstractSnomedComponentRestInput<I extends SnomedComponent
 
 	protected abstract I createRequestBuilder();
 	
-	protected I toRequestBuilder(Branch branch) {
+	protected I toRequestBuilder() {
 		final I req = createRequestBuilder();
-		req.setId(createIdGenerationStrategy(getId(), branch));
+		req.setIdGenerationStrategy(createIdGenerationStrategy());
 		req.setModuleId(getModuleId());
 		req.setActive(isActive());
 		return req;
 	}
 
-	protected IdGenerationStrategy createIdGenerationStrategy(String idOrNull, Branch branch) {
-		if (idOrNull == null) {
-			return new NamespaceIdStrategy(namespaceId, branch);
-		} else {
-			return new ConstantIdStrategy(idOrNull);
+	protected IdGenerationStrategy createIdGenerationStrategy() {
+		if (!Strings.isNullOrEmpty(id)) {
+			return new ConstantIdStrategy(id);
+		} else if (namespaceId != null || SnomedIdentifiers.INT_NAMESPACE.equals(namespaceId)) {
+			// if namespaceId is either "" or "INT" then international namespace is enforced
+			return new NamespaceIdStrategy(namespaceId);
 		}
+		return new MetadataIdStrategy();
 	}
 }

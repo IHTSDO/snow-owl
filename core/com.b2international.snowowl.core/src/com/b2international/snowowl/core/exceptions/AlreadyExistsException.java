@@ -15,7 +15,14 @@
  */
 package com.b2international.snowowl.core.exceptions;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Collections.singleton;
+
+import java.util.Collection;
+
+import com.b2international.commons.CompareUtils;
+import com.google.common.base.Joiner;
 
 /**
  * Thrown when an item to be created already exists in the system.
@@ -33,12 +40,16 @@ public class AlreadyExistsException extends ConflictException {
 	 * @param id   the identifier of the existing item
 	 */
 	public AlreadyExistsException(final String type, final String id) {
-		super(formatMessage(type, id));
+		super(formatMessage(type, singleton(id)));
+	}
+	
+	public AlreadyExistsException(final String type, final Collection<String> ids) {
+		super(formatMessage(type, ids));
 	}
 
-	private static String formatMessage(final String type, final String id) {
+	private static String formatMessage(final String type, final Collection<String> ids) {
 		checkNotNull(type, "type");
-		checkNotNull(id, "id");
-		return String.format("%s with '%s' identifier already exists.", type, id);
+		checkArgument(!CompareUtils.isEmpty(ids));
+		return String.format("%s with the following identifier%s already exists: '%s'", type, ids.size() > 1 ? "s" : "", Joiner.on(", ").join(ids));
 	}
 }

@@ -30,13 +30,11 @@ import static com.google.common.collect.Lists.newArrayList;
 import java.util.List;
 
 import com.b2international.snowowl.core.SnowOwlApplication;
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.RequestBuilder;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
-import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
@@ -225,18 +223,9 @@ public class SnomedConcreteDomainImportPostProcessor implements ISnomedImportPos
 				.addRelationship(createIsaRelationship(identifierConceptId, parent, CharacteristicType.INFERRED_RELATIONSHIP, branch));
 	}
 	
-	private Branch getBranch(final String branchPath) {
-		return RepositoryRequests
-					.branching()
-					.prepareGet(branchPath)
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-					.execute(getServiceForClass(IEventBus.class))
-					.getSync();
-	}
-	
 	private SnomedDescriptionCreateRequestBuilder createDescription(final String conceptId, final String term, final String type, final Acceptability acceptability, final String branch) {
 		return SnomedRequests.prepareNewDescription()
-				.setIdFromNamespace(B2I_NAMESPACE, getBranch(branch))
+				.setIdFromNamespace(B2I_NAMESPACE)
 				.setActive(true)
 				.setModuleId(MODULE_B2I_EXTENSION)
 				.setConceptId(conceptId)
@@ -249,7 +238,7 @@ public class SnomedConcreteDomainImportPostProcessor implements ISnomedImportPos
 	
 	private SnomedRelationshipCreateRequestBuilder createIsaRelationship(final String source, final String destination, final CharacteristicType characteristicType, final String branch) {
 		return SnomedRequests.prepareNewRelationship() 
-			.setIdFromNamespace(B2I_NAMESPACE, getBranch(branch))
+			.setIdFromNamespace(B2I_NAMESPACE)
 			.setActive(true)
 			.setModuleId(MODULE_B2I_EXTENSION)
 			.setSourceId(source)

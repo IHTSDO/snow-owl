@@ -42,7 +42,6 @@ import com.b2international.commons.CompareUtils;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
@@ -53,7 +52,6 @@ import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.request.RepositoryCommitRequestBuilder;
-import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -225,9 +223,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	@Override
 	public ISnomedBrowserConcept createConcept(String branchPath, ISnomedBrowserConcept newConcept, String userId, List<ExtendedLocale> locales) {
 		
-		InputFactory inputFactory = new InputFactory(getBranch(branchPath), new SnomedBrowserAxiomUpdateHelper(getAxiomConversionService(branchPath)));
+		InputFactory inputFactory = new InputFactory(new SnomedBrowserAxiomUpdateHelper(getAxiomConversionService(branchPath)));
 		
-		final SnomedConceptCreateRequest req = inputFactory.createComponentInput(branchPath, newConcept, SnomedConceptCreateRequest.class);
+		final SnomedConceptCreateRequest req = inputFactory.createComponentInput(newConcept, SnomedConceptCreateRequest.class);
 		final String commitComment = getCommitComment(userId, newConcept, "creating");
 		
 		final String createdConceptId = SnomedRequests
@@ -243,10 +241,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return getConceptDetails(branchPath, createdConceptId, locales);
 	}
 
-	private Branch getBranch(String branchPath) {
-		return RepositoryRequests.branching().prepareGet(branchPath).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus()).getSync();
-	}
-	
 	@Override
 	public void updateConcept(String branch, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales) {
 		final String commitComment = userId + " Bulk update.";
@@ -266,7 +260,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		// Create services once and reuse
 		SnomedBrowserAxiomUpdateHelper axiomUpdateHelper = new SnomedBrowserAxiomUpdateHelper(getAxiomConversionService(branchPath));		
-		InputFactory inputFactory = new InputFactory(getBranch(branchPath), axiomUpdateHelper);
+		InputFactory inputFactory = new InputFactory(axiomUpdateHelper);
 
 		// Process concepts in batches of 1000
 		for (List<? extends ISnomedBrowserConcept> updatedConceptsBatch : Lists.partition(concepts, 1000)) {
@@ -289,7 +283,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 					
 					if (allowCreate) {
 						
-						final SnomedConceptCreateRequest req = inputFactory.createComponentInput(branchPath, concept, SnomedConceptCreateRequest.class);
+						final SnomedConceptCreateRequest req = inputFactory.createComponentInput(concept, SnomedConceptCreateRequest.class);
 						bulkRequest.add(req);
 						
 					} else {
@@ -298,7 +292,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 					}
 					
 				} else {
-					update(branchPath, concept, existingConcept, userId, locales, bulkRequest, inputFactory);
+					update(concept, existingConcept, userId, locales, bulkRequest, inputFactory);
 				}
 				
 			}
@@ -405,7 +399,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return run;
 	}
 	
-	private void update(String branchPath, ISnomedBrowserConcept newVersionConcept, ISnomedBrowserConcept existingVersionConcept, String userId, List<ExtendedLocale> locales, 
+	private void update(ISnomedBrowserConcept newVersionConcept, ISnomedBrowserConcept existingVersionConcept, String userId, List<ExtendedLocale> locales, 
 			BulkRequestBuilder<TransactionContext> bulkRequest, InputFactory inputFactory) {
 		
 		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
@@ -418,7 +412,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final List<ISnomedBrowserDescription> newVersionDescriptions = newVersionConcept.getDescriptions();
 		Set<String> descriptionDeletionIds = inputFactory.getComponentDeletions(existingVersionDescriptions, newVersionDescriptions);
 		Map<String, SnomedDescriptionUpdateRequest> descriptionUpdates = inputFactory.createComponentUpdates(existingVersionDescriptions, newVersionDescriptions, SnomedDescriptionUpdateRequest.class);
-		List<SnomedDescriptionCreateRequest> descriptionInputs = inputFactory.createComponentInputs(branchPath, newVersionDescriptions, SnomedDescriptionCreateRequest.class);
+		List<SnomedDescriptionCreateRequest> descriptionInputs = inputFactory.createComponentInputs(newVersionDescriptions, SnomedDescriptionCreateRequest.class);
 		LOGGER.info("Got description changes +{} -{} m{}, {}", descriptionInputs.size(), descriptionDeletionIds.size(), descriptionUpdates.size(), newVersionConcept.getFsn());
 
 		// Relationship updates
@@ -426,7 +420,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final List<ISnomedBrowserRelationship> newVersionRelationships = newVersionConcept.getRelationships();
 		Set<String> relationshipDeletionIds = inputFactory.getComponentDeletions(existingVersionRelationships, newVersionRelationships);
 		Map<String, SnomedRelationshipUpdateRequest> relationshipUpdates = inputFactory.createComponentUpdates(existingVersionRelationships, newVersionRelationships, SnomedRelationshipUpdateRequest.class);
-		List<SnomedRelationshipCreateRequest> relationshipInputs = inputFactory.createComponentInputs(branchPath, newVersionRelationships, SnomedRelationshipCreateRequest.class);
+		List<SnomedRelationshipCreateRequest> relationshipInputs = inputFactory.createComponentInputs(newVersionRelationships, SnomedRelationshipCreateRequest.class);
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
 		
 		SnomedBrowserAxiomUpdateHelper axiomUpdateHelper = inputFactory.getAxiomUpdateHelper();
