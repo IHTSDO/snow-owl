@@ -45,6 +45,8 @@ import org.eclipse.net4j.util.om.monitor.Monitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.snowowl.core.date.DateFormats;
+import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
 import com.b2international.snowowl.datastore.cdo.DelegatingTransaction;
@@ -116,7 +118,7 @@ class IndexMigrationReplicationContext implements CDOReplicationContext {
 			// replicate all branches created before the current commit in order
 			do {
 				final CDOBranch branch = currentBranchToReplicate.getValue();
-				LOGGER.info("Replicating branch: " + branch.getName() + " at " + branch.getBase().getTimeStamp());
+				LOGGER.info("Replicating branch: " + branch.getName() + " at " + prettyPrint(branch.getBase().getTimeStamp()));
 				try {
 					context.service(BranchReplicator.class).replicateBranch(branch);
 				} catch (SkipBranchException e) {
@@ -146,12 +148,13 @@ class IndexMigrationReplicationContext implements CDOReplicationContext {
 				return;
 			}
 			
-			LOGGER.info("Replicating commit: " + commitInfo.getComment() + " at " + commitInfo.getBranch().getName() + "@" + commitTimestamp);	
+			LOGGER.info("Replicating commit: " + commitInfo.getComment() + " at " + commitInfo.getBranch().getName() + " @ " + prettyPrint(commitTimestamp));
+			
 		} catch (DBException e) {
 			skippedCommits++;
 			
 			if (e.getMessage().startsWith("Branch with ID")) {
-				LOGGER.warn("Skipping commit with missing branch: " + commitInfo.getComment() + " at " + commitInfo.getBranch().getID() + "@" + commitTimestamp);
+				LOGGER.warn("Skipping commit with missing branch: " + commitInfo.getComment() + " at " + commitInfo.getBranch().getID() + " @ " + prettyPrint(commitTimestamp));
 				return;
 			} else {
 				failedCommitTimestamp = commitTimestamp;
@@ -277,6 +280,10 @@ class IndexMigrationReplicationContext implements CDOReplicationContext {
 		}
 	}
 
+	private String prettyPrint(long timestamp) {
+		return timestamp > 0 ? Dates.formatByGmt(timestamp, DateFormats.LONG) : String.valueOf(timestamp);
+	}
+	
 	private boolean isVersionCommit(final CDOCommitInfo commitInfo) {
 		for (CDOIDAndVersion newObject : commitInfo.getNewObjects()) {
 			if (newObject instanceof CDORevision) {
