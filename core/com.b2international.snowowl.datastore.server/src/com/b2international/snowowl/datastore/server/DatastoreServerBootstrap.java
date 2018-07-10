@@ -45,7 +45,6 @@ import com.b2international.snowowl.core.setup.PreRunCapableBootstrapFragment;
 import com.b2international.snowowl.datastore.cdo.CDOConnectionFactoryProvider;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
-import com.b2international.snowowl.datastore.config.IndexConfiguration;
 import com.b2international.snowowl.datastore.config.IndexSettings;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.internal.InternalRepository;
@@ -162,7 +161,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 
 	private void initReindexSettings(SnowOwlConfiguration configuration) {
 		RepositoryConfiguration repositoryConfig = configuration.getModuleConfig(RepositoryConfiguration.class);
-		IndexConfiguration indexConfiguration = repositoryConfig.getIndexConfiguration();
 		repositoryConfig.setRevisionCacheEnabled(false);
 		LOG.info("Set revision cache to {} for reindexing", repositoryConfig.isRevisionCacheEnabled());
 	}
