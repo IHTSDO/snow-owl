@@ -80,8 +80,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 
 	private static final Logger LOG = LoggerFactory.getLogger("core");
 
-	private static final String REINDEX_KEY = "snowowl.reindex-mode";
-	
 	@Override
 	public void init(SnowOwlConfiguration configuration, Environment env) throws Exception {
 		final IManagedContainer container = env.container();
@@ -108,13 +106,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 	public void preRun(SnowOwlConfiguration configuration, Environment env) {
 		if (env.isServer() || env.isEmbedded()) {
 			LOG.debug(">>> Starting server-side datastore bundle.");
-			
-			if (isInReindexMode()) {
-				initReindexSettings(configuration);
-			} else {
-				RepositoryConfiguration repositoryConfiguration = configuration.getModuleConfig(RepositoryConfiguration.class);
-				LOG.info("Revision cache is {}", repositoryConfiguration.isRevisionCacheEnabled() ? "enabled" : "disabled");
-			}
 			
 			final IManagedContainer container = env.container();
 			final Stopwatch serverStopwatch = Stopwatch.createStarted();
@@ -159,16 +150,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		
 	}
 
-	private void initReindexSettings(SnowOwlConfiguration configuration) {
-		RepositoryConfiguration repositoryConfig = configuration.getModuleConfig(RepositoryConfiguration.class);
-		repositoryConfig.setRevisionCacheEnabled(false);
-		LOG.info("Set revision cache to {} for reindexing", repositoryConfig.isRevisionCacheEnabled());
-	}
-
-	private boolean isInReindexMode() {
-		return Boolean.parseBoolean(System.getProperty(REINDEX_KEY, "false"));
-	}
-	
 	@Override
 	public void run(SnowOwlConfiguration configuration, Environment env, IProgressMonitor monitor) throws Exception {
 		ServiceConfigJobManager.INSTANCE.registerServices(monitor);

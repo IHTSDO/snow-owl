@@ -17,8 +17,12 @@ package com.b2international.snowowl.datastore.setup;
 
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.b2international.index.IndexClientFactory;
 import com.b2international.index.query.slowlog.SlowLogConfig;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.setup.DefaultBootstrapFragment;
 import com.b2international.snowowl.core.setup.Environment;
@@ -39,6 +43,8 @@ import com.google.common.collect.ImmutableMap;
 })
 public class RepositoryBootstrap extends DefaultBootstrapFragment {
 	
+	private static final Logger LOG = LoggerFactory.getLogger("core");
+	
 	@Override
 	public void init(SnowOwlConfiguration configuration, Environment env) throws Exception {
 		final IndexSettings indexSettings = new IndexSettings();
@@ -51,16 +57,32 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 		builder.put(IndexClientFactory.DATA_DIRECTORY, env.getDataDirectory().toPath().resolve("indexes").toString());
 		builder.put(IndexClientFactory.CONFIG_DIRECTORY, env.getConfigDirectory().toPath().toString());
 		
-		final IndexConfiguration config = env.service(SnowOwlConfiguration.class)
-				.getModuleConfig(RepositoryConfiguration.class).getIndexConfiguration();
+		RepositoryConfiguration repositoryConfiguration = env.service(SnowOwlConfiguration.class)
+				.getModuleConfig(RepositoryConfiguration.class);
+		final IndexConfiguration config = repositoryConfiguration.getIndexConfiguration();
 		
-		builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, config.getCommitInterval());
-		builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, config.getCommitConcurrencyLevel());
+		if (isInReindexMode()) {
+			builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, "5m");
+			LOG.info("Set translog sync interval to {}", "5m");
+			builder.put("translog.flush_threshold_size", "1gb");
+			LOG.info("Set translog flush threshold size to {}", "1gb");
+			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, Runtime.getRuntime().availableProcessors());
+			LOG.info("Set commit concurrency level to {}", Runtime.getRuntime().availableProcessors());
+			repositoryConfiguration.setRevisionCacheEnabled(false);
+			LOG.info("Set revision cache to {} for reindexing", repositoryConfiguration.isRevisionCacheEnabled());
+		} else {
+			builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, config.getCommitInterval());
+			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, config.getCommitConcurrencyLevel());
+		}
 		
 		final SlowLogConfig slowLog = createSlowLogConfig(config);
 		builder.put(IndexClientFactory.SLOW_LOG_KEY, slowLog);
 		
 		return builder.build();
+	}
+	
+	private boolean isInReindexMode() {
+		return Boolean.parseBoolean(System.getProperty(SnowOwlApplication.REINDEX_KEY, "false"));
 	}
 
 	private SlowLogConfig createSlowLogConfig(final IndexConfiguration config) {

@@ -50,6 +50,8 @@ public enum SnowOwlApplication {
 
 	INSTANCE;
 
+	public static final String REINDEX_KEY = "snowowl.reindex-mode";
+	
 	private static final String NEW_LINE = "\r\n"; //$NON-NLS-1$
 	private static final String DEFAULT_CONFIGURATION_FILE_NAME = "snowowl_config"; //$NON-NLS-1$
 	private static final String[] SUPPORTED_CONFIG_EXTENSIONS = new String[]{"yml", "yaml", "json"};
