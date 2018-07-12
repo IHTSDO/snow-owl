@@ -129,7 +129,7 @@ public class SnomedRefSetDSVExportTest {
 		Assert.assertTrue("Export archive must exist!", dsvExportZipFile.exists());
 
 		FileUtils.decompressZipArchive(dsvExportZipFile, tempDir);
-		File decompressedDsvFile = new File(tempDir, refsetId+".csv");
+		File decompressedDsvFile = new File(tempDir, "test.csv");
 		Assert.assertTrue("Uncompressed file must exist.", decompressedDsvFile.exists());
 
 		List<String> dsvExportLines = Files.readLines(decompressedDsvFile, Charsets.UTF_8);
@@ -162,7 +162,7 @@ public class SnomedRefSetDSVExportTest {
 		Assert.assertTrue("Export archive must exist!", dsvExportZipFile.exists());
 
 		FileUtils.decompressZipArchive(dsvExportZipFile, tempDir);
-		File decompressedDsvFile = new File(tempDir, refsetId + ".csv");
+		File decompressedDsvFile = new File(tempDir, "test.csv");
 		Assert.assertTrue("Uncompressed file must exist.", decompressedDsvFile.exists());
 
 		List<String> dsvExportLines = Files.readLines(decompressedDsvFile, Charsets.UTF_8);

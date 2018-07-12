@@ -73,7 +73,7 @@ import com.google.common.collect.Sets;
  */
 public class DelegateCDOServerChangeManager {
 	
-	private static final Logger LOGGER = LoggerFactory.getLogger(DelegateCDOServerChangeManager.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger("repository");
 
 	private final Collection<CDOChangeProcessorFactory> factories;
 	private final ICDOCommitChangeSet commitChangeSet;
@@ -214,7 +214,7 @@ public class DelegateCDOServerChangeManager {
 								indexCommitChangeSets.add(indexCommitChangeSet);
 							
 							return Status.OK_STATUS;
-						} catch (final SnowowlServiceException e) {
+						} catch (final Exception e) {
 							try {
 								processor.rollback();
 							} catch (final SnowowlServiceException ee) {
@@ -269,18 +269,13 @@ public class DelegateCDOServerChangeManager {
 	}
 
 	private void cleanupAfterCommit(RuntimeException caughtException, Collection<ICDOChangeProcessor> committedChangeProcessors) {
-		
 		try {
-			
-			final Collection<Job> cleanupJobs = Sets.newHashSetWithExpectedSize(committedChangeProcessors.size());
 			
 			for (final ICDOChangeProcessor processor : committedChangeProcessors) {
 				LOGGER.info("Start ICDOChangeProcessor afterCommit() {}", processor.getClass());
 				processor.afterCommit();
 				LOGGER.info("Finished ICDOChangeProcessor afterCommit() {}", processor.getClass());
 			}
-			
-			ForkJoinUtils.runJobsInParallelWithErrorHandling(cleanupJobs, null);
 			
 		} catch (final Exception e) {
 			if (caughtException == null) {
@@ -385,9 +380,12 @@ public class DelegateCDOServerChangeManager {
 		} catch (final OperationLockException le) {
 			if (null != caughtException) {
 				caughtException.addSuppressed(createUnlockException());
-				throw caughtException;
 			} else {
 				throw createUnlockException();
+			}
+		} finally {
+			if (caughtException != null) {
+				throw caughtException;
 			}
 		}
 	}

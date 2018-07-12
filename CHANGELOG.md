@@ -1,6 +1,24 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 6.6.0
+
+### Added
+- Configuration options for validation thread pool sizes and parallel execution of rules (#246, 09c971e)
+- Support field selection in low-level aggregations API (b429a46, a59cb7e)
+
+### Changed
+- Support delimiter parameter in DSV exports (7ad7d6f)
+- Support latest specification changes in OWL Axiom and Ontology Reference Sets (#248, 72994dc)
+- Increase number of default shards for revision indexes to `6` (11ca54d) 
+
+### Bugs
+- Use Groovy Eclipse release update site instead of snapshot (0e15090) 
+- Fix missing FSNs, PTs in RefSet DSV exports, change default file names to PT of the Reference Set (1bb3fe3, 3f7cd3e, af6d9d1)
+
+### Performance
+- Reduce memory consumption and execution time of large scale validation jobs (#246, 9e35a24)
+
 ## 6.5.0
 
 ### Breaking changes
@@ -41,10 +59,10 @@ All datasets created before 6.5.0 require a full `reindex` due to changes in the
 
 ### Performance
 - Over 80% reduction in time for large scale changes (e.g. for updating batches of content using templates). (https://github.com/b2ihealthcare/snow-owl/pull/230, f958f53, 6b58d0a, e0d041a)
-- It now takes under 30 seconds to 1) create and save 10,000 new concepts with descriptions and an IS A relationship to SNOMED CT 2) Update all 10,000 concepts, changing their module and 3) Update all 10,000 concepts again, inactivating the relationship to SNOMED CT and adding a new one to Clinical finding. (see test case: TODO)
+- It now takes under 30 seconds to 1) create and save 10,000 new concepts with descriptions and an IS A relationship to SNOMED CT 2) Update all 10,000 concepts, changing their module and 3) Update all 10,000 concepts again, inactivating the relationship to SNOMED CT and adding a new one to Clinical finding. (see [test case](snomed/com.b2international.snowowl.snomed.api.rest.tests/src/com/b2international/snowowl/snomed/api/rest/perf/SnomedMergePerformanceTest.java))
 - Decrease execution time of scroll requests, especially when ECL evaluation is involved (39e78a5)
 - Decrease execution time of branch merge operations (243509d)
-- Reduce memory requirement of large scale validation requests ()
+- Reduce memory requirement of large scale validation requests (2abae78)
 - Reduce execution time of e2e tests (b3c824c)
 
 ## 6.4.0

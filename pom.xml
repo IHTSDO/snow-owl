@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.b2international.snowowl</groupId>
 	<artifactId>snowowl-parent</artifactId>
-	<version>6.5.0</version>
+	<version>6.6.0</version>
 	<packaging>pom</packaging>
 
 	<properties>
@@ -765,7 +765,7 @@
 				</repository>
 				<repository>
 					<id>groovy</id>
-					<url>http://dist.springsource.org/snapshot/GRECLIPSE/e4.3-j8/</url>
+					<url>http://dist.springsource.org/release/GRECLIPSE/e4.3-j8/</url>
 					<layout>p2</layout>
 				</repository>
 				<repository>
