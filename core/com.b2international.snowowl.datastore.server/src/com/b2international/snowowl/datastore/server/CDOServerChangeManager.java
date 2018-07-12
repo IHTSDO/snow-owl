@@ -46,10 +46,12 @@ import org.eclipse.net4j.util.om.monitor.OMMonitor.Async;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.snowowl.core.SnowOwlApplication;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.exceptions.ApiException;
+import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.CDOCommitChangeSet;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOServerCommitBuilder;
@@ -203,10 +205,12 @@ public class CDOServerChangeManager extends ObjectWriteAccessHandler {
 	public static final class ServerCDOView2 extends org.eclipse.emf.cdo.internal.server.ServerCDOView {
 
 		private final InternalView internalView;
+		private final FeatureToggles featureToggles;
 
 		public ServerCDOView2(InternalView internalView, InternalSession session, CDOBranchPoint branchPoint, boolean legacyModeEnabled, CDORevisionProvider revisionProvider) {
 			super(session, branchPoint, legacyModeEnabled, revisionProvider);
 			this.internalView = internalView;
+			this.featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
 		}
 		
 		@Override public int getViewID() {
@@ -215,10 +219,14 @@ public class CDOServerChangeManager extends ObjectWriteAccessHandler {
 		
 		@Override
 		public CDOStaleReferencePolicy getStaleReferencePolicy() {
-			if (Boolean.getBoolean(SnowOwlApplication.REINDEX_KEY)) {
+			if (isSnomedReindexInProgress()) {
 				return CDOStaleReferencePolicy.PROXY;
 			}
 			return super.getStaleReferencePolicy();
+		}
+
+		private boolean isSnomedReindexInProgress() {
+			return featureToggles.isEnabled(Features.getReindexFeatureToggle("snomedStore"));
 		}
 		
 	}

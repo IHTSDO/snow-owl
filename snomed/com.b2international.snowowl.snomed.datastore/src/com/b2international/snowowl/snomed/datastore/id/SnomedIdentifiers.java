@@ -21,7 +21,9 @@ import java.util.Collection;
 
 import com.b2international.commons.VerhoeffCheck;
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.internal.id.SnomedComponentIdentifierValidator;
@@ -95,9 +97,11 @@ public class SnomedIdentifiers {
 	}
 	
 	private static boolean isReindexRunning() {
-		FeatureToggles featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
-		String feature = String.format("%s.reindex", SnomedDatastoreActivator.REPOSITORY_UUID);
-		return featureToggles!= null && featureToggles.exists(feature) ? featureToggles.check(feature) : false;
+		if (Boolean.getBoolean(SnowOwlApplication.REINDEX_KEY)) {
+			FeatureToggles featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
+			return featureToggles.isEnabled(Features.getReindexFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID));
+		}
+		return false;
 	}
 
 	/**

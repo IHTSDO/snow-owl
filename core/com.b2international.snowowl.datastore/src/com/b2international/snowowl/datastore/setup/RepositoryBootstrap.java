@@ -82,7 +82,7 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 	}
 	
 	private boolean isInReindexMode() {
-		return Boolean.parseBoolean(System.getProperty(SnowOwlApplication.REINDEX_KEY, "false"));
+		return Boolean.getBoolean(SnowOwlApplication.REINDEX_KEY);
 	}
 
 	private SlowLogConfig createSlowLogConfig(final IndexConfiguration config) {

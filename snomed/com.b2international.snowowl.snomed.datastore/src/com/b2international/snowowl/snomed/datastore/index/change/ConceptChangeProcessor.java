@@ -41,8 +41,11 @@ import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.Revision;
 import com.b2international.index.revision.RevisionSearcher;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.ComponentUtils;
 import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessorBase;
@@ -53,6 +56,7 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Builder;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionFragment;
@@ -113,6 +117,7 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 	private final Taxonomy statedTaxonomy;
 	private final Taxonomy inferredTaxonomy;
 	private final ReferringMemberChangeProcessor memberChangeProcessor;
+	private final FeatureToggles featureToggles;
 	
 	private Multimap<String, RefSetMemberChange> referringRefSets;
 	
@@ -125,6 +130,7 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 		this.statedTaxonomy = statedTaxonomy;
 		this.inferredTaxonomy = inferredTaxonomy;
 		this.memberChangeProcessor = new ReferringMemberChangeProcessor(SnomedTerminologyComponentConstants.CONCEPT_NUMBER);
+		this.featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
 	}
 	
 	@Override
@@ -296,14 +302,25 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 	}
 	
 	private Set<String> getPreferredLanguageMembers(Description description) {
+		if (featureToggles.isEnabled(Features.getReindexFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID))) {
+			
+			return description.getLanguageRefSetMembers()
+				.stream()
+				.peek(member -> {
+					if (CDOUtil.isStaleObject(member)) {
+						LOG.info("Found non-resolvable (proxy) language refset member '" + member.cdoID() + "' for description '" + description.getId() + "'");
+					}
+				})
+				.filter(member -> !CDOUtil.isStaleObject(member))
+				.filter(SnomedLanguageRefSetMember::isActive)
+				.filter(member -> Acceptability.PREFERRED.getConceptId().equals(member.getAcceptabilityId()))
+				.map(SnomedRefSetMember::getRefSetIdentifierId)
+				.collect(Collectors.toSet());
+			
+		}
+		
 		return description.getLanguageRefSetMembers()
 			.stream()
-			.peek(member -> {
-				if (CDOUtil.isStaleObject(member)) {
-					LOG.info("Found non-resolvable (proxy) language refset member '" + member.cdoID() + "' for description '" + description.getId() + "'");
-				}
-			})
-			.filter(member -> !CDOUtil.isStaleObject(member))
 			.filter(SnomedLanguageRefSetMember::isActive)
 			.filter(member -> Acceptability.PREFERRED.getConceptId().equals(member.getAcceptabilityId()))
 			.map(SnomedRefSetMember::getRefSetIdentifierId)

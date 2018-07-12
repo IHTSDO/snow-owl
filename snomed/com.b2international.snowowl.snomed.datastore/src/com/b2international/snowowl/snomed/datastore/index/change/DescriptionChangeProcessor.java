@@ -35,6 +35,7 @@ import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessorBase;
 import com.b2international.snowowl.snomed.Description;
@@ -63,10 +64,12 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 	private static final Logger LOG = LoggerFactory.getLogger(DescriptionChangeProcessor.class);
 	
 	private final ReferringMemberChangeProcessor memberChangeProcessor;
+	private final FeatureToggles featureToggles;
 
 	public DescriptionChangeProcessor() {
 		super("description changes");
 		this.memberChangeProcessor = new ReferringMemberChangeProcessor(SnomedTerminologyComponentConstants.DESCRIPTION_NUMBER);
+		this.featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
 	}
 
 	@Override
@@ -235,9 +238,7 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 	}
 	
 	private boolean isReindexRunning() {
-		final FeatureToggles featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
-		String reindexFeature = String.format("%s.reindex", SnomedDatastoreActivator.REPOSITORY_UUID);
-		return featureToggles != null && featureToggles.exists(reindexFeature) ? featureToggles.check(reindexFeature) : false;
+		return featureToggles.isEnabled(Features.getReindexFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID));
 	}
 
 }
