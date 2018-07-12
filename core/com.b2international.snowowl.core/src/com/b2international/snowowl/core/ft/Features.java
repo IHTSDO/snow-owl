@@ -33,8 +33,8 @@ public final class Features {
 	 * @param branchPath - the branch where the import is executed
 	 * @return a unique identifier for the import feature
 	 */
-	public static String getImportFeatureToggle(String repositoryId, String branchPath) {
-		return String.format("import.%s-%s", repositoryId, branchPath);
+	public static String getImportFeatureToggle(String repositoryId, String branchPath, String contentSubType) {
+		return String.format("import.%s-%s-%s", repositoryId, branchPath, contentSubType);
 	}
 	
 	/**
