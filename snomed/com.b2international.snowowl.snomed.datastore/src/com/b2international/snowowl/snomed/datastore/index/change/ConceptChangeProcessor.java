@@ -28,7 +28,10 @@ import java.util.stream.Collectors;
 
 import org.eclipse.emf.cdo.common.id.CDOID;
 import org.eclipse.emf.cdo.common.id.CDOIDUtil;
+import org.eclipse.emf.cdo.util.CDOUtil;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.collections.longs.LongCollection;
 import com.b2international.collections.longs.LongIterator;
@@ -79,6 +82,8 @@ import com.google.common.collect.Ordering;
  */
 public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 
+	private static final Logger LOG = LoggerFactory.getLogger(ConceptChangeProcessor.class);
+	
 	private static final Set<EStructuralFeature> ALLOWED_CONCEPT_CHANGE_FEATURES = ImmutableSet.<EStructuralFeature>builder()
 			.add(SnomedPackage.Literals.COMPONENT__ACTIVE)
 			.add(SnomedPackage.Literals.COMPONENT__EFFECTIVE_TIME)
@@ -293,6 +298,12 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 	private Set<String> getPreferredLanguageMembers(Description description) {
 		return description.getLanguageRefSetMembers()
 			.stream()
+			.peek(member -> {
+				if (CDOUtil.isStaleObject(member)) {
+					LOG.info("Found non-resolvable (proxy) language refset member '" + member.cdoID() + "' for description '" + description.getId() + "'");
+				}
+			})
+			.filter(member -> !CDOUtil.isStaleObject(member))
 			.filter(SnomedLanguageRefSetMember::isActive)
 			.filter(member -> Acceptability.PREFERRED.getConceptId().equals(member.getAcceptabilityId()))
 			.map(SnomedRefSetMember::getRefSetIdentifierId)

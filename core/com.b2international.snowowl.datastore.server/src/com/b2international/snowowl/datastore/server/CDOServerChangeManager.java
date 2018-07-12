@@ -38,6 +38,7 @@ import org.eclipse.emf.cdo.spi.server.InternalSession;
 import org.eclipse.emf.cdo.spi.server.InternalTransaction;
 import org.eclipse.emf.cdo.spi.server.InternalView;
 import org.eclipse.emf.cdo.spi.server.ObjectWriteAccessHandler;
+import org.eclipse.emf.cdo.view.CDOStaleReferencePolicy;
 import org.eclipse.emf.cdo.view.CDOView;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.net4j.util.om.monitor.OMMonitor;
@@ -45,6 +46,7 @@ import org.eclipse.net4j.util.om.monitor.OMMonitor.Async;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.exceptions.ApiException;
@@ -211,6 +213,14 @@ public class CDOServerChangeManager extends ObjectWriteAccessHandler {
 			return internalView.getViewID();
 		}
 		
+		@Override
+		public CDOStaleReferencePolicy getStaleReferencePolicy() {
+			if (Boolean.getBoolean(SnowOwlApplication.REINDEX_KEY)) {
+				return CDOStaleReferencePolicy.PROXY;
+			}
+			return super.getStaleReferencePolicy();
+		}
+		
 	}
 
 	private String getCommitContextInfo(final TransactionCommitContext context) {
@@ -234,6 +244,7 @@ public class CDOServerChangeManager extends ObjectWriteAccessHandler {
 	private ICDOCommitChangeSet getCommitChangeSet(final TransactionCommitContext commitContext) {
 		
 		final CDOView view = getView(commitContext);
+	
 		return new CDOCommitChangeSet(
 				view,
 				commitContext.getUserID(),
