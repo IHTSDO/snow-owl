@@ -102,7 +102,7 @@ public class SnomedRf2ImportRequest implements Request<BranchContext, Boolean> {
 	@Override
 	public Boolean execute(BranchContext context) {
 		final FeatureToggles features = context.service(FeatureToggles.class);
-		final String feature = Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, context.branchPath());
+		final String feature = Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, context.branchPath(), type.toString().toLowerCase());
 
 		final InternalFileRegistry fileReg = (InternalFileRegistry) context.service(FileRegistry.class);
 		final File rf2Archive = fileReg.getFile(rf2ArchiveId);
