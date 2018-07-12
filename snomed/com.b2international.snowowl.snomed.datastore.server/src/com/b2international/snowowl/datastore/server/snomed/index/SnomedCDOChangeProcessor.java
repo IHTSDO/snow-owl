@@ -43,6 +43,7 @@ import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedPackage;
+import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -223,7 +224,7 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 		final IStoreAccessor accessor = StoreThreadLocal.getAccessor();
 		
 		final FeatureToggles featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
-		final boolean importRunning = featureToggles.isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, searcher.branch()));
+		final boolean importRunning = isImportRunning(featureToggles, searcher.branch());
 		final boolean reindexRunning = featureToggles.isEnabled(Features.getReindexFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID));
 		final boolean checkCycles = !importRunning && !reindexRunning;
 		
@@ -242,6 +243,22 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 		}, accessor);
 		
 		ForkJoinUtils.runInParallel(inferredRunnable, statedRunnable);
+	}
+	
+	private boolean isImportRunning(FeatureToggles featureToggles, String branchPath) {
+		return isDeltaImportRunning(featureToggles, branchPath) || isFullImportRunning(featureToggles, branchPath) || isSnapshotImportRunning(featureToggles, branchPath);
+	}
+	
+	private boolean isDeltaImportRunning(FeatureToggles featureToggles, String branchPath) {
+		return featureToggles.isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath, ContentSubType.DELTA.getLowerCaseName()));
+	}
+	
+	private boolean isFullImportRunning(FeatureToggles featureToggles, String branchPath) {
+		return featureToggles.isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath, ContentSubType.FULL.getLowerCaseName()));
+	}
+	
+	private boolean isSnapshotImportRunning(FeatureToggles featureToggles, String branchPath) {
+		return featureToggles.isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath, ContentSubType.SNAPSHOT.getLowerCaseName()));
 	}
 	
 }

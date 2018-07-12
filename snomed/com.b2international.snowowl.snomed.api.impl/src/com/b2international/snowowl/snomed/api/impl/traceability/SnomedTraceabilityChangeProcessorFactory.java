@@ -24,6 +24,7 @@ import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.ICDOChangeProcessor;
 import com.b2international.snowowl.datastore.server.CDOChangeProcessorFactory;
+import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 
@@ -47,7 +48,15 @@ public class SnomedTraceabilityChangeProcessorFactory implements CDOChangeProces
 	}
 
 	private boolean isImportInProgress(final IBranchPath branchPath) {
-		return getFeatureToggles().isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath()));
+		return isSnapshotImportInProgress(branchPath) || isFullImportInProgress(branchPath);
+	}
+	
+	private boolean isSnapshotImportInProgress(final IBranchPath branchPath) {
+		return getFeatureToggles().isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), ContentSubType.SNAPSHOT.getLowerCaseName()));
+	}
+	
+	private boolean isFullImportInProgress(final IBranchPath branchPath) {
+		return getFeatureToggles().isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), ContentSubType.FULL.getLowerCaseName()));
 	}
 
 	private boolean isReindexInProgress() {
