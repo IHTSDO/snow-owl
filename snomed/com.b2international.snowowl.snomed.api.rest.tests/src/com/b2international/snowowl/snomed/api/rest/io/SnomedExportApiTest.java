@@ -1227,7 +1227,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				.put("sct2_TextDefinition", false)
 				.put("der2_cRefset_LanguageDelta", false)
 				.put("der2_ssRefset_ModuleDependency", false)
-				.put("der2_sRefset_OWLAxiom", true)
+				.put("sct2_sRefset_OWLAxiom", true)
 				.put("der2_cissccRefset_MRCMAttributeDomain", true)
 				.build();
 				
@@ -1239,7 +1239,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		fileToLinesMap.put("sct2_StatedRelationship", Pair.of(true, statedLine));
 		fileToLinesMap.put("sct2_Relationship", Pair.of(true, inferredLine));
 		fileToLinesMap.put("sct2_Relationship", Pair.of(false, additionalLine));
-		fileToLinesMap.put("der2_sRefset_OWLAxiom", Pair.of(true, owlMemberLine));
+		fileToLinesMap.put("sct2_sRefset_OWLAxiom", Pair.of(true, owlMemberLine));
 		fileToLinesMap.put("der2_cissccRefset_MRCMAttributeDomain", Pair.of(true, mrcmMemberLine));
 		
 		assertArchiveContainsLines(exportArchive, fileToLinesMap);
