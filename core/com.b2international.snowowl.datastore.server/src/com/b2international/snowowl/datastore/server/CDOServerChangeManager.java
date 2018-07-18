@@ -339,6 +339,11 @@ public class CDOServerChangeManager extends ObjectWriteAccessHandler {
 		@Override
 		public CDORevision getRevision(final CDOID id) {
 			final InternalCDORevision revision = repository.getRevisionManager().getRevision(id, branchPoint, CDORevision.UNCHUNKED, 0, true);
+			
+			if (null == revision) {
+				return null;
+			}
+			
 			repository.ensureChunks(revision);
 			return revision;
 		}

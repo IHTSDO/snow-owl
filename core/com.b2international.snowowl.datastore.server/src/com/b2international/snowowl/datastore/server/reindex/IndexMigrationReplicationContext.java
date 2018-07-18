@@ -194,6 +194,12 @@ class IndexMigrationReplicationContext implements CDOReplicationContext {
 						}
 						
 						InternalCDORevision revision = super.getRevision(id, branchPoint, referenceChunk, prefetchDepth, loadOnDemand);
+						
+						if (revision == null) {
+							LOGGER.info("Found null revision for {} at {} ({})", id, branchPoint.getBranch().getPathName(), branchPoint.getBranch().getID());
+							return null;
+						}
+						
 						InternalCDORevision copiedRevision = revision.copy();
 						
 						//we fake later revisions as brand new revision (revised=0)

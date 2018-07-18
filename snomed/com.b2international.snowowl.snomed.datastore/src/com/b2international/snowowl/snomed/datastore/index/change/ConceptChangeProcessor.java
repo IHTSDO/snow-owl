@@ -291,6 +291,23 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 	}
 
 	private List<SnomedDescriptionFragment> toDescriptionFragments(Concept concept) {
+		if (featureToggles.isEnabled(Features.getReindexFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID))) {
+			return concept.getDescriptions()
+					.stream()
+					.peek(description -> {
+						if (CDOUtil.isStaleObject(description)) {
+							LOG.info("Found non-resolvable (proxy) description '" + description.cdoID() + "' for concept '" + concept.getId() + "'");
+						}
+					})
+					.filter(description -> !CDOUtil.isStaleObject(description))
+					.filter(Description::isActive)
+					.filter(description -> !Concepts.TEXT_DEFINITION.equals(description.getType().getId()))
+					.filter(description -> !getPreferredLanguageMembers(description).isEmpty())
+					.map(this::toDescriptionFragment)
+					.sorted(DESCRIPTION_FRAGMENT_ORDER)
+					.collect(Collectors.toList());
+		}
+		
 		return concept.getDescriptions()
 				.stream()
 				.filter(Description::isActive)
