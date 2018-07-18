@@ -19,23 +19,14 @@ import static com.google.common.collect.Maps.newHashMap;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.emf.cdo.common.id.CDOID;
 import org.eclipse.emf.cdo.common.id.CDOIDUtil;
-import org.eclipse.emf.cdo.common.revision.delta.CDOAddFeatureDelta;
-import org.eclipse.emf.cdo.common.revision.delta.CDOClearFeatureDelta;
-import org.eclipse.emf.cdo.common.revision.delta.CDOContainerFeatureDelta;
-import org.eclipse.emf.cdo.common.revision.delta.CDOFeatureDelta;
-import org.eclipse.emf.cdo.common.revision.delta.CDOFeatureDeltaVisitor;
-import org.eclipse.emf.cdo.common.revision.delta.CDOListFeatureDelta;
-import org.eclipse.emf.cdo.common.revision.delta.CDOMoveFeatureDelta;
-import org.eclipse.emf.cdo.common.revision.delta.CDORemoveFeatureDelta;
-import org.eclipse.emf.cdo.common.revision.delta.CDOSetFeatureDelta;
-import org.eclipse.emf.cdo.common.revision.delta.CDOUnsetFeatureDelta;
-import org.eclipse.emf.ecore.EStructuralFeature;
 
 import com.b2international.index.revision.Revision;
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -49,9 +40,11 @@ public abstract class ChangeSetProcessorBase implements ChangeSetProcessor {
 	private final Map<Long, Revision> newMappings = newHashMap();
 	private final Map<Long, Revision> changedMappings = newHashMap();
 	private final Multimap<Class<? extends Revision>, Long> deletions = HashMultimap.create();
+	private final FeatureToggles featureToggles;
 
 	protected ChangeSetProcessorBase(String description) {
 		this.description = description;
+		this.featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
 	}
 	
 	@Override
@@ -92,6 +85,10 @@ public abstract class ChangeSetProcessorBase implements ChangeSetProcessor {
 	@Override
 	public final Multimap<Class<? extends Revision>, Long> getDeletions() {
 		return deletions;
+	}
+	
+	protected boolean isReindexRunning(String repositoryId) {
+		return featureToggles != null && featureToggles.isEnabled(Features.getReindexFeatureToggle(repositoryId));
 	}
 	
 }

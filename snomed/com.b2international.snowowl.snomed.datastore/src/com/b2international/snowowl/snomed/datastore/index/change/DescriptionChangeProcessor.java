@@ -33,9 +33,6 @@ import org.slf4j.LoggerFactory;
 import com.b2international.index.Hits;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionSearcher;
-import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.ft.FeatureToggles;
-import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessorBase;
 import com.b2international.snowowl.snomed.Description;
@@ -64,12 +61,10 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 	private static final Logger LOG = LoggerFactory.getLogger(DescriptionChangeProcessor.class);
 	
 	private final ReferringMemberChangeProcessor memberChangeProcessor;
-	private final FeatureToggles featureToggles;
 
 	public DescriptionChangeProcessor() {
 		super("description changes");
 		this.memberChangeProcessor = new ReferringMemberChangeProcessor(SnomedTerminologyComponentConstants.DESCRIPTION_NUMBER);
-		this.featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
 	}
 
 	@Override
@@ -109,7 +104,7 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 				.<String, SnomedDescriptionIndexEntry> create();
 		changedDescriptionHits.forEach(hit -> changedDescriptionRevisionsById.put(hit.getId(), hit));
 
-		boolean reindexRunning = isReindexRunning();
+		boolean reindexRunning = isReindexRunning(SnomedDatastoreActivator.REPOSITORY_UUID);
 		
 		for (Entry<String, Collection<SnomedDescriptionIndexEntry>> entry : changedDescriptionRevisionsById.asMap().entrySet()) {
 			if (entry.getValue().size() > 1) {
@@ -237,8 +232,4 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 		}
 	}
 	
-	private boolean isReindexRunning() {
-		return featureToggles.isEnabled(Features.getReindexFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID));
-	}
-
 }

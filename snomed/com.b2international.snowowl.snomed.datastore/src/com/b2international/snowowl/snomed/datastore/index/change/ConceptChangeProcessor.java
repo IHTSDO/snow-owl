@@ -41,11 +41,8 @@ import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.Revision;
 import com.b2international.index.revision.RevisionSearcher;
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.ComponentUtils;
 import com.b2international.snowowl.core.date.EffectiveTimes;
-import com.b2international.snowowl.core.ft.FeatureToggles;
-import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessorBase;
@@ -117,7 +114,6 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 	private final Taxonomy statedTaxonomy;
 	private final Taxonomy inferredTaxonomy;
 	private final ReferringMemberChangeProcessor memberChangeProcessor;
-	private final FeatureToggles featureToggles;
 	
 	private Multimap<String, RefSetMemberChange> referringRefSets;
 	
@@ -130,7 +126,6 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 		this.statedTaxonomy = statedTaxonomy;
 		this.inferredTaxonomy = inferredTaxonomy;
 		this.memberChangeProcessor = new ReferringMemberChangeProcessor(SnomedTerminologyComponentConstants.CONCEPT_NUMBER);
-		this.featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
 	}
 	
 	@Override
@@ -291,7 +286,7 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 	}
 
 	private List<SnomedDescriptionFragment> toDescriptionFragments(Concept concept) {
-		if (featureToggles.isEnabled(Features.getReindexFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID))) {
+		if (isReindexRunning(SnomedDatastoreActivator.REPOSITORY_UUID)) {
 			return concept.getDescriptions()
 					.stream()
 					.peek(description -> {
@@ -319,7 +314,7 @@ public final class ConceptChangeProcessor extends ChangeSetProcessorBase {
 	}
 	
 	private Set<String> getPreferredLanguageMembers(Description description) {
-		if (featureToggles.isEnabled(Features.getReindexFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID))) {
+		if (isReindexRunning(SnomedDatastoreActivator.REPOSITORY_UUID)) {
 			
 			return description.getLanguageRefSetMembers()
 				.stream()
