@@ -98,7 +98,4 @@ public abstract class BaseResourceConverter<T, R, CR extends CollectionResource<
 		return expandOptions.containsKey("limit") ? expandOptions.get("limit", Integer.class) : 50;
 	}
 
-	protected final int getOffset(final Options expandOptions) {
-		return expandOptions.containsKey("offset") ? expandOptions.get("offset", Integer.class) : 0;
-	}
 }

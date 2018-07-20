@@ -381,7 +381,6 @@ final class SnomedConceptConverter extends BaseRevisionResourceConverter<SnomedC
 				}
 			}
 			
-			final int offset = getOffset(expandOptions);
 			final Collection<String> componentIds = newHashSet(descendantsByAncestor.values());
 			
 			if (limit > 0 && !componentIds.isEmpty()) {
@@ -398,7 +397,7 @@ final class SnomedConceptConverter extends BaseRevisionResourceConverter<SnomedC
 				descendantsById.putAll(Maps.uniqueIndex(descendants, ID_FUNCTION));
 				for (SnomedConcept concept : results) {
 					final Collection<String> descendantIds = descendantsByAncestor.get(concept.getId());
-					final List<SnomedConcept> currentDescendants = FluentIterable.from(descendantIds).skip(offset).limit(limit).transform(Functions.forMap(descendantsById)).toList();
+					final List<SnomedConcept> currentDescendants = FluentIterable.from(descendantIds).limit(limit).transform(Functions.forMap(descendantsById)).toList();
 					final SnomedConcepts descendantConcepts = new SnomedConcepts(currentDescendants, null, null, limit, descendantIds.size());
 					if (stated) {
 						concept.setStatedDescendants(descendantConcepts);
@@ -462,7 +461,6 @@ final class SnomedConceptConverter extends BaseRevisionResourceConverter<SnomedC
 			}
 		}
 		
-		final int offset = getOffset(expandOptions);
 		final int limit = getLimit(expandOptions);
 
 		final Collection<String> componentIds = newHashSet(ancestorsByDescendant.values());
@@ -480,7 +478,7 @@ final class SnomedConceptConverter extends BaseRevisionResourceConverter<SnomedC
 			ancestorsById.putAll(Maps.uniqueIndex(ancestors, ID_FUNCTION));
 			for (SnomedConcept concept : results) {
 				final Collection<String> ancestorIds = ancestorsByDescendant.get(concept.getId());
-				final List<SnomedConcept> conceptAncestors = FluentIterable.from(ancestorIds).skip(offset).limit(limit).transform(Functions.forMap(ancestorsById)).toList();
+				final List<SnomedConcept> conceptAncestors = FluentIterable.from(ancestorIds).limit(limit).transform(Functions.forMap(ancestorsById)).toList();
 				final SnomedConcepts ancestorConcepts = new SnomedConcepts(conceptAncestors, null, null, limit, ancestorIds.size());
 				if (stated) {
 					concept.setStatedAncestors(ancestorConcepts);

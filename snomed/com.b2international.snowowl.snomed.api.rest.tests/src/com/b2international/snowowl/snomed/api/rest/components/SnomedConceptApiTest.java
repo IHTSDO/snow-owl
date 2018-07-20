@@ -713,7 +713,6 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	public void testConceptSearchPostResponseFsnExpanded() {
 
 		final Map<?, ?> requestBody = ImmutableMap.builder()
-				.put("offset", 0)
 				.put("limit", 3)
 				.put("expand", "fsn()")
 				.put("activeFilter", true)
@@ -765,7 +764,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	public void testConceptsGetResponseFsnNotExpanded() {
 		ValidatableResponse response = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.accept(CONTENT_TYPE_TXT_CSV)
-				.when().get("/{path}/concepts?active=true&ecl=105590001OR71388002OR362981000&offset=0&limit=3", branchPath.getPath())
+				.when().get("/{path}/concepts?active=true&ecl=105590001OR71388002OR362981000&limit=3", branchPath.getPath())
 				.then()
 				.statusCode(200);
 
@@ -785,7 +784,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	public void testConceptsGetResponsePtExpanded() {
 		ValidatableResponse response = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.accept(CONTENT_TYPE_TXT_CSV)
-				.when().get("/{path}/concepts?active=true&ecl=105590001OR71388002OR362981000&offset=0&limit=3&expand=pt()", branchPath.getPath())
+				.when().get("/{path}/concepts?active=true&ecl=105590001OR71388002OR362981000&limit=3&expand=pt()", branchPath.getPath())
 				.then()
 				.statusCode(200);
 
@@ -804,7 +803,6 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void testConceptsPostResponsePtExpanded() {
 		final Map<?, ?> requestBody = ImmutableMap.builder()
-				.put("offset", 0)
 				.put("limit", 3)
 				.put("expand", "pt()")
 				.put("activeFilter", true)

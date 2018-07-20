@@ -138,10 +138,6 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="conceptIds", required=false) 
 			final Set<String> conceptIds,
 			
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
-
 			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
 			@RequestParam(value="scrollKeepAlive", required=false) 
 			final String scrollKeepAlive,
@@ -153,6 +149,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
+			
 			@ApiParam(value="Expansion parameters")
 			@RequestParam(value="expand", required=false)
 			final String expand,
@@ -176,7 +173,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				eclFilter,
 				statedEclFilter,
 				conceptIds,
-				offset,
+				scrollKeepAlive,
+				scrollId,
 				limit,
 				expand,
 				acceptLanguage,
@@ -197,7 +195,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
 		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/concepts/search", method = {RequestMethod.POST},  produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
+	@RequestMapping(value="/{path:**}/concepts/search", method = RequestMethod.POST,  produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
 	public @ResponseBody DeferredResult<SnomedConcepts> searchViaPost(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
@@ -225,7 +223,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				body.getEclFilter(),
 				body.getStatedEclFilter(),
 				body.getConceptIds(),
-				body.getOffset(),
+				body.getScrollKeepAlive(),
+				body.getScrollId(),
 				body.getLimit(),
 				body.getExpand(),
 				acceptLanguage,
@@ -243,8 +242,9 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final Boolean descriptionActiveFilter,
 			final String eclFilter,
 			final String statedEclFilter,
-			final Set<String> conceptIds, 
-			final int offset,
+			final Set<String> conceptIds,
+			final String scrollKeepAlive,
+			final String scrollId,
 			final int limit,
 			final String expandParams,
 			final String acceptLanguage,
@@ -274,15 +274,16 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareSearchConcept()
+					.setScroll(scrollKeepAlive)
+					.setScrollId(scrollId)
 					.setLimit(limit)
-//					.setScroll(scrollKeepAlive)
-//					.setScrollId(scrollId)
 					.filterByActive(activeFilter)
 					.filterByModule(moduleFilter)
 					.filterByEffectiveTime(effectiveTimeFilter)
 					.filterByDefinitionStatus(definitionStatusFilter)
 					.filterByNamespace(namespaceFilter)
 					.filterByTerm(termFilter)
+					.filterByIds(conceptIds)
 					.filterByDescriptionActive(descriptionActiveFilter)
 					.filterByEcl(eclFilter)
 					.filterByStatedEcl(statedEclFilter)
@@ -302,8 +303,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					+ "&bull; pt() &ndash; the description representing the concept's preferred term in the given locale<br>"
 					+ "&bull; fsn() &ndash; the description representing the concept's fully specified name in the given locale<br>"
 					+ "&bull; descriptions() &ndash; the list of descriptions for the concept<br>"
-					+ "&bull; ancestors(offset:0,limit:50,direct:true,expand(pt(),...)) &ndash; the list of concept ancestors (parameter 'direct' is required)<br>"
-					+ "&bull; descendants(offset:0,limit:50,direct:true,expand(pt(),...)) &ndash; the list of concept descendants (parameter 'direct' is required)<br>")
+					+ "&bull; ancestors(limit:50,direct:true,expand(pt(),...)) &ndash; the list of concept ancestors (parameter 'direct' is required)<br>"
+					+ "&bull; descendants(limit:50,direct:true,expand(pt(),...)) &ndash; the list of concept descendants (parameter 'direct' is required)<br>")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = Void.class),
 		@ApiResponse(code = 404, message = "Branch or Concept not found", response = RestApiError.class)

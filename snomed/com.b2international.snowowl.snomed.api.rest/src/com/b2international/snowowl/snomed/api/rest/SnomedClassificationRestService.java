@@ -41,7 +41,6 @@ import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.domain.CollectionResource;
-import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
@@ -49,12 +48,11 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConce
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRestInput;
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRunRestUpdate;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
+import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChanges;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -194,7 +192,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 404, message = "Branch or classification not found", response=RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/classifications/{classificationId}/relationship-changes", method=RequestMethod.GET, produces={"application/json", AbstractRestService.TEXT_CSV_MEDIA_TYPE})
-	public @ResponseBody PageableCollectionResource<IRelationshipChange> getRelationshipChanges(
+	public @ResponseBody RelationshipChanges getRelationshipChanges(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path") 
 			final String branchPath,
@@ -207,10 +205,6 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@RequestParam(value="expand", defaultValue="", required=false)
 			final List<String> expand,
 
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
-
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
@@ -219,10 +213,9 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		final IRelationshipChangeList relationshipChangeList = delegate.getRelationshipChanges(branchPath, classificationId, offset, limit);
-		List<IRelationshipChange> changes = relationshipChangeList.getItems();
+		final RelationshipChanges relationshipChanges = delegate.getRelationshipChanges(branchPath, classificationId, limit);
 		
-		if (!changes.isEmpty() && !expand.isEmpty()) {
+		if (!relationshipChanges.getItems().isEmpty() && !expand.isEmpty()) {
 			
 			final List<ExtendedLocale> extendedLocales;
 			
@@ -234,12 +227,10 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 				throw new BadRequestException(e.getMessage());
 			}
 			
-			changes = resourceExpander.expandRelationshipChanges(branchPath, changes, extendedLocales, expand);
+			return resourceExpander.expandRelationshipChanges(branchPath, relationshipChanges, extendedLocales, expand);
 		}
 		
-		// TODO introduce scrolling
-		
-		return PageableCollectionResource.of(changes, null, null, limit, changes.size());
+		return relationshipChanges;
 	}
 
 	@ApiOperation(

@@ -44,20 +44,18 @@ import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.api.domain.classification.ChangeNature;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConcept;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
 import com.b2international.snowowl.snomed.api.exception.ClassificationRunNotFoundException;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.ClassificationRun;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConceptSet;
-import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChange;
-import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChangeList;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.b2international.snowowl.snomed.core.domain.classification.ChangeNature;
+import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChange;
+import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChanges;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
@@ -351,12 +349,12 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	 * @param limit
 	 * @return
 	 */
-	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final String sourceConceptId, final int offset, final int limit) throws IOException {
+	public RelationshipChanges getRelationshipChanges(final String branchPath, final String classificationId, final String sourceConceptId, final int limit) throws IOException {
 
 		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, branchPath, sourceConceptId);
 		final int total = getHitCount(query);
-		final List<IRelationshipChange> changes = this.search(query, RelationshipChange.class, offset, limit);
-		return new RelationshipChangeList(changes, offset, limit, total);
+		final List<RelationshipChange> changes = this.search(query, RelationshipChange.class, limit);
+		return new RelationshipChanges(changes, null, null, limit, total);
 	}
 
 	private <T> void indexResult(final String id, final IBranchPath branchPath, final String userId, final long creationDate,

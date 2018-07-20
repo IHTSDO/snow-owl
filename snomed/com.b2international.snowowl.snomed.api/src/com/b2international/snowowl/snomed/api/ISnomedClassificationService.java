@@ -23,7 +23,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConce
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
+import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChanges;
 
 /**
  * Implementations provide access to the SNOMED CT classification functionality of Snow Owl Server.
@@ -126,7 +126,7 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found or the
 	 *             classification run not found with the specified parameters
 	 */
-	IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, int offset, int limit);
+	RelationshipChanges getRelationshipChanges(String branchPath, String classificationId, int limit);
 
 	/**
 	 * Computes an inferred preview of an existing concept, with all inferred relationships displayed which will be present after saving.

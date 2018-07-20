@@ -16,6 +16,9 @@
 package com.b2international.snowowl.snomed.api.impl;
 
 import static com.google.common.collect.Sets.newHashSet;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,7 +63,6 @@ import com.b2international.snowowl.datastore.oplock.impl.SingleRepositoryAndBran
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobNotification;
 import com.b2international.snowowl.datastore.request.CommitResult;
-import com.b2international.snowowl.datastore.request.DeleteRequestBuilder;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.job.JobRequests;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
@@ -69,13 +71,10 @@ import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
-import com.b2international.snowowl.snomed.api.domain.classification.ChangeNature;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConcept;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
@@ -90,6 +89,9 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.core.domain.classification.ChangeNature;
+import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChange;
+import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChanges;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -129,12 +131,10 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	private static final Logger LOG = LoggerFactory.getLogger(SnomedClassificationServiceImpl.class);
 	
-	private static final int RELATIONSHIP_BLOCK_SIZE = 100;
-
 	private static final long BRANCH_READ_TIMEOUT = 5000L;
 	private static final long BRANCH_LOCK_TIMEOUT = 500L;
 	
-	public static String CLASSIFIED_ONTOLOGY = "Classified ontology.";
+	public static final String CLASSIFIED_ONTOLOGY = "Classified ontology.";
 	
 	private final class PersistChangesRunnable implements Runnable {
 		private final String branchPath;
@@ -165,67 +165,48 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			}
 
 			final Stopwatch persistStopwatch = Stopwatch.createStarted();
+			
+			final String defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch,
+					SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
+			final String defaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch,
+					SnomedCoreConfiguration.BRANCH_DEFAULT_REASONER_NAMESPACE_KEY);
+			
+			RelationshipChanges relationshipChanges = getRelationshipChanges(branchPath, classificationId, Integer.MAX_VALUE);
+			
+			Set<String> inferredSourceIds = relationshipChanges.getItems().stream()
+				.filter(change -> change.getChangeNature() == ChangeNature.INFERRED)
+				.map(change -> change.getSourceId())
+				.collect(toSet());
+
+			Map<String, String> sourceToModuleMap = SnomedRequests.prepareSearchConcept()
+				.filterByIds(inferredSourceIds)
+				.setLimit(inferredSourceIds.size())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(getBus())
+				.getSync()
+				.stream()
+				.collect(toMap(SnomedConcept::getId, SnomedConcept::getModuleId));
+			
 			final BulkRequestBuilder<TransactionContext> builder = BulkRequest.create();
-			final String defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
-			final String defaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_REASONER_NAMESPACE_KEY);
-			final Map<String, String> moduleMap = Maps.newHashMap();
+			final Set<String> removeOrDeactivateIds = Sets.newHashSet();
 			
-			int offset = 0;
-			IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, offset, RELATIONSHIP_BLOCK_SIZE);
-			
-			while (offset < relationshipChanges.getTotal()) {
-				final Set<String> sourceIds = getInferredSourceIds(relationshipChanges);
-				final Set<String> removeOrDeactivateIds = Sets.newHashSet();
-
-				sourceIds.removeAll(moduleMap.keySet());
-				populateModuleMap(branchPath, sourceIds, moduleMap);
-				
-				for (IRelationshipChange change : relationshipChanges.getItems()) {
-					
-					switch (change.getChangeNature()) {
-						case INFERRED:
-							final SnomedRelationshipCreateRequestBuilder inferredRelationshipBuilder = createInferredRelationship(change, 
-									moduleMap, 
-									defaultModuleId, 
-									defaultNamespace);
-							
-							builder.add(inferredRelationshipBuilder);
-							break;
-
-						case REDUNDANT:
-							removeOrDeactivateIds.add(change.getId());
-							break;
-							
-						default:
-							throw new IllegalStateException("Unhandled relationship change value '" + change.getChangeNature() + "'.");
-					}
+			for (RelationshipChange change : relationshipChanges.getItems()) {
+				switch (change.getChangeNature()) {
+					case INFERRED:
+						builder.add(createInferredRelationship(change, sourceToModuleMap, defaultModuleId, defaultNamespace));
+						break;
+					case REDUNDANT:
+						removeOrDeactivateIds.add(change.getId());
+						break;
+					default:
+						throw new IllegalStateException("Unhandled relationship change value '" + change.getChangeNature() + "'.");
 				}
-
-				if (!removeOrDeactivateIds.isEmpty()) {
-					
-					// TODO: only remove/inactivate components in the current module?
-					final SnomedRelationships removeOrDeactivateRelationships = SnomedRequests.prepareSearchRelationship()
-							.filterByIds(removeOrDeactivateIds)
-							.setLimit(removeOrDeactivateIds.size())
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-							.execute(getBus())
-							.getSync();
-
-					final SnomedReferenceSetMembers referringMembers = SnomedRequests.prepareSearchMember()
-							.all()
-							.filterByActive(true)
-							.filterByReferencedComponent(removeOrDeactivateIds)
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-							.execute(getBus())
-							.getSync();
-					
-					removeOrDeactivate(builder, defaultModuleId, removeOrDeactivateRelationships, referringMembers);
-				}
-				
-				offset += relationshipChanges.getItems().size();
-				relationshipChanges = getRelationshipChanges(branchPath, classificationId, offset, RELATIONSHIP_BLOCK_SIZE);
 			}
-			
+
+			if (!removeOrDeactivateIds.isEmpty()) {
+				removeOrDeactivate(builder, defaultModuleId, removeOrDeactivateIds);
+			}
+				
 			commitChanges(branchPath, userId, builder, persistStopwatch)
 					.then(new Function<CommitResult, Void>() { @Override public Void apply(final CommitResult input) {
 						LOG.info("Classification changes saved on branch {}.", branchPath);
@@ -238,35 +219,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					.getSync();
 		}
 
-		private Set<String> getInferredSourceIds(final IRelationshipChangeList relationshipChanges) {
-			final Set<String> sourceIds = Sets.newHashSet();
-			for (final IRelationshipChange change : relationshipChanges.getItems()) {
-				if (ChangeNature.INFERRED.equals(change.getChangeNature())) {
-					sourceIds.add(change.getSourceId());
-				}
-			}
-			return sourceIds;
-		}
-
-		private void populateModuleMap(final String branchPath, final Set<String> conceptIds, final Map<String, String> moduleMap) {
-			SnomedRequests.prepareSearchConcept()
-					.filterByIds(conceptIds)
-					.setLimit(conceptIds.size())
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-					.execute(getBus())
-					.then(new Function<SnomedConcepts, Void>() {
-						@Override
-						public Void apply(SnomedConcepts input) {
-							for (SnomedConcept concept : input) {
-								moduleMap.put(concept.getId(), concept.getModuleId());
-							}
-							return null;
-						}
-					})
-					.getSync();
-		}
-
-		private SnomedRelationshipCreateRequestBuilder createInferredRelationship(IRelationshipChange relationshipChange,
+		private SnomedRelationshipCreateRequestBuilder createInferredRelationship(RelationshipChange relationshipChange,
 				final Map<String, String> moduleMap, 
 				final String defaultModuleId,
 				final String defaultNamespace) {
@@ -314,20 +267,43 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		private void removeOrDeactivate(
 				final BulkRequestBuilder<TransactionContext> builder,
 				final String defaultModuleId,
-				final SnomedRelationships removeOrDeactivateRelationships,
-				final SnomedReferenceSetMembers referringMembers) {
+				final Set<String> removeOrDeactivateIds) {
 			
-			final Multimap<String, SnomedReferenceSetMember> referringMembersById = Multimaps.index(referringMembers, input -> input.getReferencedComponent().getId());
-
-			for (SnomedRelationship relationship : removeOrDeactivateRelationships) {
+			final SnomedRelationships relationships = SnomedRequests.prepareSearchRelationship()
+					.filterByIds(removeOrDeactivateIds)
+					.setLimit(removeOrDeactivateIds.size())
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+					.execute(getBus())
+					.getSync();
+			
+			// handle released relationships
+			List<SnomedRelationship> releasedRelationships = relationships.stream()
+				.filter(relationship -> relationship.isReleased())
+				.collect(toList());
+			
+			if (!releasedRelationships.isEmpty()) {
 				
-				if (relationship.isReleased()) {
+				Set<String> releasedRelationshipIds = releasedRelationships.stream()
+						.map(SnomedRelationship::getId)
+						.collect(toSet());
 				
-					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationship.getId())) {
+				SnomedReferenceSetMembers referringMembers = SnomedRequests.prepareSearchMember()
+					.all()
+					.filterByActive(true)
+					.filterByReferencedComponent(releasedRelationshipIds)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+					.execute(getBus())
+					.getSync();
+				
+				Multimap<String, SnomedReferenceSetMember> relationshipToMemberMap = Multimaps.index(referringMembers,
+						SnomedReferenceSetMember::getReferencedComponentId);
+				
+				for (SnomedRelationship relationship : releasedRelationships) {
+					
+					for (SnomedReferenceSetMember member : relationshipToMemberMap.get(relationship.getId())) {
 						SnomedRefSetMemberUpdateRequestBuilder updateMemberBuilder = SnomedRequests.prepareUpdateMember()
-								.setMemberId(snomedReferenceSetMember.getId())
+								.setMemberId(member.getId())
 								.setSource(ImmutableMap.<String, Object>of(SnomedRf2Headers.FIELD_ACTIVE, Boolean.FALSE));
-						
 						builder.add(updateMemberBuilder);
 					}
 					
@@ -339,20 +315,15 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					}
 
 					builder.add(updateRequestBuilder);
-					
-				} else {
-					
-					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationship.getId())) {
-						DeleteRequestBuilder deleteMemberBuilder = SnomedRequests.prepareDeleteMember(snomedReferenceSetMember.getId());
-						
-						builder.add(deleteMemberBuilder);
-					}
-					
-					DeleteRequestBuilder deleteRelationshipBuilder = SnomedRequests.prepareDeleteRelationship(relationship.getId());
-					
-					builder.add(deleteRelationshipBuilder);
 				}
+
 			}
+			
+			// handle unreleased relationships
+			relationships.stream()
+				.filter(relationship -> !relationship.isReleased())
+				.forEach( relationship -> builder.add(SnomedRequests.prepareDeleteRelationship(relationship.getId())));
+			
 		}
 	}
 
@@ -690,15 +661,15 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 	
 	@Override
-	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final int offset, final int limit) {
-		return getRelationshipChanges(branchPath, classificationId, null, offset, limit);
+	public RelationshipChanges getRelationshipChanges(final String branchPath, final String classificationId, final int limit) {
+		return getRelationshipChanges(branchPath, classificationId, null, limit);
 	}
 	
-	private IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, int offset, int limit) {
+	private RelationshipChanges getRelationshipChanges(String branchPath, String classificationId, String conceptId, int limit) {
 		checkServices();
 		getClassificationRun(branchPath, classificationId);
 		try {
-			return indexService.getRelationshipChanges(branchPath, classificationId, conceptId, offset, limit);
+			return indexService.getRelationshipChanges(branchPath, classificationId, conceptId, limit);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -709,13 +680,13 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) getBrowserService().getConceptDetails(branchPath, conceptId, locales);
 
 		final List<ISnomedBrowserRelationship> relationships = Lists.newArrayList(conceptDetails.getRelationships());
-		final IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, 0, 10000);
+		final RelationshipChanges relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, 10000);
 
 		/* 
 		 * XXX: We don't want to match anything that is part of the inferred set below, so we remove relationships from the existing list, 
 		 * all in advance. (Revisit should this assumption prove to be incorrect.)
 		 */
-		for (IRelationshipChange relationshipChange : relationshipChanges.getItems()) {
+		for (RelationshipChange relationshipChange : relationshipChanges.getItems()) {
 			switch (relationshipChange.getChangeNature()) {
 				case REDUNDANT:
 					relationships.remove(findRelationship(relationships, relationshipChange));
@@ -727,7 +698,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		
 		// Collect all concept representations that will be required for the conversion
 		final Set<String> relatedIds = Sets.newHashSet();
-		for (IRelationshipChange relationshipChange : relationshipChanges.getItems()) {
+		for (RelationshipChange relationshipChange : relationshipChanges.getItems()) {
 			switch (relationshipChange.getChangeNature()) {
 				case INFERRED:
 					relatedIds.add(relationshipChange.getDestinationId());
@@ -763,7 +734,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			}
 		});
 		
-		for (IRelationshipChange relationshipChange : relationshipChanges.getItems()) {
+		for (RelationshipChange relationshipChange : relationshipChanges.getItems()) {
 			switch (relationshipChange.getChangeNature()) {
 				case INFERRED:
 					final SnomedBrowserRelationship inferred = new SnomedBrowserRelationship();
@@ -796,7 +767,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		return conceptDetails;
 	}
 
-	private ISnomedBrowserRelationship findRelationship(List<ISnomedBrowserRelationship> relationships, IRelationshipChange relationshipChange) {
+	private ISnomedBrowserRelationship findRelationship(List<ISnomedBrowserRelationship> relationships, RelationshipChange relationshipChange) {
 		for (ISnomedBrowserRelationship relationship : relationships) {
 			if (relationship.isActive()
 					&& relationship.getSourceId().equals(relationshipChange.getSourceId())

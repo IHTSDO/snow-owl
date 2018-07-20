@@ -1,6 +1,7 @@
 package com.b2international.snowowl.snomed.api.rest;
 
-import java.util.ArrayList;
+import static com.google.common.collect.Lists.newArrayList;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -11,13 +12,14 @@ import javax.annotation.Resource;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.rest.domain.ExpandableRelationshipChange;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptMini;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChange;
+import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChanges;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 
@@ -32,13 +34,13 @@ public class SnomedResourceExpander {
 
 	public static final String FSN = "fsn";
 
-	public List<IRelationshipChange> expandRelationshipChanges(String branchPath, List<IRelationshipChange> changes, List<ExtendedLocale> locales, List<String> expantions) {
+	public RelationshipChanges expandRelationshipChanges(String branchPath, RelationshipChanges relationshipChanges, List<ExtendedLocale> locales, List<String> expantions) {
 
 		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
-
-		List<IRelationshipChange> changesExtended = new ArrayList<IRelationshipChange>();
-		for (IRelationshipChange iRelationshipChange : changes) {
-			changesExtended.add(new ExpandableRelationshipChange(iRelationshipChange));
+		List<RelationshipChange> extendedChanges = newArrayList();
+		
+		for (RelationshipChange change : relationshipChanges) {
+			extendedChanges.add(new ExpandableRelationshipChange(change));
 		}
 
 		boolean expandSource = false;
@@ -57,7 +59,7 @@ public class SnomedResourceExpander {
 		}
 		
 		Set<String> conceptIds = new HashSet<>();
-		for (IRelationshipChange change : changes) {
+		for (RelationshipChange change : relationshipChanges) {
 			if (expandSource) {
 				conceptIds.add(change.getSourceId());
 			}
@@ -70,20 +72,23 @@ public class SnomedResourceExpander {
 		}
 		
 		Map<String, SnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds, locales);
-		for (IRelationshipChange iChange : changesExtended) {
-			ExpandableRelationshipChange change = (ExpandableRelationshipChange) iChange;
-			if (expandSource) {
-				change.setSource(createConceptMini(change.getSourceId(), fullySpecifiedNames));
+		
+		for (RelationshipChange change : extendedChanges) {
+			if (change instanceof ExpandableRelationshipChange) {
+				ExpandableRelationshipChange expandedChange = (ExpandableRelationshipChange) change;
+				if (expandSource) {
+					expandedChange.setSource(createConceptMini(change.getSourceId(), fullySpecifiedNames));
+				}
+				if (expandType) {
+					expandedChange.setType(createConceptMini(change.getTypeId(), fullySpecifiedNames));
+				}
+				if (expandDestination) {
+					expandedChange.setDestination(createConceptMini(change.getDestinationId(), fullySpecifiedNames));
+				}			
 			}
-			if (expandType) {
-				change.setType(createConceptMini(change.getTypeId(), fullySpecifiedNames));
-			}
-			if (expandDestination) {
-				change.setDestination(createConceptMini(change.getDestinationId(), fullySpecifiedNames));
-			}			
 		}
 		
-		return changesExtended;
+		return new RelationshipChanges(extendedChanges, relationshipChanges.getScrollId(), relationshipChanges.getSearchAfter(), relationshipChanges.getLimit(), relationshipChanges.getTotal());
 	}
 	
 	public SnomedConcepts expandConcepts(String branchPath, SnomedConcepts concepts, 

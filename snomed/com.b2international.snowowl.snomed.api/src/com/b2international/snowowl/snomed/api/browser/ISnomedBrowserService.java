@@ -78,14 +78,13 @@ public interface ISnomedBrowserService {
 	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
 	 * @param isStatedForm {@code true} if stated children should be returned, {@code false} if inferred
 	 * @param preferredDescriptionType 
-	 * @param offset
 	 * @param scrollKeepAlive
 	 * @param scrollId
 	 * @param limit - the maximal number of results to return
 	 * @return the child concept list for the requested concept
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
-	List<ISnomedBrowserChildConcept> getConceptChildren(String branchPath, String conceptId, List<ExtendedLocale> extendedLocales, boolean isStatedForm, SnomedBrowserDescriptionType preferredDescriptionType, int offset, String scrollKeepAlive, String scrollId, int limit);
+	List<ISnomedBrowserChildConcept> getConceptChildren(String branchPath, String conceptId, List<ExtendedLocale> extendedLocales, boolean isStatedForm, SnomedBrowserDescriptionType preferredDescriptionType, int limit);
 	
 	/**
 	 * Retrieves a list of descriptions matching the entered query string.
@@ -94,14 +93,13 @@ public interface ISnomedBrowserService {
 	 * @param query - the query text (must be at least 3 characters long)
 	 * @param extendedLocales - the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
 	 * @param preferredDescriptionType
-	 * @param offset
 	 * @param scrollKeepAlive
 	 * @param scrollId
 	 * @param limit - the maximal number of results to return
 	 * @return the search result list of descriptions
 	 * @throws IllegalArgumentException if the query is {@code null} or too short
 	 */
-	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, int offset, String scrollKeepAlive, String scrollId, int limit);
+	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, String scrollKeepAlive, String scrollId, int limit);
 
 	/**
 	 * Retrieves a map of enum constants and corresponding concepts.

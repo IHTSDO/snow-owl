@@ -24,7 +24,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 
 /**
- * {@link CollectionResource} containing paging information like offset, limit and total.
+ * {@link CollectionResource} containing paging information like scrollId, searchAfter, limit and total.
  * 
  * @since 4.0
  */

@@ -479,18 +479,6 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
 			final SnomedBrowserDescriptionType preferredDescriptionType,
 			
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
-			
-			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
-			@RequestParam(value="scrollKeepAlive", required=false) 
-			final String scrollKeepAlive,
-			
-			@ApiParam(value="A scrollId to continue scrolling a previous query")
-			@RequestParam(value="scrollId", required=false) 
-			final String scrollId,
-
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="2000", required=false) 
 			final int limit) {
@@ -509,7 +497,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 		
-		return browserService.getConceptChildren(branchPath, conceptId, extendedLocales, STATED_FORM.equals(form), preferredDescriptionType, offset, scrollKeepAlive, scrollId, limit);
+		return browserService.getConceptChildren(branchPath, conceptId, extendedLocales, STATED_FORM.equals(form), preferredDescriptionType, limit);
 	}
 
 	@ApiOperation(
@@ -535,10 +523,6 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
 			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
 			final SnomedBrowserDescriptionType preferredDescriptionType,
-
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false)
-			final int offset,
 
 			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
 			@RequestParam(value="scrollKeepAlive", required=false) 
@@ -566,7 +550,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 		
-		return browserService.getDescriptions(branchPath, query, extendedLocales, preferredDescriptionType, offset, scrollKeepAlive, scrollId, limit);
+		return browserService.getDescriptions(branchPath, query, extendedLocales, preferredDescriptionType, scrollKeepAlive, scrollId, limit);
 	}
 
 	@ApiOperation(

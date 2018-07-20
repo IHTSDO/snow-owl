@@ -29,7 +29,8 @@ public class SnomedConceptRestSearch {
 	private String expand;
 	private Boolean activeFilter = null;
 	private Boolean descriptionActiveFilter = null;
-	private int offset = 0;
+	private String scrollKeepAlive;
+	private String scrollId;
 	private int limit = 50;
 	
 	public String getTermFilter() {
@@ -112,12 +113,20 @@ public class SnomedConceptRestSearch {
 		this.expand = expand;
 	}
 
-	public int getOffset() {
-		return offset;
+	public String getScrollKeepAlive() {
+		return scrollKeepAlive;
 	}
 
-	public void setOffset(int offset) {
-		this.offset = offset;
+	public void setScrollKeepAlive(String scrollKeepAlive) {
+		this.scrollKeepAlive = scrollKeepAlive;
+	}
+
+	public String getScrollId() {
+		return scrollId;
+	}
+
+	public void setScrollId(String scrollId) {
+		this.scrollId = scrollId;
 	}
 
 	public int getLimit() {

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.b2international.snowowl.snomed.api.domain.classification;
+package com.b2international.snowowl.snomed.core.domain.classification;
 
 /**
  * Enumerates possible change types for a particular relationship listed as an {@link IRelationshipChange}.

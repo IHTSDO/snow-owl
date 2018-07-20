@@ -138,11 +138,15 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@ApiParam(value="What parts of the response information to expand.", allowableValues="source.fsn, type.fsn", allowMultiple=true)
 			@RequestParam(value="expand", defaultValue="", required=false)
 			final String[] expand,
-
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
-
+			
+			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
+			@RequestParam(value="scrollKeepAlive", required=false) 
+			final String scrollKeepAlive,
+			
+			@ApiParam(value="A scrollId to continue scrolling a previous query")
+			@RequestParam(value="scrollId", required=false) 
+			final String scrollId,
+			
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
@@ -177,7 +181,8 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				SnomedRequests
 					.prepareSearchRelationship()
 					.filterByDestination(conceptId)
-					//.setOffset(offset)
+					.setScroll(scrollKeepAlive)
+					.setScrollId(scrollId)
 					.setLimit(limit)
 					.setExpand(newExpand.toString())
 					.setLocales(extendedLocales)
@@ -216,10 +221,14 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@ApiParam(value="The concept identifier")
 			@PathVariable(value="conceptId")
 			final String conceptId,
-
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
+			
+			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
+			@RequestParam(value="scrollKeepAlive", required=false) 
+			final String scrollKeepAlive,
+			
+			@ApiParam(value="A scrollId to continue scrolling a previous query")
+			@RequestParam(value="scrollId", required=false) 
+			final String scrollId,
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
@@ -229,7 +238,8 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				SnomedRequests
 					.prepareSearchRelationship()
 					.filterBySource(conceptId)
-					//.setOffset(offset)
+					.setScroll(scrollKeepAlive)
+					.setScrollId(scrollId)
 					.setLimit(limit)
 					.build(repositoryId, branchPath)
 					.execute(bus)
@@ -263,30 +273,26 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@ApiParam(value="The concept identifier")
 			@PathVariable(value="conceptId")
 			final String conceptId,
+
+			@ApiParam(value="Return stated or inferred descendants")
+			@RequestParam(value="form", defaultValue="inferred", required=false)
+			final String form,
+			
+			@ApiParam(value="Return direct descendants only")
+			@RequestParam(value="direct", defaultValue="false", required=false) 
+			final boolean direct,
 			
 			@ApiParam(value="What parts of the response information to expand.", allowableValues="fsn")
 			@RequestParam(value="expand", defaultValue="", required=false)
 			final List<String> expand,
 
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
-
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
 
-			@ApiParam(value="Return direct descendants only")
-			@RequestParam(value="direct", defaultValue="false", required=false) 
-			final boolean direct,
-			
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage,
-		
-			@ApiParam(value="Return stated or inferred descendants")
-			@RequestParam(value="form", defaultValue="inferred", required=false)
-			final String form) {
+			final String acceptLanguage) {
 	
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -306,7 +312,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 		String fsnExpand = expand.contains("fsn") ? ",expand(fsn())" : "";
 		
 		return DeferredResults.wrap(SnomedRequests.prepareGetConcept(conceptId)
-				.setExpand(String.format("%s(direct:%s,offset:%d,limit:%d%s)", descendants, direct, offset, limit, fsnExpand))
+				.setExpand(String.format("%s(direct:%s,limit:%d%s)", descendants, direct, limit, fsnExpand))
 				.setLocales(extendedLocales)
 				.build(repositoryId, branchPath)
 				.execute(bus)
@@ -338,30 +344,46 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@PathVariable(value="conceptId")
 			final String conceptId,
 
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
-			final int offset,
-
-			@ApiParam(value="The maximum number of items to return")
-			@RequestParam(value="limit", defaultValue="50", required=false) 
-			final int limit,
-
+			@ApiParam(value="Return stated or inferred ancestors")
+			@RequestParam(value="form", defaultValue="inferred", required=false)
+			final String form,
+			
 			@ApiParam(value="Return direct ancestors only")
 			@RequestParam(value="direct", defaultValue="false", required=false) 
 			final boolean direct,
 			
-			@ApiParam(value="Return stated or inferred ancestors")
-			@RequestParam(value="form", defaultValue="inferred", required=false)
-			final String form) {
+			@ApiParam(value="What parts of the response information to expand.", allowableValues="fsn")
+			@RequestParam(value="expand", defaultValue="", required=false)
+			final List<String> expand,
+			
+			@ApiParam(value="The maximum number of items to return")
+			@RequestParam(value="limit", defaultValue="50", required=false) 
+			final int limit,
+			
+			@ApiParam(value="Accepted language tags, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage) {
 
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
 		if (!STATED_FORM.equals(form) && !INFERRED_FORM.equals(form)) {
 			throw new BadRequestException("Form must be either 'stated' or 'inferred'");
 		}
 		
 		String ancestors = form.equals(STATED_FORM) ? "statedAncestors" : "ancestors";
+		String fsnExpand = expand.contains("fsn") ? ",expand(fsn())" : "";
 		
 		return DeferredResults.wrap(SnomedRequests.prepareGetConcept(conceptId)
-				.setExpand(String.format("%s(direct:%s,offset:%d,limit:%d)", ancestors, direct, offset, limit))
+				.setExpand(String.format("%s(direct:%s,limit:%d%s)", ancestors, direct, limit, fsnExpand))
+				.setLocales(extendedLocales)
 				.build(repositoryId, branchPath)
 				.execute(bus)
 				.then(new Function<SnomedConcept, SnomedConcepts>() {

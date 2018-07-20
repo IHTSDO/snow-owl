@@ -633,8 +633,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 	
 	@Override
-	public List<ISnomedBrowserChildConcept> getConceptChildren(String branchPath, String conceptId, List<ExtendedLocale> locales, boolean isStatedForm,
-			SnomedBrowserDescriptionType preferredDescriptionType, int offset, String scrollKeepAlive, String scrollId, int limit) {
+	public List<ISnomedBrowserChildConcept> getConceptChildren(
+			String branchPath,
+			String conceptId,
+			List<ExtendedLocale> locales,
+			boolean isStatedForm,
+			SnomedBrowserDescriptionType preferredDescriptionType,
+			int limit) {
 		
 		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 
@@ -643,7 +648,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			@Override
 			protected Iterable<SnomedConcept> getConceptEntries(String conceptId) {
 				SnomedConcept concept = SnomedRequests.prepareGetConcept(conceptId)
-						.setExpand(isStatedForm ? "statedDescendants(offset:" + offset + ",limit:" + limit + ",direct:true)" : "descendants(offset:" + offset + ",limit:" + limit + ",direct:true)")
+						.setExpand(isStatedForm ? "statedDescendants(limit:" + limit + ",direct:true)" : "descendants(limit:" + limit + ",direct:true)")
 						.setLocales(locales)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 						.execute(bus())
@@ -695,8 +700,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	@Override
-	public List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> locales,
-			SnomedBrowserDescriptionType preferredDescriptionType, int offset, String scrollKeepAlive, String scrollId, int limit) {
+	public List<ISnomedBrowserDescriptionResult> getDescriptions(
+			String branchPath,
+			String query, List<ExtendedLocale> locales,
+			SnomedBrowserDescriptionType preferredDescriptionType,
+			String scrollKeepAlive,
+			String scrollId,
+			int limit) {
 		
 		checkNotNull(query, "Query may not be null.");
 		checkArgument(query.length() >= 3, "Query must be at least 3 characters long.");
@@ -704,7 +714,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 		
 		final Collection<SnomedDescription> descriptions = SnomedRequests.prepareSearchDescription()
-				//.setOffset(offset) XXX
+				.setScroll(scrollKeepAlive)
+				.setScrollId(scrollId)
 				.setLimit(limit)
 				.filterByTerm(query)
 				// TODO filter by type

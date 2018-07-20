@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.b2international.snowowl.snomed.api.impl.domain.classification;
+package com.b2international.snowowl.snomed.core.domain.classification;
 
-import com.b2international.snowowl.snomed.api.domain.classification.ChangeNature;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.google.common.base.MoreObjects;
 
 /**
+ *
+ * @since 6.6.1
  */
-public class RelationshipChange implements IRelationshipChange {
+public class RelationshipChange {
 
 	private String id;
 	private ChangeNature changeNature;
@@ -34,32 +35,26 @@ public class RelationshipChange implements IRelationshipChange {
 	private int unionGroup;
 	private RelationshipModifier modifier;
 
-	@Override
 	public String getId() {
 		return id;
 	}
-	
-	@Override
+
 	public ChangeNature getChangeNature() {
 		return changeNature;
 	}
 
-	@Override
 	public String getSourceId() {
 		return sourceId;
 	}
 
-	@Override
 	public String getTypeId() {
 		return typeId;
 	}
 
-	@Override
 	public String getDestinationId() {
 		return destinationId;
 	}
 
-	@Override
 	public boolean isDestinationNegated() {
 		return destinationNegated;
 	}
@@ -68,42 +63,39 @@ public class RelationshipChange implements IRelationshipChange {
 		return characteristicTypeId;
 	}
 
-	@Override
 	public int getGroup() {
 		return group;
 	}
 
-	@Override
 	public int getUnionGroup() {
 		return unionGroup;
 	}
 
-	@Override
 	public RelationshipModifier getModifier() {
 		return modifier;
 	}
-	
+
 	public void setId(String id) {
 		this.id = id;
 	}
 
-	public void setChangeNature(final ChangeNature changeNature) {
+	public void setChangeNature(ChangeNature changeNature) {
 		this.changeNature = changeNature;
 	}
 
-	public void setSourceId(final String sourceId) {
+	public void setSourceId(String sourceId) {
 		this.sourceId = sourceId;
 	}
 
-	public void setTypeId(final String typeId) {
+	public void setTypeId(String typeId) {
 		this.typeId = typeId;
 	}
 
-	public void setDestinationId(final String destinationId) {
+	public void setDestinationId(String destinationId) {
 		this.destinationId = destinationId;
 	}
 
-	public void setDestinationNegated(final boolean destinationNegated) {
+	public void setDestinationNegated(boolean destinationNegated) {
 		this.destinationNegated = destinationNegated;
 	}
 
@@ -111,42 +103,32 @@ public class RelationshipChange implements IRelationshipChange {
 		this.characteristicTypeId = characteristicTypeId;
 	}
 
-	public void setGroup(final int group) {
+	public void setGroup(int group) {
 		this.group = group;
 	}
 
-	public void setUnionGroup(final int unionGroup) {
+	public void setUnionGroup(int unionGroup) {
 		this.unionGroup = unionGroup;
 	}
 
-	public void setModifier(final RelationshipModifier modifier) {
+	public void setModifier(RelationshipModifier modifier) {
 		this.modifier = modifier;
 	}
-
+	
 	@Override
 	public String toString() {
-		final StringBuilder builder = new StringBuilder();
-		builder.append("RelationshipChange [changeNature=");
-		builder.append(changeNature);
-		builder.append(", id=");
-		builder.append(id);
-		builder.append(", sourceId=");
-		builder.append(sourceId);
-		builder.append(", typeId=");
-		builder.append(typeId);
-		builder.append(", destinationId=");
-		builder.append(destinationId);
-		builder.append(", destinationNegated=");
-		builder.append(destinationNegated);
-		builder.append(", characteristicTypeId=");
-		builder.append(characteristicTypeId);
-		builder.append(", group=");
-		builder.append(group);
-		builder.append(", unionGroup=");
-		builder.append(unionGroup);
-		builder.append(", modifier=");
-		builder.append(modifier);
-		builder.append("]");
-		return builder.toString();
+		return MoreObjects.toStringHelper(this)
+					.add("id", id)
+					.add("changeNature", changeNature)
+					.add("sourceId", sourceId)
+					.add("typeId", typeId)
+					.add("destinationId", destinationId)
+					.add("destinationNegated", destinationNegated)
+					.add("characteristicTypeId", characteristicTypeId)
+					.add("group", group)
+					.add("unionGroup", unionGroup)
+					.add("modifier", modifier)
+					.toString();
 	}
+
 }

@@ -280,8 +280,7 @@ public abstract class SearchResourceRequest<C extends ServiceProvider, B> extend
 	}
 	
 	/**
-	 * Creates a new empty result object with the specified offset and limit parameter.
-	 * @param offset
+	 * Creates a new empty result object with the specified limit parameter.
 	 * @param limit
 	 * @return
 	 */
