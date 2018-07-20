@@ -190,8 +190,8 @@ then
 		
 		#Added awt.headless - http://mail-archives.apache.org/mod_mbox/poi-user/200705.mbox/%3C15719338671.20070504144714@dinom.ru%3E
         JAVA_OPTS="$JAVA_OPTS \
-        			-Xms12g \
-                    -Xmx12g \
+        			-Xms16g \
+                    -Xmx16g \
                     -XX:+AlwaysPreTouch \
                     -Xss1m \
                     -Xloggc:$KERNEL_HOME/`date +%F_%H%M-%S`-gc.log \

@@ -169,8 +169,8 @@ rem ------------------------------
 
 	rem Added awt.headless - http://mail-archives.apache.org/mod_mbox/poi-user/200705.mbox/%3C15719338671.20070504144714@dinom.ru%3E
 
-	set JAVA_OPTS=%JAVA_OPTS% -Xms12g
-	set JAVA_OPTS=%JAVA_OPTS% -Xmx12g
+	set JAVA_OPTS=%JAVA_OPTS% -Xms16g
+	set JAVA_OPTS=%JAVA_OPTS% -Xmx16g
 	set JAVA_OPTS=%JAVA_OPTS% -XX:+AlwaysPreTouch
 	set JAVA_OPTS=%JAVA_OPTS% -Xss1m
 	set JAVA_OPTS=%JAVA_OPTS% -XX:+PrintGCDetails
