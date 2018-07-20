@@ -38,7 +38,7 @@ public class SnomedTraceabilityChangeProcessorFactory implements CDOChangeProces
 	@Override
 	public ICDOChangeProcessor createChangeProcessor(final IBranchPath branchPath) throws SnowowlServiceException {
 		// SNOMED CT import is in progress
-		if (isImportInProgress(branchPath) || isReindexInProgress() || isClassifyInProgress(branchPath)) {
+		if (isImportInProgress(branchPath) || isReindexInProgress()) {
 			return ICDOChangeProcessor.NULL_IMPL;
 		} else {
 			final RevisionIndex index = ApplicationContext.getServiceForClass(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
