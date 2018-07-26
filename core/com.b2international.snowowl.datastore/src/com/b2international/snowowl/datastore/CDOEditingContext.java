@@ -441,6 +441,7 @@ public abstract class CDOEditingContext implements AutoCloseable {
 	 * Clears resolved objects cache.
 	 */
 	public void clearCache() {
+		resolvedObjectsById = null;
 		resolvedObjectsById = newHashMap();
 	}
 	
