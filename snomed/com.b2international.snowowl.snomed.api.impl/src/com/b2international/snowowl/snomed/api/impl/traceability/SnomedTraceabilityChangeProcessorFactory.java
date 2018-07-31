@@ -43,12 +43,17 @@ public class SnomedTraceabilityChangeProcessorFactory implements CDOChangeProces
 		} else {
 			final RevisionIndex index = ApplicationContext.getServiceForClass(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
 			final boolean collectSystemChanges = ApplicationContext.getServiceForClass(SnomedCoreConfiguration.class).isCollectSystemChanges();
-			return new SnomedTraceabilityChangeProcessor(index, branchPath, collectSystemChanges);
+			final boolean isdeltaImportInProgress = isDeltaImportInProgress(branchPath);
+			return new SnomedTraceabilityChangeProcessor(index, branchPath, isdeltaImportInProgress ? isdeltaImportInProgress : collectSystemChanges);
 		}
 	}
 
 	private boolean isImportInProgress(final IBranchPath branchPath) {
 		return isSnapshotImportInProgress(branchPath) || isFullImportInProgress(branchPath);
+	}
+	
+	private boolean isDeltaImportInProgress(final IBranchPath branchPath) {
+		return getFeatureToggles().isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), ContentSubType.DELTA.getLowerCaseName()));
 	}
 	
 	private boolean isSnapshotImportInProgress(final IBranchPath branchPath) {
