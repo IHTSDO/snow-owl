@@ -19,6 +19,7 @@ import static com.google.common.collect.Maps.newHashMap;
 
 import java.util.Map;
 
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
@@ -37,7 +38,8 @@ class TraceabilityEntry {
 	public TraceabilityEntry(final ICDOCommitChangeSet changeSet) {
 		this.userId = changeSet.getUserId();
 		this.commitComment = CDOCommitInfoUtils.removeUuidPrefix(changeSet.getCommitComment());
-		this.branchPath = changeSet.getView().getBranch().getPathName();
+		final String branchPathName = changeSet.getView().getBranch().getPathName();
+		this.branchPath = Branch.BranchNameValidator.DEFAULT.getName(branchPathName);
 		this.commitTimestamp = changeSet.getTimestamp();
 	}
 
