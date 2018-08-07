@@ -136,6 +136,44 @@ public class BranchTest {
 	public void testDivergedState() throws Exception {
 		assertState(commit(branchA), commit(main), BranchState.DIVERGED);
 	}
+	
+	@Test
+	public void testValidBranchName() {
+		// no exception should be thrown
+		final String tempBranchName = createTempBranchName("TEST");
+		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testInvalidBranchName() {
+		final String tempBranchName = createTempBranchName("TEST$$");
+		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
+	}
+	
+	@Test
+	public void testNameExtractionFromTemporaryBranch() {
+		final String tempBranchName = createTempBranchName("TEST");
+		final String expectedName = "TEST";
+		final String result = Branch.BranchNameValidator.DEFAULT.getName(tempBranchName);
+		assertEquals(expectedName, result);
+	}
+	
+	@Test
+	public void testNamExtractionFromNotTemporaryBranch() {
+		final String expectedName = "TEST";
+		final String result = Branch.BranchNameValidator.DEFAULT.getName(expectedName);
+		assertEquals(expectedName, result);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testInvalidBranchNameExctraction() {
+		final String tempBranchName = createTempBranchName("TEST$$");
+		Branch.BranchNameValidator.DEFAULT.getName(tempBranchName);
+	}
+	
+	private String createTempBranchName(String name) {
+		return String.format(Branch.TEMP_BRANCH_NAME_FORMAT, Branch.TEMP_PREFIX, name, System.currentTimeMillis());
+	}
 
 	private InternalBranch commit(InternalBranch branch) {
 		return branch.withHeadTimestamp(currentTimestamp());		
