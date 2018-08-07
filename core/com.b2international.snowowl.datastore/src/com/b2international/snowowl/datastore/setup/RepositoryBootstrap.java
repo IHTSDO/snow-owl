@@ -61,6 +61,10 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 				.getModuleConfig(RepositoryConfiguration.class);
 		final IndexConfiguration config = repositoryConfiguration.getIndexConfiguration();
 		
+		if (config.getClusterUrl() != null) {
+			builder.put(IndexClientFactory.CLUSTER_URL, config.getClusterUrl());
+		}
+		
 		if (isInReindexMode()) {
 			builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, "5m");
 			LOG.info("Set translog sync interval to {}", "5m");
