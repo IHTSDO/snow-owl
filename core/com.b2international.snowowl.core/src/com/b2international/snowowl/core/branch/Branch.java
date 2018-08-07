@@ -17,6 +17,7 @@ package com.b2international.snowowl.core.branch;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.b2international.snowowl.core.Metadata;
@@ -64,40 +65,47 @@ public interface Branch extends Deletable, MetadataHolder, Serializable {
 		/**
 		 * Validates a branch name and throws {@link BadRequestException} if not valid.
 		 * 
-		 * @param name
+		 * @param branchPathName
 		 * @throws BadRequestException
 		 */
-		void checkName(String name) throws BadRequestException;
+		void checkName(String branchPathName) throws BadRequestException;
+		
+		String getName(String branchPathName) throws RuntimeException;
 
 		/**
 		 * @since 4.2
 		 */
 		class BranchNameValidatorImpl implements BranchNameValidator {
 
-			private Pattern pattern;
-			private String allowedCharacterSet;
-			private int maximumLength;
-
-			public BranchNameValidatorImpl() {
-				this(DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET, DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH);
-			}
-
-			public BranchNameValidatorImpl(String allowedCharacterSet, int maximumLength) {
-				this.allowedCharacterSet = allowedCharacterSet;
-				this.maximumLength = maximumLength;
-				pattern = Pattern.compile(String.format("^(%s)?[%s]{1,%s}(_[0-9]{1,19})?$", Pattern.quote(TEMP_PREFIX), allowedCharacterSet, maximumLength));
-			}
+			private static final Pattern TMP_BRANCH_NAME_PATTERN = Pattern.compile(String.format("^(%s)?[%s]{1,%s}(_[0-9]{1,19})?$",
+					Pattern.quote(TEMP_PREFIX),
+					DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET,
+					DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH));
+			
 
 			@Override
-			public void checkName(String name) {
-				if (Strings.isNullOrEmpty(name)) {
+			public void checkName(String branchPathName) {
+				if (Strings.isNullOrEmpty(branchPathName)) {
 					throw new BadRequestException("Name cannot be empty");
 				}
-				if (!pattern.matcher(name).matches()) {
+				if (!TMP_BRANCH_NAME_PATTERN.matcher(branchPathName).matches()) {
 					throw new BadRequestException(
-							"'%s' is either too long (max %s characters) or it contains invalid characters (only '%s' characters are allowed).", name,
-							maximumLength, allowedCharacterSet);
+							"'%s' is either too long (max %s characters) or it contains invalid characters (only '%s' characters are allowed).", branchPathName,
+							DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH, DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET);
 				}
+			}
+			
+			@Override
+			public String getName(String branchPathName) {
+				if (Strings.isNullOrEmpty(branchPathName)) {
+					throw new RuntimeException("The branch path name cannot be empty");
+				}
+				
+				final Matcher matcher = TMP_BRANCH_NAME_PATTERN.matcher(branchPathName);
+				if (matcher.matches()) {
+					return matcher.group(2);
+				}
+				return "";
 			}
 
 		}
