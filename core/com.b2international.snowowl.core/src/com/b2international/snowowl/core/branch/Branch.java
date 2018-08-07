@@ -120,7 +120,7 @@ public interface Branch extends Deletable, MetadataHolder, Serializable {
 					if (matcher.matches()) { 
 						return matcher.group(2);
 					} else  {
-						throw new BadRequestException(String.format("%s didn't match for pattern.", name)); 
+						throw new BadRequestException(String.format("%s is not a valid temporary branch name format.", name)); 
 					}
 				} else {
 					// name is a valid branch name and it's not a temporary branch
