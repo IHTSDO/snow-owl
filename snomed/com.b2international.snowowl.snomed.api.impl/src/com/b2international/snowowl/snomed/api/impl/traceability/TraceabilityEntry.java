@@ -41,10 +41,10 @@ class TraceabilityEntry {
 		this.userId = changeSet.getUserId();
 		this.commitComment = CDOCommitInfoUtils.removeUuidPrefix(changeSet.getCommitComment());
 		
-		final String changeSetBranchName = changeSet.getView().getBranch().getName();
+		final String branchName = changeSet.getView().getBranch().getName();
 		final String branchPath = changeSet.getView().getBranch().getPathName();
-		if (changeSetBranchName.startsWith(Branch.TEMP_PREFIX)) {
-			final String name = Branch.BranchNameValidator.DEFAULT.getName(changeSetBranchName);
+		if (branchName.startsWith(Branch.TEMP_PREFIX)) {
+			final String name = Branch.BranchNameValidator.DEFAULT.getName(branchName);
 			this.branchPath = buildBranchPath(name, branchPath);
 		} else {
 			this.branchPath = branchPath;
@@ -52,15 +52,15 @@ class TraceabilityEntry {
 		this.commitTimestamp = changeSet.getTimestamp();
 	}
 	
-	private String buildBranchPath(String name, String branchPathName) {
-		final List<String> splittedPath = Splitter.on(Branch.SEPARATOR).splitToList(branchPathName);
+	private String buildBranchPath(String branchName, String branchPath) {
+		final List<String> splittedPath = Splitter.on(Branch.SEPARATOR).splitToList(branchPath);
 		final StringBuilder builder = new StringBuilder();
 		final int splittedPathSize = splittedPath.size();
 		for (int i = 0; i < splittedPathSize - 1; i++) {
 			builder.append(splittedPath.get(i));
 			builder.append(Branch.SEPARATOR);
 		}
-		builder.append(name);
+		builder.append(branchName);
 		return builder.toString();
 	}
 
