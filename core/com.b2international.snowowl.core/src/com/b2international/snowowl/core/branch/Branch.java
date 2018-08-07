@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,47 +65,68 @@ public interface Branch extends Deletable, MetadataHolder, Serializable {
 		/**
 		 * Validates a branch name and throws {@link BadRequestException} if not valid.
 		 * 
-		 * @param branchPathName
+		 * @param name
 		 * @throws BadRequestException
 		 */
-		void checkName(String branchPathName) throws BadRequestException;
+		void checkName(String name) throws BadRequestException;
 		
-		String getName(String branchPathName) throws RuntimeException;
+		/**
+		 * Returns the name from a temporary branch name if it is one, otherwise returns the branch name.
+		 * 
+		 * @param name
+		 * @throws BadRequestException
+		 */
+		String getName(String name) throws BadRequestException;
 
 		/**
 		 * @since 4.2
 		 */
 		class BranchNameValidatorImpl implements BranchNameValidator {
 
-			private static final Pattern TMP_BRANCH_NAME_PATTERN = Pattern.compile(String.format("^(%s)?[%s]{1,%s}(_[0-9]{1,19})?$",
-					Pattern.quote(TEMP_PREFIX),
-					DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET,
-					DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH));
+			private final Pattern branchNamePattern;
 			
-
+			private final Pattern tmpBranchNamePattern;
+			
+			
+			public BranchNameValidatorImpl() {
+				branchNamePattern = Pattern.compile(String.format("^(%s)?[%s]{1,%s}(_[0-9]{1,19})?$",
+						Pattern.quote(TEMP_PREFIX),
+						DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET,
+						DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH));
+				
+				tmpBranchNamePattern = Pattern.compile(String.format("^(%s)([%s]{1,%s})(_[0-9]{1,19}$)",
+						Pattern.quote(Branch.TEMP_PREFIX), 
+						Branch.DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET, 
+						Branch.DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH));
+			}
+					
 			@Override
-			public void checkName(String branchPathName) {
-				if (Strings.isNullOrEmpty(branchPathName)) {
+			public void checkName(String name) {
+				if (Strings.isNullOrEmpty(name)) {
 					throw new BadRequestException("Name cannot be empty");
 				}
-				if (!TMP_BRANCH_NAME_PATTERN.matcher(branchPathName).matches()) {
+				if (!branchNamePattern.matcher(name).matches()) {
 					throw new BadRequestException(
-							"'%s' is either too long (max %s characters) or it contains invalid characters (only '%s' characters are allowed).", branchPathName,
+							"'%s' is either too long (max %s characters) or it contains invalid characters (only '%s' characters are allowed).", name,
 							DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH, DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET);
 				}
 			}
 			
 			@Override
-			public String getName(String branchPathName) {
-				if (Strings.isNullOrEmpty(branchPathName)) {
-					throw new RuntimeException("The branch path name cannot be empty");
+			public String getName(String name) {
+				checkName(name);
+				if (name.startsWith(TEMP_PREFIX)) {
+					final Matcher matcher = tmpBranchNamePattern.matcher(name);
+					if (matcher.matches()) { 
+						return matcher.group(2);
+					} else  {
+						throw new BadRequestException(String.format("%s didn't match for pattern.", name)); 
+					}
+				} else {
+					// name is a valid branch name and it's not a temporary branch
+					return name;
 				}
 				
-				final Matcher matcher = TMP_BRANCH_NAME_PATTERN.matcher(branchPathName);
-				if (matcher.matches()) {
-					return matcher.group(2);
-				}
-				return "";
 			}
 
 		}
