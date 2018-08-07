@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,14 @@ package com.b2international.snowowl.snomed.api.impl.traceability;
 
 import static com.google.common.collect.Maps.newHashMap;
 
+import java.util.List;
 import java.util.Map;
 
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.google.common.base.Splitter;
 
 /**
  * Represents a traceability entry.
@@ -38,9 +40,28 @@ class TraceabilityEntry {
 	public TraceabilityEntry(final ICDOCommitChangeSet changeSet) {
 		this.userId = changeSet.getUserId();
 		this.commitComment = CDOCommitInfoUtils.removeUuidPrefix(changeSet.getCommitComment());
-		final String branchPathName = changeSet.getView().getBranch().getPathName();
-		this.branchPath = Branch.BranchNameValidator.DEFAULT.getName(branchPathName);
+		
+		final String changeSetBranchName = changeSet.getView().getBranch().getName();
+		final String branchPath = changeSet.getView().getBranch().getPathName();
+		if (changeSetBranchName.startsWith(Branch.TEMP_PREFIX)) {
+			final String name = Branch.BranchNameValidator.DEFAULT.getName(changeSetBranchName);
+			this.branchPath = buildBranchPath(name, branchPath);
+		} else {
+			this.branchPath = branchPath;
+		}
 		this.commitTimestamp = changeSet.getTimestamp();
+	}
+	
+	private String buildBranchPath(String name, String branchPathName) {
+		final List<String> splittedPath = Splitter.on(Branch.SEPARATOR).splitToList(branchPathName);
+		final StringBuilder builder = new StringBuilder();
+		final int splittedPathSize = splittedPath.size();
+		for (int i = 0; i < splittedPathSize - 1; i++) {
+			builder.append(splittedPath.get(i));
+			builder.append(Branch.SEPARATOR);
+		}
+		builder.append(name);
+		return builder.toString();
 	}
 
 	public String getUserId() {
