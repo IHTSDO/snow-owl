@@ -27,10 +27,6 @@ import com.b2international.snowowl.core.MetadataImpl;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.Branch.BranchState;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.datastore.internal.branch.BranchImpl;
-import com.b2international.snowowl.datastore.internal.branch.BranchManagerImpl;
-import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
-import com.b2international.snowowl.datastore.internal.branch.MainBranchImpl;
 
 /**
  * @since 4.1
@@ -138,6 +134,44 @@ public class BranchTest {
 	@Test
 	public void testDivergedState() throws Exception {
 		assertState(commit(branchA), commit(main), BranchState.DIVERGED);
+	}
+	
+	@Test
+	public void testValidBranchName() {
+		// no exception should be thrown
+		final String tempBranchName = createTempBranchName("TEST");
+		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testInvalidBranchName() {
+		final String tempBranchName = createTempBranchName("TEST$$");
+		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
+	}
+	
+	@Test
+	public void testNameExtractionFromTemporaryBranch() {
+		final String tempBranchName = createTempBranchName("TEST");
+		final String expectedName = "TEST";
+		final String result = Branch.BranchNameValidator.DEFAULT.getName(tempBranchName);
+		assertEquals(expectedName, result);
+	}
+	
+	@Test
+	public void testNamExtractionFromNotTemporaryBranch() {
+		final String expectedName = "TEST";
+		final String result = Branch.BranchNameValidator.DEFAULT.getName(expectedName);
+		assertEquals(expectedName, result);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testInvalidBranchNameExctraction() {
+		final String tempBranchName = createTempBranchName("TEST$$");
+		Branch.BranchNameValidator.DEFAULT.getName(tempBranchName);
+	}
+	
+	private String createTempBranchName(String name) {
+		return String.format(Branch.TEMP_BRANCH_NAME_FORMAT, Branch.TEMP_PREFIX, name, System.currentTimeMillis());
 	}
 
 	private InternalBranch commit(InternalBranch branch) {
