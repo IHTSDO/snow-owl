@@ -37,6 +37,7 @@ public class BranchTest {
 	private BranchManagerImpl manager;
 	private InternalBranch main;
 	private InternalBranch branchA;
+	private String testBranchName;
 	
 	@Before
 	public void before() {
@@ -44,6 +45,7 @@ public class BranchTest {
 		main = new MainBranchImpl(currentTimestamp());
 		main.setBranchManager(manager);
 		branchA = createBranch(main, "a");
+		testBranchName = "TEST";
 	}
 	
 	private long currentTimestamp() {
@@ -137,36 +139,58 @@ public class BranchTest {
 	}
 	
 	@Test
-	public void testValidBranchName() {
-		// no exception should be thrown
-		final String tempBranchName = createTempBranchName("TEST");
-		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
-	}
-	
-	@Test(expected = BadRequestException.class)
-	public void testInvalidBranchName() {
-		final String tempBranchName = createTempBranchName("TEST$$");
+	public void testSuccessOfCheckNameWithValidTempBranchName() {
+		final String tempBranchName = createTempBranchName(testBranchName);
 		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
 	}
 	
 	@Test
-	public void testNameExtractionFromTemporaryBranch() {
-		final String tempBranchName = createTempBranchName("TEST");
-		final String expectedName = "TEST";
+	public void testSuccessOfCheckNameWithValidBranchName() {
+		Branch.BranchNameValidator.DEFAULT.checkName(testBranchName);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfCheckNameWithMalformedTempBranchName() {
+		final String tempBranchName = createTempBranchName("TEST$$");
+		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfCheckNameWithEmptyBranchName() {
+		Branch.BranchNameValidator.DEFAULT.checkName("");
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfCheckNameWithMalformedBranchName() {
+		Branch.BranchNameValidator.DEFAULT.checkName("/TEST");
+	}
+	
+	@Test
+	public void testSuccessOfGetNameWithValidBranchName() {
+		final String result = Branch.BranchNameValidator.DEFAULT.getName(testBranchName);
+		assertEquals(testBranchName, result);
+	}
+	
+	@Test
+	public void testSuccessOfGetNameWithValidTempBranchName() {
+		final String tempBranchName = createTempBranchName(testBranchName);
 		final String result = Branch.BranchNameValidator.DEFAULT.getName(tempBranchName);
-		assertEquals(expectedName, result);
-	}
-	
-	@Test
-	public void testNamExtractionFromNotTemporaryBranch() {
-		final String expectedName = "TEST";
-		final String result = Branch.BranchNameValidator.DEFAULT.getName(expectedName);
-		assertEquals(expectedName, result);
+		assertEquals(testBranchName, result);
 	}
 	
 	@Test(expected = BadRequestException.class)
-	public void testInvalidBranchNameExctraction() {
-		final String tempBranchName = createTempBranchName("TEST$$");
+	public void testFailureOfGetNameWithMalformedBranchName() {
+		Branch.BranchNameValidator.DEFAULT.getName("TEST$$");
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfGetNameWithEmptyBranchName() {
+		Branch.BranchNameValidator.DEFAULT.getName("");
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfGetNameWithMalformedTempBranchName() {
+		final String tempBranchName = createTempBranchName("$TEST");
 		Branch.BranchNameValidator.DEFAULT.getName(tempBranchName);
 	}
 	
