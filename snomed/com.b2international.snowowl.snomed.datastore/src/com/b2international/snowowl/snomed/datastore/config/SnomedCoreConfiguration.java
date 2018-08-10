@@ -69,6 +69,10 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	
 	@Valid
 	private SnomedExportDefaultConfiguration export = new SnomedExportDefaultConfiguration();
+
+	@Valid
+	@JsonProperty(value = "drools")
+	private SnomedDroolsConfiguration droolsConfig = new SnomedDroolsConfiguration();
 	
 	private boolean collectSystemChanges = false;
 	
@@ -160,6 +164,20 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	 */
 	public void setClassificationConfig(SnomedClassificationConfiguration classificationConfig) {
 		this.classificationConfig = classificationConfig;
+	}
+	
+	/**
+	 * Get all drools related configurations
+	 */
+	public SnomedDroolsConfiguration getDroolsConfig() {
+		return droolsConfig;
+	}
+	
+	/**
+	 * Sets the drools related configurations
+	 */
+	public void setDroolsConfig(SnomedDroolsConfiguration droolsConfig) {
+		this.droolsConfig = droolsConfig;
 	}
 	
 	/**
