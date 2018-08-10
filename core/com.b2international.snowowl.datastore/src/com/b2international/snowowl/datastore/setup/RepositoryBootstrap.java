@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,10 +59,11 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 		
 		RepositoryConfiguration repositoryConfiguration = env.service(SnowOwlConfiguration.class)
 				.getModuleConfig(RepositoryConfiguration.class);
-		final IndexConfiguration config = repositoryConfiguration.getIndexConfiguration();
+		builder.put(IndexClientFactory.INDEX_PREFIX, repositoryConfiguration.getDeploymentId());
 		
-		if (config.getClusterUrl() != null) {
-			builder.put(IndexClientFactory.CLUSTER_URL, config.getClusterUrl());
+		final IndexConfiguration indexConfig = repositoryConfiguration.getIndexConfiguration();
+		if (indexConfig.getClusterUrl() != null) {
+			builder.put(IndexClientFactory.CLUSTER_URL, indexConfig.getClusterUrl());
 		}
 		
 		if (isInReindexMode()) {
@@ -75,11 +76,11 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 			repositoryConfiguration.setRevisionCacheEnabled(false);
 			LOG.info("Set revision cache to {} for reindexing", repositoryConfiguration.isRevisionCacheEnabled());
 		} else {
-			builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, config.getCommitInterval());
-			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, config.getCommitConcurrencyLevel());
+			builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, indexConfig.getCommitInterval());
+			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, indexConfig.getCommitConcurrencyLevel());
 		}
 		
-		final SlowLogConfig slowLog = createSlowLogConfig(config);
+		final SlowLogConfig slowLog = createSlowLogConfig(indexConfig);
 		builder.put(IndexClientFactory.SLOW_LOG_KEY, slowLog);
 		
 		return builder.build();
