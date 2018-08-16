@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -138,7 +138,10 @@ final class SnomedAssociationTargetUpdateRequest<C extends Inactivatable & Compo
 			if (newAssociationTargetsToCreate.remove(associationType, existingTargetId)) {
 
 				// Exact match, just make sure that the member is active and remove it from the working list
-				if (ensureMemberActive(context, existingMember)) { updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); }
+				if (ensureMemberActive(context, existingMember)) { 
+					updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); 
+				}
+				
 				memberIterator.remove();
 			}
 		}
@@ -149,46 +152,48 @@ final class SnomedAssociationTargetUpdateRequest<C extends Inactivatable & Compo
 			if (null == associationType) {
 				continue;
 			}
-			
+			removeOrDeactivate(context, existingMember);
 			if (newAssociationTargetsToCreate.containsKey(associationType)) {
-
-				// We can re-use the member by changing the target component identifier, and checking that it is active
+				
+				// We have to inactivate the member and create a new one with the new targetComponentId since the field is immutable
 				final Iterator<String> targetIterator = newAssociationTargetsToCreate.get(associationType).iterator();
 				final String newTargetId = targetIterator.next();
 				targetIterator.remove();
 
 				if (LOG.isDebugEnabled()) { 
-					LOG.debug("Changing association member {} with type {} and target component identifier from {} to {}.", 
+					LOG.debug("Inactivating association member {} with type {}, creating a new one with a changed targetComponentId from {} to {}.", 
 							existingMember.getUuid(), 
 							associationType, 
 							existingMember.getTargetComponentId(), 
 							newTargetId);
 				}
-
-				ensureMemberActive(context, existingMember);
-				existingMember.setTargetComponentId(newTargetId);
-				updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); // Always check; we know that targetComponentId has changed
-
-			} else {
 				
-				// We have no use for this member -- remove or inactivate if already released
-				removeOrDeactivate(context, existingMember);
+				final SnomedAssociationRefSetMember member = createAssociationRefSetMember(context, associationType.getConceptId(), newTargetId, component);
+				
+				component.getAssociationRefSetMembers().add(member);
+					
 			}
+			
 		}
 
 		// With all existing members processed, any remaining entries in the multimap will need to be added as members
 		for (final Entry<AssociationType, String> newAssociationEntry : newAssociationTargetsToCreate.entries()) {
 			
-			final SnomedAssociationRefSetMember member = SnomedComponents
-					.newAssociationMember()
-					.withRefSet(newAssociationEntry.getKey().getConceptId())
-					.withTargetComponentId(newAssociationEntry.getValue())
-					.withReferencedComponent(((Component) component).getId())
-					.withModule(((Component) component).getModule().getId())
-					.addTo(context);
+			final SnomedAssociationRefSetMember member = createAssociationRefSetMember(context,
+					newAssociationEntry.getKey().getConceptId(), newAssociationEntry.getValue(), component);
 
 			component.getAssociationRefSetMembers().add(member);
 		}
+	}
+	
+	private SnomedAssociationRefSetMember createAssociationRefSetMember (final TransactionContext context, final String refsetId, final String targetComponentId, final Inactivatable component) {
+		return SnomedComponents
+				.newAssociationMember()
+				.withRefSet(refsetId)
+				.withTargetComponentId(targetComponentId)
+				.withReferencedComponent(((Component) component).getId())
+				.withModule(((Component) component).getModule().getId())
+				.addTo(context);
 	}
 
 	private String getLatestReleaseBranch(final TransactionContext context) {
