@@ -41,7 +41,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
 /**
- * @since 5.76
+ * @since 5.10.14
  */
 public class SnomedAssociationMemberRequestTest extends AbstractSnomedApiTest {
 
@@ -71,7 +71,6 @@ public class SnomedAssociationMemberRequestTest extends AbstractSnomedApiTest {
 		
 		// change association targets on child branch
 		updateConcept(conceptId, childBranch, childBranchAssociationTargets);
-			
 		
 		// merge them, merge should succeed (previously it had conflicts on these types of changes)
 		merge(childBranch, branchPath, "Merge association target changes").body("status", equalTo(Merge.Status.COMPLETED.name()));
@@ -123,7 +122,6 @@ public class SnomedAssociationMemberRequestTest extends AbstractSnomedApiTest {
 		
 		merge(childBranch, branchPath, "Merge association target changes").body("status", equalTo(Merge.Status.COMPLETED.name()));
 		
-		
 		final SnomedReferenceSetMembers sameAsAssociationMembersAfterMerge = getMembers(branchPath);
 		
 		for (SnomedReferenceSetMember member : sameAsAssociationMembersAfterMerge) {
@@ -157,7 +155,6 @@ public class SnomedAssociationMemberRequestTest extends AbstractSnomedApiTest {
 				.getSync();
 		return sameAsAssociationMembersAfterMerge;
 	}
-
 
 	private void updateConcept(final String conceptId, final IBranchPath branchPath, final Multimap<AssociationType, String> newAssociationTargets) {
 		SnomedRequests.prepareUpdateConcept(conceptId)
