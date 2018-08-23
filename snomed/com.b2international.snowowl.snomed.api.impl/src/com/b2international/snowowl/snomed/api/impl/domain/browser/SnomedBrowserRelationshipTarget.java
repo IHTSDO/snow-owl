@@ -21,6 +21,13 @@ public class SnomedBrowserRelationshipTarget extends SnomedBrowserComponent impl
 	private String fsn;
 	private DefinitionStatus definitionStatus;
 
+	public SnomedBrowserRelationshipTarget() {
+	}
+	
+	public SnomedBrowserRelationshipTarget(String conceptId) {
+		this.conceptId = conceptId;
+	}
+	
 	@Override
 	public String getConceptId() {
 		return conceptId;

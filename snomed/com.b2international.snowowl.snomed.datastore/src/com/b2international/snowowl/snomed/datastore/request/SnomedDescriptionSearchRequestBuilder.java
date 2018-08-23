@@ -82,6 +82,10 @@ public final class SnomedDescriptionSearchRequestBuilder extends SnomedComponent
 	public SnomedDescriptionSearchRequestBuilder filterByType(String typeFilter) {
 		return addOption(OptionKey.TYPE, typeFilter);
 	}
+	
+	public SnomedDescriptionSearchRequestBuilder filterByType(Iterable<String> typeIds) {
+		return addOption(OptionKey.TYPE, typeIds);
+	}
 
 	public SnomedDescriptionSearchRequestBuilder filterByLanguageCodes(Collection<String> languageCodes) {
 		return addOption(OptionKey.LANGUAGE, Collections3.toImmutableSet(languageCodes));
