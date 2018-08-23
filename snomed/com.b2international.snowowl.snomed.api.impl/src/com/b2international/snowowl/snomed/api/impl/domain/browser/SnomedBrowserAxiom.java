@@ -5,6 +5,7 @@ import java.util.List;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserAxiom;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableList;
 
@@ -12,6 +13,12 @@ public class SnomedBrowserAxiom extends SnomedBrowserComponent implements ISnome
 
 	private String axiomId;
 	private DefinitionStatus definitionStatus;
+	
+	@JsonIgnore
+	private boolean isNamedConceptOnLeft;
+	
+	@JsonIgnore
+	private String referencedComponentId;
 
 	@JsonDeserialize(contentAs=SnomedBrowserRelationship.class)
 	private List<ISnomedBrowserRelationship> relationships = ImmutableList.of();
@@ -35,17 +42,33 @@ public class SnomedBrowserAxiom extends SnomedBrowserComponent implements ISnome
 		return definitionStatus;
 	}
 
+	public void setDefinitionStatus(final DefinitionStatus definitionStatus) {
+		this.definitionStatus = definitionStatus;
+	}
+	
 	@Override
 	public List<ISnomedBrowserRelationship> getRelationships() {
 		return relationships;
 	}
-	
-	public void setDefinitionStatus(final DefinitionStatus definitionStatus) {
-		this.definitionStatus = definitionStatus;
-	}
 
 	public void setRelationships(final List<ISnomedBrowserRelationship> relationships) {
 		this.relationships = relationships;
+	}
+	
+	public boolean isNamedConceptOnLeft() {
+		return isNamedConceptOnLeft;
+	}
+	
+	public void setNamedConceptOnLeft(boolean isNamedConceptOnLeft) {
+		this.isNamedConceptOnLeft = isNamedConceptOnLeft;
+	}
+	
+	public String getReferencedComponentId() {
+		return referencedComponentId;
+	}
+	
+	public void setReferencedComponentId(String referencedComponentId) {
+		this.referencedComponentId = referencedComponentId;
 	}
 	
 	@Override

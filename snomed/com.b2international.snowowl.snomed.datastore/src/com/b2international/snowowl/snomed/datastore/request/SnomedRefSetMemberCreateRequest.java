@@ -37,7 +37,7 @@ import com.google.common.collect.ImmutableSet.Builder;
 /**
  * @since 4.5
  */
-final class SnomedRefSetMemberCreateRequest implements SnomedComponentCreateRequest {
+public final class SnomedRefSetMemberCreateRequest implements SnomedComponentCreateRequest {
 
 	@Nonnull
 	private String id;

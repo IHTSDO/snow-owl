@@ -1,35 +1,32 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
+import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserAxiom;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserAxiom;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
-import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequestBuilder;
-import com.b2international.snowowl.snomed.datastore.request.SnomedCoreComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.collect.Multimap;
 
 public class ConceptInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedConceptCreateRequest, SnomedConceptUpdateRequest, SnomedBrowserConcept> {
 	
-	private final SnomedBrowserAxiomUpdateHelper axiomUpdateHelper;
-	
-	public ConceptInputCreator(SnomedBrowserAxiomUpdateHelper axiomUpdateHelper) {
-		this.axiomUpdateHelper = axiomUpdateHelper;
-	}
-	
 	@Override
 	public SnomedConceptCreateRequest createInput(SnomedBrowserConcept concept, InputFactory inputFactory) {
+		
 		String moduleId = getModuleOrDefault(concept);
 		final SnomedConceptCreateRequestBuilder builder = SnomedRequests
 				.prepareNewConcept()
@@ -63,15 +60,20 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 		
 		// An SCTID is required for generating axiom OWL expressions
 		// We don't yet have the concept ID so we will use a known temporary ID and replace it during concept creation.
-		long tempConceptId = Long.parseLong(Concepts.TEMPORARY_AXIOM_CONCEPT_PLACEHOLDER);
-
 		for (ISnomedBrowserAxiom axiom : concept.getAdditionalAxioms()) {
-			boolean namedConceptOnLeft = true;
-			builder.addMember(axiomUpdateHelper.getAxiomCreateRequest(namedConceptOnLeft, axiom, tempConceptId, moduleId));
+			SnomedBrowserAxiom browserAxiom = (SnomedBrowserAxiom) axiom;
+			browserAxiom.setNamedConceptOnLeft(true);
+			browserAxiom.setReferencedComponentId(Concepts.TEMPORARY_AXIOM_CONCEPT_PLACEHOLDER);
+			browserAxiom.setModuleId(moduleId);
+			builder.addMember(inputFactory.createComponentInput(browserAxiom, SnomedRefSetMemberCreateRequest.class));
 		}
+		
 		for (ISnomedBrowserAxiom axiom : concept.getGciAxioms()) {
-			boolean namedConceptOnLeft = false;
-			builder.addMember(axiomUpdateHelper.getAxiomCreateRequest(namedConceptOnLeft, axiom, tempConceptId, moduleId));
+			SnomedBrowserAxiom browserAxiom = (SnomedBrowserAxiom) axiom;
+			browserAxiom.setNamedConceptOnLeft(false);
+			browserAxiom.setReferencedComponentId(Concepts.TEMPORARY_AXIOM_CONCEPT_PLACEHOLDER);
+			browserAxiom.setModuleId(moduleId);
+			builder.addMember(inputFactory.createComponentInput(browserAxiom, SnomedRefSetMemberCreateRequest.class));
 		}
 
 		// TODO remove cast, use only Request interfaces with proper type
@@ -146,12 +148,12 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 	}
 
 	@Override
-	public boolean canCreateInput(Class<? extends SnomedCoreComponentCreateRequest> inputType) {
+	public boolean canCreateInput(Class<? extends Request<TransactionContext, String>> inputType) {
 		return SnomedConceptCreateRequest.class.isAssignableFrom(inputType);
 	}
 
 	@Override
-	public boolean canCreateUpdate(Class<? extends SnomedComponentUpdateRequest> updateType) {
+	public boolean canCreateUpdate(Class<? extends Request<TransactionContext, Boolean>> updateType) {
 		return SnomedConceptUpdateRequest.class.isAssignableFrom(updateType);
 	}
 }
