@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import com.b2international.commons.ReflectionUtils;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.index.revision.RevisionIndex;
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.ConflictException;
@@ -78,7 +77,6 @@ import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
@@ -955,7 +953,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		// happen by the end of this method.
 		// the latch here makes sure that the handlers run before returning from this method.
 		CountDownLatch latch = new CountDownLatch(1);
-		MergeReviewCompletionHandler mergeReviewCompletionHandler = new MergeReviewCompletionHandler(address, bus, latch,
+		MergeReviewCompletionHandler mergeReviewCompletionHandler = new MergeReviewCompletionHandler(address, getBus(), latch,
 				// Set up one-shot handlers that will be notified when the merge completes successfully
 				new ConceptUpdateHandler(conceptUpdates, userId, extendedLocales, getBrowserService()), 
 				new MergeReviewDeleteHandler(mergeReview),
@@ -1001,20 +999,14 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	}
 
 	private IEventBus getBus() {
-		return Preconditions.checkNotNull(bus == null ? bus = ApplicationContext.getInstance().getServiceChecked(IEventBus.class) : bus,
-				"bus cannot be null!");
+		return bus;
 	}
 
 	private ISnomedBrowserService getBrowserService() {
-		return Preconditions.checkNotNull(
-				browserService == null ? browserService = ApplicationContext.getInstance().getServiceChecked(ISnomedBrowserService.class)
-						: browserService,
-				"browserService cannot be null!");
+		return browserService;
 	}
 
 	private SnomedManualConceptMergeServiceImpl getManualConceptMergeService() {
-		return Preconditions.checkNotNull(manualConceptMergeService == null
-				? manualConceptMergeService = ApplicationContext.getInstance().getServiceChecked(SnomedManualConceptMergeServiceImpl.class)
-				: manualConceptMergeService, "manualConceptMergeService cannot be null!");
+		return manualConceptMergeService;
 	}
 }

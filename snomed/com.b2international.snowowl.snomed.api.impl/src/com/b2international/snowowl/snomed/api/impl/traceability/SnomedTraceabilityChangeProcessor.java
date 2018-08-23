@@ -15,9 +15,11 @@
  */
 package com.b2international.snowowl.snomed.api.impl.traceability;
 
+import static com.b2international.snowowl.snomed.api.impl.SnomedClassificationServiceImpl.CLASSIFIED_ONTOLOGY;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +33,6 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.index.revision.RevisionIndex;
@@ -59,11 +60,11 @@ import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
+import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserAxiomService;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
-import com.b2international.snowowl.snomed.api.impl.SnomedBrowserAxiomExpander;
-import com.b2international.snowowl.snomed.api.impl.SnomedBrowserService;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
@@ -96,8 +97,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 
-import static com.b2international.snowowl.snomed.api.impl.SnomedClassificationServiceImpl.CLASSIFIED_ONTOLOGY;
-
 /**
  * Change processor implementation that produces a log entry for committed transactions.
  */
@@ -107,7 +106,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	private static final Logger SYS_LOGGER = LoggerFactory.getLogger(SnomedTraceabilityChangeProcessor.class);
 
 	//APDS-547 Classification commit message has the UUID of the classification prepended to it
-	static int classificationSaveMessageLength = 36 + CLASSIFIED_ONTOLOGY.length();
+	private static final int CLASSIFICATION_SAVE_MESSAGE_LENGTH = 36 + CLASSIFIED_ONTOLOGY.length();
 			
 	private static final Set<String> TRACKED_REFERENCE_SET_IDS = ImmutableSet.of(Concepts.REFSET_CONCEPT_INACTIVITY_INDICATOR,
 			Concepts.REFSET_DESCRIPTION_INACTIVITY_INDICATOR,
@@ -145,6 +144,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	private final boolean collectSystemChanges;
 	private final RevisionIndex index;
 	private final IBranchPath branchPath;
+	private ISnomedBrowserAxiomService axiomService;
 
 	private ICDOCommitChangeSet commitChangeSet;
 
@@ -302,7 +302,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				final String branch = commitChangeSet.getView().getBranch().getPathName();
 				
 				//APDS-547 We don't need to audit the object state when saving a classification
-				if (commitChangeSet.getCommitComment().length() == classificationSaveMessageLength && 
+				if (commitChangeSet.getCommitComment().length() == CLASSIFICATION_SAVE_MESSAGE_LENGTH && 
 						commitChangeSet.getCommitComment().endsWith(CLASSIFIED_ONTOLOGY)) {
 					SYS_LOGGER.info("Lightweight audit of classification save on {}", branch);
 				} else {
@@ -310,9 +310,8 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
 				
 					final SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
-						.filterByIds(conceptIds)
-							.setOffset(0)
-							.setLimit(entry.getChanges().size())
+							.setLimit(conceptIds.size())
+							.filterByIds(conceptIds)
 							.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
 							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 							.execute(bus)
@@ -320,6 +319,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					
 					final Set<SnomedBrowserConcept> convertedConcepts = new HashSet<>();
 					for (SnomedConcept concept : concepts) {
+						
 						SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
 						
 						convertedConcept.setActive(concept.isActive());
@@ -334,13 +334,21 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 						convertedConcept.setAssociationTargets(concept.getAssociationTargets());
 						convertedConcepts.add(convertedConcept);
 							
-						// PT and SYN labels are not populated
-						entry.setConcept(convertedConcept.getId(), convertedConcept);
 					}
 					
-					// Lookup and expand axioms
-					AxiomRelationshipConversionService axiomConversionService = SnomedBrowserService.getAxiomConversionService(branch, bus);
-					new SnomedBrowserAxiomExpander().expandAxioms(convertedConcepts, axiomConversionService, getLocales(), branch, bus);
+					Collection<? extends ISnomedBrowserConcept> resultsConcepts;
+					
+					if (!convertedConcepts.isEmpty()) { // Lookup and expand axioms
+						resultsConcepts = getAxiomService().expandAxioms(convertedConcepts, branch, getLocales());
+					} else {
+						resultsConcepts = convertedConcepts;
+					}
+					
+					for (ISnomedBrowserConcept result : resultsConcepts) {
+						// PT and SYN labels are not populated
+						entry.setConcept(result.getId(), (SnomedBrowserConcept) result);
+					}
+					
 				}
 			}
 			TRACE_LOGGER.info(WRITER.writeValueAsString(entry));
@@ -398,9 +406,8 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				type.setFsn(input.getTypeId());
 				convertedRelationship.setType(type);
 				
-				final SnomedBrowserRelationshipTarget target = new SnomedBrowserRelationshipTarget();
+				final SnomedBrowserRelationshipTarget target = new SnomedBrowserRelationshipTarget(input.getDestinationId());
 				target.setActive(input.getDestination().isActive());
-				target.setConceptId(input.getDestinationId());
 				target.setDefinitionStatus(input.getDestination().getDefinitionStatus());
 				target.setEffectiveTime(input.getDestination().getEffectiveTime());
 				target.setFsn(input.getDestinationId());
@@ -431,6 +438,13 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	public void rollback() throws SnowowlServiceException {
 		this.entry = null;
 		this.commitChangeSet = null;
+	}
+	
+	public ISnomedBrowserAxiomService getAxiomService() {
+		if (axiomService == null) {
+			axiomService = ApplicationContext.getServiceForClass(ISnomedBrowserAxiomService.class);
+		}
+		return axiomService;
 	}
 
 }
