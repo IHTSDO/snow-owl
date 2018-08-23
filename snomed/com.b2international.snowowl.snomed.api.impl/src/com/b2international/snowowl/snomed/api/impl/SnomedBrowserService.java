@@ -31,8 +31,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import javax.annotation.Resource;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,9 +128,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	private static final String CONCEPT_ID_PLACEHOLDER = "$";
 
 	private final Cache<String, SnomedBrowserBulkChangeRun> bulkChangeRuns = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.DAYS).build();
-	
-	@Resource
-	private ISnomedBrowserAxiomService axiomService;
 	
 	@Override
 	public ISnomedBrowserConcept getConceptDetails(final String branchPath, final String conceptId, final List<ExtendedLocale> extendedLocales) {
@@ -901,6 +896,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	private ISnomedBrowserAxiomService getAxiomService() {
-		return axiomService;
+		return ApplicationContext.getServiceForClass(ISnomedBrowserAxiomService.class);
 	}
 }
