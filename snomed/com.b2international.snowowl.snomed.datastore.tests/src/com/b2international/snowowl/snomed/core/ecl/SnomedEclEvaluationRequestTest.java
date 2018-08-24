@@ -785,21 +785,15 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	public void refinementWithZeroToOneCardinalityInAttributeConjuction() throws Exception {
 		generateHierarchy();
 		final Expression actual = eval(String.format("<<%s:{[0..1]%s=<<%s,[1..1]%s=<<%s,[1..1]%s=<<%s}", DRUG_ROOT, HAS_ACTIVE_INGREDIENT, SUBSTANCE, HAS_BOSS, SUBSTANCE, HAS_TRADE_NAME, SUBSTANCE));
-		
-		final Expression descendantsOrSelfOf = Expressions.builder()
-				.should(ids(Collections.singleton(DRUG_ROOT)))
-				.should(parents(Collections.singleton(DRUG_ROOT)))
-				.should(ancestors(Collections.singleton(DRUG_ROOT)))
-				.build();
-		
+
 		final Expression expected = and(
-			descendantsOrSelfOf,
+			descendantsOrSelfOf(expressionForm, DRUG_ROOT),
 			ids(ImmutableSet.of(ABACAVIR_TABLET, PANADOL_TABLET))
 		);
 		
 		assertEquals(expected, actual);
 	}
-	
+
 	@Test
 	public void refinementGroupDefaultCardinalityAndRelationshipOneToOneCardinality() throws Exception {
 		generateDrugsWithGroups();
@@ -1396,6 +1390,25 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 					.build();
 		}
 		
+		return expression;
+	}
+	
+	private Expression descendantsOrSelfOf(String expressionForm, String...conceptIds) {
+		Expression expression;
+		if (Trees.INFERRED_FORM.equals(expressionForm)) {
+			expression = Expressions.builder()
+					.should(ids(ImmutableSet.copyOf(conceptIds)))
+					.should(parents(ImmutableSet.copyOf(conceptIds)))
+					.should(ancestors(ImmutableSet.copyOf(conceptIds)))
+					.build();
+					
+		} else {
+			expression = Expressions.builder()
+					.should(ids(ImmutableSet.copyOf(conceptIds)))
+					.should(statedParents(ImmutableSet.copyOf(conceptIds)))
+					.should(statedAncestors(ImmutableSet.copyOf(conceptIds)))
+					.build();
+		}
 		return expression;
 	}
 
