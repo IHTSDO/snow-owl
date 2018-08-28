@@ -17,6 +17,8 @@ package com.b2international.snowowl.snomed.datastore.config;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * Drools related application level configuration parameters.
  * 
@@ -25,17 +27,16 @@ import org.hibernate.validator.constraints.NotEmpty;
 public class SnomedDroolsConfiguration {
 	
 	@NotEmpty
-	private String rulesDirectory;
+	private String rulesDirectory = "/opt/termserver/snomed-drools-rules";
 	
-	@NotEmpty
+	@JsonProperty(required = false)
 	private String awsKey;
 	
-	@NotEmpty
+	@JsonProperty(required = false)
 	private String awsPrivateKey;
 	
-	@NotEmpty
+	@JsonProperty(required = false)
 	private String resourcesPath;
-
 	
 	/**
 	 * @return the rules directory

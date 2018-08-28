@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import com.b2international.snowowl.snomed.core.lang.StaticLanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationServiceConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.config.SnomedDroolsConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdentiferReservationService;
 import com.b2international.snowowl.snomed.datastore.id.reservations.Reservation;
@@ -65,6 +66,14 @@ public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
 				LOGGER.info("External classification service url is set to {}", externalService.getUrl());
 			}
 		}
+		
+		if (coreConfig.getDroolsConfig() != null && coreConfig.getDroolsConfig().getRulesDirectory() != null) {
+			final SnomedDroolsConfiguration droolsConfig = coreConfig.getDroolsConfig();
+			if (!Strings.isNullOrEmpty(droolsConfig.getRulesDirectory())) {
+				LOGGER.info("Drools service rule directory is set to {}", droolsConfig.getRulesDirectory());
+			}
+		}
+		
 		env.services().registerService(LanguageSetting.class, new StaticLanguageSetting(coreConfig.getLanguage(), SnomedCoreConfiguration.DEFAULT_LANGUAGE));
 		final Injector injector = new EclStandaloneSetup().createInjectorAndDoEMFRegistration();
 		env.services().registerService(EclParser.class, new DefaultEclParser(injector.getInstance(IParser.class), injector.getInstance(IResourceValidator.class)));
