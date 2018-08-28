@@ -32,6 +32,7 @@ import com.b2international.snowowl.datastore.config.IndexConfiguration;
 import com.b2international.snowowl.datastore.config.IndexSettings;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.rpc.RpcConfiguration;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 
 /**
@@ -71,7 +72,15 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 			LOG.info("Set translog sync interval to {}", "5m");
 			builder.put("translog.flush_threshold_size", "1gb");
 			LOG.info("Set translog flush threshold size to {}", "1gb");
-			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, Runtime.getRuntime().availableProcessors());
+			
+			int commitConcurrencyLevel = indexConfig.getCommitConcurrencyLevel();
+			if (Strings.isNullOrEmpty(indexConfig.getClusterUrl())) {
+				commitConcurrencyLevel = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+			} else {
+				commitConcurrencyLevel = Runtime.getRuntime().availableProcessors();
+			}
+			
+			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, commitConcurrencyLevel);
 			LOG.info("Set commit concurrency level to {}", Runtime.getRuntime().availableProcessors());
 			repositoryConfiguration.setRevisionCacheEnabled(false);
 			LOG.info("Set revision cache to {} for reindexing", repositoryConfiguration.isRevisionCacheEnabled());
