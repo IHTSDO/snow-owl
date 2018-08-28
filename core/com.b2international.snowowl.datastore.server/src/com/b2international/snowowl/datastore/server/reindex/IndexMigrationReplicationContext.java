@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.datastore.server.reindex;
 
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
@@ -31,6 +32,9 @@ import org.eclipse.emf.cdo.common.revision.CDORevision;
 import org.eclipse.emf.cdo.common.revision.CDORevisionKey;
 import org.eclipse.emf.cdo.common.revision.delta.CDORevisionDelta;
 import org.eclipse.emf.cdo.internal.server.DelegatingRepository;
+import org.eclipse.emf.cdo.internal.server.Repository;
+import org.eclipse.emf.cdo.server.IStoreAccessor.CommitContext;
+import org.eclipse.emf.cdo.server.ITransaction;
 import org.eclipse.emf.cdo.server.StoreThreadLocal;
 import org.eclipse.emf.cdo.spi.common.CDOReplicationContext;
 import org.eclipse.emf.cdo.spi.common.revision.DelegatingCDORevisionManager;
@@ -42,9 +46,11 @@ import org.eclipse.emf.cdo.spi.server.InternalTransaction;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.net4j.db.DBException;
 import org.eclipse.net4j.util.om.monitor.Monitor;
+import org.eclipse.net4j.util.om.monitor.OMMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.commons.ReflectionUtils;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.domain.RepositoryContext;
@@ -55,6 +61,7 @@ import com.b2international.snowowl.datastore.replicate.BranchReplicator.SkipBran
 import com.b2international.snowowl.datastore.request.repository.OptimizeRequest;
 import com.b2international.snowowl.datastore.request.repository.PurgeRequest;
 import com.b2international.snowowl.terminologymetadata.TerminologymetadataPackage;
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 
 /**
@@ -234,6 +241,40 @@ class IndexMigrationReplicationContext implements CDOReplicationContext {
 			}
 			
 			@Override
+			public void notifyWriteAccessHandlers(ITransaction transaction, CommitContext commitContext, boolean beforeCommit, OMMonitor monitor) {
+				
+				WriteAccessHandler[] handlers;
+
+				List<WriteAccessHandler> writeAccessHandlers = ReflectionUtils.getField(Repository.class, (Repository) getDelegate(), "writeAccessHandlers");
+				
+				synchronized (writeAccessHandlers) {
+					int size = writeAccessHandlers.size();
+					if (size == 0) {
+						return;
+					}
+
+					handlers = writeAccessHandlers.toArray(new WriteAccessHandler[size]);
+				}
+
+				try {
+					monitor.begin(handlers.length);
+					for (WriteAccessHandler handler : handlers) {
+						try {
+							if (beforeCommit) {
+								handler.handleTransactionBeforeCommitting(transaction, commitContext, monitor.fork());
+							} else {
+								handler.handleTransactionAfterCommitted(transaction, commitContext, monitor.fork());
+							}
+						} catch (RuntimeException ex) {
+							throw ex; // enforce throwing exceptions in both before and after phase
+						}
+					}
+				} finally {
+					monitor.done();
+				}
+			}
+			
+			@Override
 			protected InternalRepository getDelegate() {
 				return repository;
 			}
@@ -277,13 +318,21 @@ class IndexMigrationReplicationContext implements CDOReplicationContext {
 		try {
 			commitContext.write(new Monitor());
 			commitContext.commit(new Monitor());
-			success = true;
-			processedCommits++;
+			if (Strings.isNullOrEmpty(commitContext.getRollbackMessage())) { // workaround to catch swallowed exceptions
+				success = true;
+				processedCommits++;
+			}
 		} finally {
 			commitContext.postCommit(success);
 			transaction.close();
 			StoreThreadLocal.setSession(replicatorSession);
+			if (!success) { // terminate reindex to prevent moving forward with further commits upon failure
+				RuntimeException runtimeException = new RuntimeException(commitContext.getRollbackMessage());
+				exception = runtimeException;
+				throw runtimeException;
+			}
 		}
+		
 	}
 
 	private String prettyPrint(long timestamp) {
