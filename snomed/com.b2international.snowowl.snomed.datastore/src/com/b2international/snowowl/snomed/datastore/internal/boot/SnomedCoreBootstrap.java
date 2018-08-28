@@ -38,6 +38,7 @@ import com.b2international.snowowl.snomed.core.lang.StaticLanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationServiceConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.config.SnomedDroolsConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedNamespaceAndModuleAssignerProvider;
 import com.b2international.snowowl.snomed.ecl.EclStandaloneSetup;
 import com.b2international.snowowl.snomed.validation.SnomedQueryValidationRuleEvaluator;
@@ -62,6 +63,14 @@ public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
 				LOGGER.info("External classification service url is set to {}", externalService.getUrl());
 			}
 		}
+		
+		if (coreConfig.getDroolsConfig() != null && coreConfig.getDroolsConfig().getRulesDirectory() != null) {
+			final SnomedDroolsConfiguration droolsConfig = coreConfig.getDroolsConfig();
+			if (!Strings.isNullOrEmpty(droolsConfig.getRulesDirectory())) {
+				LOGGER.info("Drools service rule directory is set to {}", droolsConfig.getRulesDirectory());
+			}
+		}
+		
 		env.services().registerService(LanguageSetting.class, new StaticLanguageSetting(coreConfig.getLanguage(), SnomedCoreConfiguration.DEFAULT_LANGUAGE));
 		
 		final Injector injector = new EclStandaloneSetup().createInjectorAndDoEMFRegistration();
