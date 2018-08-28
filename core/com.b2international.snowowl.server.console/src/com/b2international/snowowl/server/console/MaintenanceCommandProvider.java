@@ -30,6 +30,7 @@ import com.b2international.index.revision.Purge;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.Repositories;
 import com.b2international.snowowl.core.RepositoryInfo;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
@@ -243,6 +244,11 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		
 		if (Strings.isNullOrEmpty(repositoryId)) {
 			interpreter.println("RepositoryId parameter is required");
+			return;
+		}
+		
+		if (!Boolean.getBoolean(SnowOwlApplication.REINDEX_KEY)) {
+			interpreter.println(String.format("Please restart Snow Owl with JVM property '-D%s=true'", SnowOwlApplication.REINDEX_KEY));
 			return;
 		}
 		
