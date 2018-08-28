@@ -81,9 +81,10 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 			}
 			
 			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, commitConcurrencyLevel);
-			LOG.info("Set commit concurrency level to {}", Runtime.getRuntime().availableProcessors());
+			LOG.info("Set commit concurrency level to {}", commitConcurrencyLevel);
 			repositoryConfiguration.setRevisionCacheEnabled(false);
 			LOG.info("Set revision cache to {} for reindexing", repositoryConfiguration.isRevisionCacheEnabled());
+			
 		} else {
 			builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, indexConfig.getCommitInterval());
 			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, indexConfig.getCommitConcurrencyLevel());
