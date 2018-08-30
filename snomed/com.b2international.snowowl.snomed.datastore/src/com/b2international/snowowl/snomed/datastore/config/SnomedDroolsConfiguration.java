@@ -36,6 +36,9 @@ public class SnomedDroolsConfiguration {
 	private String awsPrivateKey;
 	
 	@JsonProperty(required = false)
+	private String resourcesBucket;
+	
+	@JsonProperty(required = false)
 	private String resourcesPath;
 	
 	/**
@@ -78,6 +81,20 @@ public class SnomedDroolsConfiguration {
 	 */
 	public void setAwsPrivateKey(String awsPrivateKey) {
 		this.awsPrivateKey = awsPrivateKey;
+	}
+
+	/**
+	 * @return the resourcesBucket
+	 */
+	public String getResourcesBucket() {
+		return resourcesBucket;
+	}
+	
+	/**
+	 * @param resourcesBucket the resourcesBucket to set
+	 */
+	public void setResourcesBucket(String resourcesBucket) {
+		this.resourcesBucket = resourcesBucket;
 	}
 
 	/**
