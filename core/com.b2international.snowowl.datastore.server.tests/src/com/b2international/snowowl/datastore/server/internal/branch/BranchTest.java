@@ -38,6 +38,7 @@ public class BranchTest {
 	private BranchManagerImpl manager;
 	private InternalBranch main;
 	private InternalBranch branchA;
+	private String testBranchName;
 	
 	@Before
 	public void before() {
@@ -45,6 +46,7 @@ public class BranchTest {
 		main = new MainBranchImpl(currentTimestamp());
 		main.setBranchManager(manager);
 		branchA = createBranch(main, "a");
+		testBranchName = "TEST";
 	}
 	
 	private long currentTimestamp() {
@@ -135,6 +137,67 @@ public class BranchTest {
 	@Test
 	public void testDivergedState() throws Exception {
 		assertState(commit(branchA), commit(main), BranchState.DIVERGED);
+	}
+	
+	@Test
+	public void testSuccessOfCheckNameWithValidTempBranchName() {
+		final String tempBranchName = createTempBranchName(testBranchName);
+		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
+	}
+	
+	@Test
+	public void testSuccessOfCheckNameWithValidBranchName() {
+		Branch.BranchNameValidator.DEFAULT.checkName(testBranchName);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfCheckNameWithMalformedTempBranchName() {
+		final String tempBranchName = createTempBranchName("TEST$$");
+		Branch.BranchNameValidator.DEFAULT.checkName(tempBranchName);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfCheckNameWithEmptyBranchName() {
+		Branch.BranchNameValidator.DEFAULT.checkName("");
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfCheckNameWithMalformedBranchName() {
+		Branch.BranchNameValidator.DEFAULT.checkName("/TEST");
+	}
+	
+	@Test
+	public void testSuccessOfGetNameWithValidBranchName() {
+		final String result = Branch.BranchNameValidator.DEFAULT.getName(testBranchName);
+		assertEquals(testBranchName, result);
+	}
+	
+	@Test
+	public void testSuccessOfGetNameWithValidTempBranchName() {
+		final String tempBranchName = createTempBranchName(testBranchName);
+		final String result = Branch.BranchNameValidator.DEFAULT.getName(tempBranchName);
+		assertEquals(testBranchName, result);
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfGetNameWithMalformedBranchName() {
+		Branch.BranchNameValidator.DEFAULT.getName("TEST$$");
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfGetNameWithEmptyBranchName() {
+		Branch.BranchNameValidator.DEFAULT.getName("");
+	}
+	
+	@Test(expected = BadRequestException.class)
+	public void testFailureOfGetNameWithMalformedTempBranchName() {
+		final String tempBranchName = createTempBranchName("$TEST");
+		Branch.BranchNameValidator.DEFAULT.getName(tempBranchName);
+	}
+	
+	
+	private String createTempBranchName(String name) {
+		return String.format(Branch.TEMP_BRANCH_NAME_FORMAT, Branch.TEMP_PREFIX, name, System.currentTimeMillis());
 	}
 
 	private InternalBranch commit(InternalBranch branch) {
