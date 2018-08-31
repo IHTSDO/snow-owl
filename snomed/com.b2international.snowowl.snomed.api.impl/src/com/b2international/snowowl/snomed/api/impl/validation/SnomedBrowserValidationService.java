@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
@@ -31,6 +32,7 @@ import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.google.common.base.Strings;
+import com.b2international.snowowl.snomed.datastore.config.SnomedDroolsConfiguration;
 
 public class SnomedBrowserValidationService implements ISnomedBrowserValidationService {
 
@@ -39,9 +41,11 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	@Resource
 	private IEventBus bus;
 	private RuleExecutor ruleExecutor;
+	private SnomedDroolsConfiguration droolsConfig;
 	
 	public SnomedBrowserValidationService() {
-		ruleExecutor = newRuleExecutor();
+		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedDroolsConfiguration.class);
+		ruleExecutor = newRuleExecutor(false);
 	}
 
 	@Override
@@ -84,13 +88,12 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 
 	@Override
 	public int reloadRules() {
-		ruleExecutor = newRuleExecutor();
+		ruleExecutor = newRuleExecutor(true);
 		return ruleExecutor.getTotalRulesLoaded();
 	}
 
-	private RuleExecutor newRuleExecutor() {
-		// TODO: Move path to configuration
-		return new RuleExecutor("/opt/termserver/snomed-drools-rules");
+	private RuleExecutor newRuleExecutor(boolean releadSemanticTags) {
+		return new RuleExecutor(droolsConfig.getRulesDirectory(), droolsConfig.getAwsKey(), droolsConfig.getAwsPrivateKey(), droolsConfig.getResourcesBucket(), droolsConfig.getResourcesPath(), releadSemanticTags);
 	}
 
 }
