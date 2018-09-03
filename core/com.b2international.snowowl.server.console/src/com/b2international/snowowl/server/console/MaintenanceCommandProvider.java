@@ -25,8 +25,6 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
@@ -109,11 +107,6 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	private static final String REPOSITORIES_COMMAND = "repositories";
 	private static final String VERSION_COMMAND = "--version";
 	
-	private static final Pattern TMP_BRANCH_NAME_PATTERN = Pattern.compile(String.format("^(%s)([%s]{1,%s})(_[0-9]{1,19}$)",
-			Pattern.quote(Branch.TEMP_PREFIX), 
-			Branch.DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET, 
-			Branch.DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH));
-
 	@Override
 	public String getHelp() {
 		StringBuffer buffer = new StringBuffer();
@@ -450,19 +443,11 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	private boolean isBranchesStructurallyEqual(InternalCDOBasedBranch keep, InternalCDOBasedBranch remove) {
 		return keep.baseTimestamp() == remove.baseTimestamp() &&
 				keep.parentPath().equals(remove.parentPath()) &&
-				keep.name().equals(getBareTemporaryBranchName(remove.name())) &&
+				keep.name().equals(Branch.BranchNameValidator.DEFAULT.getName(remove.name())) &&
 				keep.parentSegments().size() == remove.parentSegments().size() && keep.parentSegments().containsAll(remove.parentSegments()) &&
 				keep.segments().size() >= remove.segments().size() && keep.segments().containsAll(remove.segments());
 	}
 	
-	private String getBareTemporaryBranchName(String tempBranchName) {
-		Matcher matcher = TMP_BRANCH_NAME_PATTERN.matcher(tempBranchName);
-		if (matcher.matches()) {
-			return matcher.group(2);
-		}
-		return "";
-	}
-
 	private static final String COLUMN_FORMAT = "|%-16s|%-16s|%-16s|";
 	
 	private void repositories(CommandInterpreter interpreter) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,10 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	@Valid
 	@JsonProperty(value = "classification")
 	private SnomedClassificationConfiguration classificationConfig = new SnomedClassificationConfiguration();
+	
+	@Valid
+	@JsonProperty(value = "drools")
+	private SnomedDroolsConfiguration droolsConfig = new SnomedDroolsConfiguration();
 	
 	private boolean collectSystemChanges = false;
 	
@@ -147,6 +151,20 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	 */
 	public void setClassificationConfig(SnomedClassificationConfiguration classificationConfig) {
 		this.classificationConfig = classificationConfig;
+	}
+	
+	/**
+	 * Get all drools related configurations
+	 */
+	public SnomedDroolsConfiguration getDroolsConfig() {
+		return droolsConfig;
+	}
+	
+	/**
+	 * Sets the drools related configurations
+	 */
+	public void setDroolsConfig(SnomedDroolsConfiguration droolsConfig) {
+		this.droolsConfig = droolsConfig;
 	}
 	
 	/**
