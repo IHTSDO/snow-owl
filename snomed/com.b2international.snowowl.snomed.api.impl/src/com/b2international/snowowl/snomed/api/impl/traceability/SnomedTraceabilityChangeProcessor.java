@@ -15,15 +15,13 @@
  */
 package com.b2international.snowowl.snomed.api.impl.traceability;
 
-import static com.b2international.snowowl.snomed.api.impl.SnomedClassificationServiceImpl.CLASSIFIED_ONTOLOGY;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.TimeZone;
 
 import org.eclipse.emf.cdo.CDOObject;
 import org.eclipse.emf.cdo.common.revision.delta.CDOFeatureDelta;
@@ -39,17 +37,18 @@ import com.b2international.index.revision.RevisionIndex;
 import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.CoreTerminologyBroker;
+import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.events.metrics.MetricsThreadLocal;
 import com.b2international.snowowl.core.events.metrics.Timer;
+import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.datastore.ICDOChangeProcessor;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
-import com.b2international.snowowl.datastore.index.DelegatingIndexCommitChangeSet;
 import com.b2international.snowowl.datastore.index.ImmutableIndexCommitChangeSet;
 import com.b2international.snowowl.datastore.index.IndexCommitChangeSet;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -70,6 +69,8 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserD
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
+import com.b2international.snowowl.snomed.common.ContentSubType;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
@@ -79,20 +80,17 @@ import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedDescriptionLookupService;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAnnotationRefSetMember;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
@@ -100,45 +98,36 @@ import com.google.common.collect.ImmutableSet;
 /**
  * Change processor implementation that produces a log entry for committed transactions.
  */
+@SuppressWarnings("deprecation")
 public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 
 	private static final Logger TRACE_LOGGER = LoggerFactory.getLogger("traceability");
 	private static final Logger SYS_LOGGER = LoggerFactory.getLogger(SnomedTraceabilityChangeProcessor.class);
 
-	//APDS-547 Classification commit message has the UUID of the classification prepended to it
-	private static final int CLASSIFICATION_SAVE_MESSAGE_LENGTH = 36 + CLASSIFIED_ONTOLOGY.length();
-			
-	private static final Set<String> TRACKED_REFERENCE_SET_IDS = ImmutableSet.of(Concepts.REFSET_CONCEPT_INACTIVITY_INDICATOR,
-			Concepts.REFSET_DESCRIPTION_INACTIVITY_INDICATOR,
-			Concepts.REFSET_ALTERNATIVE_ASSOCIATION,
-			Concepts.REFSET_MOVED_FROM_ASSOCIATION,
-			Concepts.REFSET_MOVED_TO_ASSOCIATION,
-			Concepts.REFSET_POSSIBLY_EQUIVALENT_TO_ASSOCIATION,
-			Concepts.REFSET_REFERS_TO_ASSOCIATION,
-			Concepts.REFSET_REPLACED_BY_ASSOCIATION,
-			Concepts.REFSET_SAME_AS_ASSOCIATION,
-			Concepts.REFSET_SIMILAR_TO_ASSOCIATION,
-			Concepts.REFSET_WAS_A_ASSOCIATION);
-	
 	private static final String OWL_AXIOM = "OwlAxiom";
 
-	private static final ObjectWriter WRITER;
-
-	private static final Set<EStructuralFeature> IGNORED_FEATURES = ImmutableSet.<EStructuralFeature>of(SnomedPackage.Literals.CONCEPT__DESCRIPTIONS,
-			SnomedPackage.Literals.CONCEPT__OUTBOUND_RELATIONSHIPS);
+	private static final Set<EClass> MRCM_REFSET_MEMBER_TYPES = ImmutableSet.<EClass>of(
+			SnomedRefSetPackage.Literals.SNOMED_MRCM_DOMAIN_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_MRCM_ATTRIBUTE_DOMAIN_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_MRCM_ATTRIBUTE_RANGE_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_MRCM_MODULE_SCOPE_REF_SET_MEMBER);
 	
-	static {
-		final ObjectMapper objectMapper = new ObjectMapper();
-		objectMapper.setSerializationInclusion(Include.NON_EMPTY);
-
-		final ISO8601DateFormat df = new ISO8601DateFormat();
-		df.setTimeZone(TimeZone.getTimeZone("UTC"));
-		objectMapper.setDateFormat(df);
-		objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-
-		WRITER = objectMapper.writer();
-	}
-
+	private static final Set<EClass> DETACHED_REFSET_MEMBER_TYPES = ImmutableSet.<EClass>of(
+			SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_LANGUAGE_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_ASSOCIATION_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_ATTRIBUTE_VALUE_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_MRCM_DOMAIN_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_MRCM_ATTRIBUTE_DOMAIN_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_MRCM_ATTRIBUTE_RANGE_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_MRCM_MODULE_SCOPE_REF_SET_MEMBER);
+	
+	private static final Set<EStructuralFeature> IGNORED_FEATURES = ImmutableSet.<EStructuralFeature>of(
+			SnomedPackage.Literals.CONCEPT__DESCRIPTIONS,
+			SnomedPackage.Literals.CONCEPT__OUTBOUND_RELATIONSHIPS,
+			SnomedPackage.Literals.CONCEPT__FULLY_SPECIFIED_NAME,
+			SnomedPackage.Literals.RELATIONSHIP__REFINABILITY_REF_SET_MEMBERS);
+	
 	private TraceabilityEntry entry;
 
 	private final boolean collectSystemChanges;
@@ -147,100 +136,218 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	private ISnomedBrowserAxiomService axiomService;
 
 	private ICDOCommitChangeSet commitChangeSet;
+	private ObjectWriter objectWriter;
+	private SnomedDescriptionLookupService descriptionLookupService;
 
-	public SnomedTraceabilityChangeProcessor(final RevisionIndex index, final IBranchPath branchPath, final boolean collectSystemChanges) {
-		this.branchPath = branchPath;
-		this.index = index;
-		this.collectSystemChanges = collectSystemChanges;
+	public SnomedTraceabilityChangeProcessor(final IBranchPath branchPath, ObjectWriter objectWriter) {
+		this.branchPath = checkNotNull(branchPath);
+		this.objectWriter = checkNotNull(objectWriter);
+		this.index = ApplicationContext.getServiceForClass(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
+		this.collectSystemChanges = collectSystemChanges(branchPath.getPath());
+		this.descriptionLookupService = new SnomedDescriptionLookupService();
 	}
 
 	@Override
 	public void process(ICDOCommitChangeSet commitChangeSet) throws SnowowlServiceException {
+		
 		final Timer traceabilityTimer = MetricsThreadLocal.get().timer("traceability");
+		
 		try {
+			
 			traceabilityTimer.start();
-			this.commitChangeSet = commitChangeSet;
+			
 			this.entry = new TraceabilityEntry(commitChangeSet);
 			
-			// No other details required for "System user" commits
-			if (isSystemCommit() && !collectSystemChanges) {
+			if (isSystemCommit(commitChangeSet.getUserId()) && !collectSystemChanges) {
 				return;
 			}
 			
-			for (CDOObject newComponent : commitChangeSet.getNewComponents()) {
-				processAddition(newComponent);
-			}
+			this.commitChangeSet = commitChangeSet;
 			
-			for (CDOObject dirtyComponent : commitChangeSet.getDirtyComponents()) {
-				processUpdate(dirtyComponent);
-			}
+			processNewComponents(commitChangeSet.getNewComponents());
+			processComponentUpdates(commitChangeSet.getDirtyComponents());
+			processComponentDeletions(commitChangeSet);
 			
-			final Set<Long> detachedConceptStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.CONCEPT)));
-			final Set<Long> detachedDescriptionStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.DESCRIPTION)));
-			final Set<Long> detachedRelationshipStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.RELATIONSHIP)));
-			final Set<Long> detachedAnnotationMemberStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER)));
-			
-			index.read(branchPath.getPath(), new RevisionIndexRead<Void>() {
-				@Override
-				public Void execute(RevisionSearcher searcher) throws IOException {
-					
-					for (SnomedConceptDocument detachedConcept : searcher.get(SnomedConceptDocument.class, detachedConceptStorageKeys)) {
-						entry.registerChange(detachedConcept.getId(), new TraceabilityChange(SnomedPackage.Literals.CONCEPT, detachedConcept.getId(), ChangeType.DELETE));
-					}
-					
-					for (SnomedDescriptionIndexEntry detachedDescription : searcher.get(SnomedDescriptionIndexEntry.class, detachedDescriptionStorageKeys)) {
-						entry.registerChange(detachedDescription.getConceptId(), new TraceabilityChange(SnomedPackage.Literals.DESCRIPTION, detachedDescription.getId(), ChangeType.DELETE));
-					}
-					
-					for (SnomedRelationshipIndexEntry detachedRelationship : searcher.get(SnomedRelationshipIndexEntry.class, detachedRelationshipStorageKeys)) {
-						entry.registerChange(detachedRelationship.getSourceId(), new TraceabilityChange(SnomedPackage.Literals.RELATIONSHIP, detachedRelationship.getId(), ChangeType.DELETE));
-					}
-					
-					for (SnomedRefSetMemberIndexEntry detachedAnnotationMember : searcher.get(SnomedRefSetMemberIndexEntry.class, detachedAnnotationMemberStorageKeys)) {					
-						if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(detachedAnnotationMember.getReferenceSetId())) {
-							entry.registerChange(detachedAnnotationMember.getReferencedComponentId(), 
-									new TraceabilityChange(OWL_AXIOM, detachedAnnotationMember.getId(), ChangeType.DELETE));
-						}
-					}
-					
-					return null;
-				}
-			});
 		} finally {
 			traceabilityTimer.stop();
 		}
 	}
 
-	private boolean isSystemCommit() {
-		return SpecialUserStore.SYSTEM_USER_NAME.equals(commitChangeSet.getUserId());
+	@Override
+	public IndexCommitChangeSet commit() throws SnowowlServiceException {
+		SYS_LOGGER.info("Collected {} traceability entries on branch {}", entry.getChanges().size(), branchPath.getPath());
+		return ImmutableIndexCommitChangeSet.builder().build();
 	}
-	
-	private void processAddition(CDOObject newComponent) {
-		final EClass eClass = newComponent.eClass();
 
-		if (SnomedPackage.Literals.CONCEPT.equals(eClass)) {
-			final Concept newConcept = (Concept) newComponent;
-			entry.registerChange(newConcept.getId(), new TraceabilityChange(eClass, newConcept.getId(), ChangeType.CREATE));
-		} else if (SnomedPackage.Literals.DESCRIPTION.equals(eClass)) {
-			final Description newDescription = (Description) newComponent;
-			entry.registerChange(newDescription.getConcept().getId(), new TraceabilityChange(eClass, newDescription.getId(), ChangeType.CREATE));
-		} else if (SnomedPackage.Literals.RELATIONSHIP.equals(eClass)) {
-			final Relationship newRelationship = (Relationship) newComponent;
-			entry.registerChange(newRelationship.getSource().getId(), new TraceabilityChange(eClass, newRelationship.getId(), ChangeType.CREATE));
-		} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
-			final SnomedAnnotationRefSetMember member = (SnomedAnnotationRefSetMember) newComponent;
-			if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(member.getRefSetIdentifierId())) {
-				entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.CREATE));
+	@Override
+	public void afterCommit() {
+		
+		final Timer traceabilityTimer = MetricsThreadLocal.get().timer("traceability");
+		
+		try {
+			
+			traceabilityTimer.start();
+			
+			if (commitChangeSet != null) {
+				
+				boolean isLightWeight = false;
+				
+				if (!entry.getChanges().isEmpty()) {
+					
+					if (!isDeltaImportInProgress(branchPath.getPath()) && !isClassificationInProgress(branchPath.getPath())) {
+						
+						final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
+						
+						final SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
+								.setLimit(conceptIds.size())
+								.filterByIds(conceptIds)
+								.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
+								.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+								.execute(getBus())
+								.getSync();
+						
+						final Set<SnomedBrowserConcept> convertedConcepts = newHashSet();
+						
+						for (SnomedConcept concept : concepts) {
+							
+							SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
+							
+							convertedConcept.setActive(concept.isActive());
+							convertedConcept.setConceptId(concept.getId());
+							convertedConcept.setDefinitionStatus(concept.getDefinitionStatus());
+							convertedConcept.setDescriptions(convertDescriptions(concept.getDescriptions()));
+							convertedConcept.setEffectiveTime(concept.getEffectiveTime());
+							convertedConcept.setModuleId(concept.getModuleId());
+							convertedConcept.setRelationships(convertRelationships(concept.getRelationships()));
+							convertedConcept.setFsn(concept.getId());
+							convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
+							convertedConcept.setAssociationTargets(concept.getAssociationTargets());
+							convertedConcepts.add(convertedConcept);
+								
+						}
+						
+						Collection<? extends ISnomedBrowserConcept> resultsConcepts;
+						
+						if (!convertedConcepts.isEmpty()) { // Lookup and expand axioms
+							resultsConcepts = getAxiomService().expandAxioms(convertedConcepts, branchPath.getPath(), getLocales());
+						} else {
+							resultsConcepts = convertedConcepts;
+						}
+						
+						for (ISnomedBrowserConcept result : resultsConcepts) {
+							// PT and SYN labels are not populated
+							entry.setConcept(result.getId(), (SnomedBrowserConcept) result);
+						}
+						
+					} else {
+						isLightWeight = true;
+					}
+					
+				}
+				
+				TRACE_LOGGER.info(objectWriter.writeValueAsString(entry));
+				SYS_LOGGER.info("Logged {} {}traceability entries on branch {}", entry.getChanges().size(), isLightWeight ? "lightweight " : "", branchPath.getPath());
 			}
+			
+		} catch (IOException e) {
+			throw SnowowlRuntimeException.wrap(e);
+		} finally {
+			traceabilityTimer.stop();
+		}
+	}
+
+	@Override
+	public String getName() {
+		return "SNOMED CT Traceability";
+	}
+
+	@Override
+	public void rollback() throws SnowowlServiceException {
+		this.entry = null;
+		this.commitChangeSet = null;
+	}
+
+	private void processNewComponents(Collection<CDOObject> newComponents) {
+		
+		for (CDOObject newComponent : newComponents) {
+			
+			final EClass eClass = newComponent.eClass();
+			
+			if (SnomedPackage.Literals.CONCEPT.equals(eClass)) {
+				final Concept newConcept = (Concept) newComponent;
+				entry.registerChange(newConcept.getId(), new TraceabilityChange(eClass, newConcept.getId(), ChangeType.CREATE));
+			} else if (SnomedPackage.Literals.DESCRIPTION.equals(eClass)) {
+				final Description newDescription = (Description) newComponent;
+				entry.registerChange(newDescription.getConcept().getId(), new TraceabilityChange(eClass, newDescription.getId(), ChangeType.CREATE));
+			} else if (SnomedPackage.Literals.RELATIONSHIP.equals(eClass)) {
+				final Relationship newRelationship = (Relationship) newComponent;
+				entry.registerChange(newRelationship.getSource().getId(), new TraceabilityChange(eClass, newRelationship.getId(), ChangeType.CREATE));
+			} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
+				SnomedAnnotationRefSetMember member = (SnomedAnnotationRefSetMember) newComponent;
+				if (member.getRefSetIdentifierId().equals(Concepts.REFSET_OWL_AXIOM) && SnomedIdentifiers.isConceptIdentifier(member.getReferencedComponentId())) {
+					entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.CREATE));
+				}
+			} else if (MRCM_REFSET_MEMBER_TYPES.contains(eClass)) {
+				SnomedRefSetMember member = (SnomedRefSetMember) newComponent;
+				if (SnomedIdentifiers.isConceptIdentifier(member.getReferencedComponentId())) {
+					entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(eClass, member.getUuid(), ChangeType.CREATE));
+				}
+			} else {
+				// language refset members are tracked by description update
+				// association and attribute value refset members are tracked by container update (concept or description)
+			}
+			
 		}
 		
-		// Other reference set members are logged through their container core component change
 	}
-	
-	private void processUpdate(CDOObject dirtyComponent) {
+
+	private void processComponentUpdates(Collection<CDOObject> dirtyComponents) {
+		
+		dirtyComponents.stream()
+			.filter(Component.class::isInstance)
+			.forEach(component -> processComponentUpdate(component));
+		
+		dirtyComponents.stream()
+			.filter(SnomedRefSetMember.class::isInstance)
+			.map(SnomedRefSetMember.class::cast)
+			.forEach( member -> {
+				
+				EClass eClass = member.eClass();
+				
+				if (SnomedTerminologyComponentConstants.DESCRIPTION_NUMBER == member.getReferencedComponentType()) {
+					
+					if (SnomedRefSetPackage.Literals.SNOMED_LANGUAGE_REF_SET_MEMBER.equals(eClass) 
+							|| SnomedRefSetPackage.Literals.SNOMED_ASSOCIATION_REF_SET_MEMBER.equals(eClass) 
+							|| SnomedRefSetPackage.Literals.SNOMED_ATTRIBUTE_VALUE_REF_SET_MEMBER.equals(eClass)) {
+						
+						String conceptId = descriptionLookupService.getComponent(member.getReferencedComponentId(), commitChangeSet.getView()).getConcept().getId();
+						entry.registerChange(conceptId, new TraceabilityChange(SnomedPackage.Literals.DESCRIPTION, member.getReferencedComponentId(), ChangeType.UPDATE));
+						
+					}
+					
+				} else if (SnomedTerminologyComponentConstants.CONCEPT_NUMBER == member.getReferencedComponentType()) {
+					
+					if (SnomedRefSetPackage.Literals.SNOMED_ASSOCIATION_REF_SET_MEMBER.equals(eClass) || SnomedRefSetPackage.Literals.SNOMED_ATTRIBUTE_VALUE_REF_SET_MEMBER.equals(eClass)) {
+						entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(SnomedPackage.Literals.CONCEPT.eClass(), member.getReferencedComponentId(), ChangeType.UPDATE));
+					} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
+						if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(member.getRefSetIdentifierId())) {
+							entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.UPDATE));
+						}
+					} else if (MRCM_REFSET_MEMBER_TYPES.contains(eClass)) {
+						entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(eClass, member.getUuid(), ChangeType.UPDATE));
+					}
+					
+				}
+				
+			});
+		
+	}
+
+	private void processComponentUpdate(CDOObject dirtyComponent) {
+		
 		final EClass eClass = dirtyComponent.eClass();
 		final CDORevisionDelta revisionDelta = commitChangeSet.getRevisionDeltas().get(dirtyComponent.cdoID());
-
+	
 		if (SnomedPackage.Literals.CONCEPT.equals(eClass)) {
 			final Concept dirtyConcept = (Concept) dirtyComponent;
 			registerInactivationOrUpdate(eClass, dirtyConcept.getId(), dirtyConcept.getId(), revisionDelta);
@@ -250,34 +357,8 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		} else if (SnomedPackage.Literals.RELATIONSHIP.equals(eClass)) {
 			final Relationship dirtyRelationship = (Relationship) dirtyComponent;
 			registerInactivationOrUpdate(eClass, dirtyRelationship.getSource().getId(), dirtyRelationship.getId(), revisionDelta);
-		} else if (SnomedRefSetPackage.Literals.SNOMED_LANGUAGE_REF_SET_MEMBER.equals(eClass)) {
-			// An updated language reference set member is recorded as an update on the description
-			final SnomedLanguageRefSetMember newMember = (SnomedLanguageRefSetMember) dirtyComponent;
-			final Description description = new SnomedDescriptionLookupService().getComponent(newMember.getReferencedComponentId(), commitChangeSet.getView());
-			entry.registerChange(description.getConcept().getId(), new TraceabilityChange(description.eClass(), description.getId(), ChangeType.UPDATE));
-		} else if (SnomedRefSetPackage.Literals.SNOMED_ASSOCIATION_REF_SET_MEMBER.equals(eClass) || SnomedRefSetPackage.Literals.SNOMED_ATTRIBUTE_VALUE_REF_SET_MEMBER.equals(eClass)) {
-			// An updated inactivation reason or association reference set member is recorded as an update on the referenced component
-			final SnomedRefSetMember newMember = (SnomedRefSetMember) dirtyComponent;
-			
-			if (TRACKED_REFERENCE_SET_IDS.contains(newMember.getRefSetIdentifierId())) {
-				final short referencedComponentType = newMember.getReferencedComponentType();
-				final String referencedTerminologyComponentId = CoreTerminologyBroker.getInstance().getTerminologyComponentId(referencedComponentType);
-				final Component referencedComponent = (Component) CoreTerminologyBroker.getInstance()
-						.getLookupService(referencedTerminologyComponentId)
-						.getComponent(newMember.getReferencedComponentId(), commitChangeSet.getView());
-				
-				final String conceptId = referencedComponent instanceof Description 
-						? ((Description) referencedComponent).getConcept().getId() 
-						: referencedComponent.getId();
-						
-				entry.registerChange(conceptId, new TraceabilityChange(referencedComponent.eClass(), referencedComponent.getId(), ChangeType.UPDATE));
-			}
-		} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
-			final SnomedAnnotationRefSetMember member = (SnomedAnnotationRefSetMember) dirtyComponent;
-			if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(member.getRefSetIdentifierId())) {
-				entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.UPDATE));
-			}
 		}
+		
 	}
 
 	private void registerInactivationOrUpdate(final EClass eClass, final String conceptId, final String componentId, CDORevisionDelta revisionDelta) {
@@ -292,75 +373,42 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 			}
 		}
 	}
-	
-	@Override
-	public void afterCommit() {
-		final Timer traceabilityTimer = MetricsThreadLocal.get().timer("traceability");
-		try {
-			traceabilityTimer.start();
-			if (commitChangeSet != null) {
-				final String branch = commitChangeSet.getView().getBranch().getPathName();
+
+	private void processComponentDeletions(ICDOCommitChangeSet commitChangeSet) {
+		
+		index.read(branchPath.getPath(), new RevisionIndexRead<Void>() {
+			@Override
+			public Void execute(RevisionSearcher searcher) throws IOException {
 				
-				//APDS-547 We don't need to audit the object state when saving a classification
-				if (commitChangeSet.getCommitComment().length() == CLASSIFICATION_SAVE_MESSAGE_LENGTH && 
-						commitChangeSet.getCommitComment().endsWith(CLASSIFIED_ONTOLOGY)) {
-					SYS_LOGGER.info("Lightweight audit of classification save on {}", branch);
-				} else {
-					final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
-					final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
-				
-					final SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
-							.setLimit(conceptIds.size())
-							.filterByIds(conceptIds)
-							.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-							.execute(bus)
-							.getSync();
-					
-					final Set<SnomedBrowserConcept> convertedConcepts = new HashSet<>();
-					for (SnomedConcept concept : concepts) {
-						
-						SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
-						
-						convertedConcept.setActive(concept.isActive());
-						convertedConcept.setConceptId(concept.getId());
-						convertedConcept.setDefinitionStatus(concept.getDefinitionStatus());
-						convertedConcept.setDescriptions(convertDescriptions(concept.getDescriptions()));
-						convertedConcept.setEffectiveTime(concept.getEffectiveTime());
-						convertedConcept.setModuleId(concept.getModuleId());
-						convertedConcept.setRelationships(convertRelationships(concept.getRelationships()));
-						convertedConcept.setFsn(concept.getId());
-						convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
-						convertedConcept.setAssociationTargets(concept.getAssociationTargets());
-						convertedConcepts.add(convertedConcept);
-							
-					}
-					
-					Collection<? extends ISnomedBrowserConcept> resultsConcepts;
-					
-					if (!convertedConcepts.isEmpty()) { // Lookup and expand axioms
-						resultsConcepts = getAxiomService().expandAxioms(convertedConcepts, branch, getLocales());
-					} else {
-						resultsConcepts = convertedConcepts;
-					}
-					
-					for (ISnomedBrowserConcept result : resultsConcepts) {
-						// PT and SYN labels are not populated
-						entry.setConcept(result.getId(), (SnomedBrowserConcept) result);
-					}
-					
+				final Set<Long> detachedConceptStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.CONCEPT)));
+				for (SnomedConceptDocument detachedConcept : searcher.get(SnomedConceptDocument.class, detachedConceptStorageKeys)) {
+					entry.registerChange(detachedConcept.getId(), new TraceabilityChange(SnomedPackage.Literals.CONCEPT, detachedConcept.getId(), ChangeType.DELETE));
 				}
+				
+				final Set<Long> detachedDescriptionStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.DESCRIPTION)));
+				for (SnomedDescriptionIndexEntry detachedDescription : searcher.get(SnomedDescriptionIndexEntry.class, detachedDescriptionStorageKeys)) {
+					entry.registerChange(detachedDescription.getConceptId(), new TraceabilityChange(SnomedPackage.Literals.DESCRIPTION, detachedDescription.getId(), ChangeType.DELETE));
+				}
+				
+				final Set<Long> detachedRelationshipStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(SnomedPackage.Literals.RELATIONSHIP)));
+				for (SnomedRelationshipIndexEntry detachedRelationship : searcher.get(SnomedRelationshipIndexEntry.class, detachedRelationshipStorageKeys)) {
+					entry.registerChange(detachedRelationship.getSourceId(), new TraceabilityChange(SnomedPackage.Literals.RELATIONSHIP, detachedRelationship.getId(), ChangeType.DELETE));
+				}
+				
+				for (EClass eClass : DETACHED_REFSET_MEMBER_TYPES) {
+					Set<Long> detachedMemberStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(eClass)));
+					for (SnomedRefSetMemberIndexEntry detachedRefsetMember : searcher.get(SnomedRefSetMemberIndexEntry.class, detachedMemberStorageKeys)) {					
+						if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(detachedRefsetMember.getReferenceSetId())) {
+							entry.registerChange(detachedRefsetMember.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, detachedRefsetMember.getId(), ChangeType.DELETE));
+						} else {
+							entry.registerChange(detachedRefsetMember.getReferencedComponentId(), new TraceabilityChange(eClass, detachedRefsetMember.getId(), ChangeType.DELETE));
+						}
+					}
+				}
+				
+				return null;
 			}
-			TRACE_LOGGER.info(WRITER.writeValueAsString(entry));
-		} catch (IOException e) {
-			throw SnowowlRuntimeException.wrap(e);
-		} finally {
-			traceabilityTimer.stop();
-		}
-	}
-	
-	private List<ExtendedLocale> getLocales() {
-		return ApplicationContext.getInstance().getService(LanguageSetting.class).getLanguagePreference();
+		});
 	}
 
 	private List<ISnomedBrowserDescription> convertDescriptions(SnomedDescriptions descriptions) {
@@ -419,32 +467,44 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		}).toList();
 	}
 
-	@Override
-	public String getName() {
-		return "SNOMED CT Traceability";
-	}
-
-	@Override
-	public IndexCommitChangeSet commit() throws SnowowlServiceException {
-		return new DelegatingIndexCommitChangeSet(ImmutableIndexCommitChangeSet.builder().build()) {
-			@Override
-			public String getDescription() {
-				return String.format("Traceability logged for %d concept(s).", entry.getChanges().size());
-			}
-		};
-	}
-
-	@Override
-	public void rollback() throws SnowowlServiceException {
-		this.entry = null;
-		this.commitChangeSet = null;
-	}
-	
-	public ISnomedBrowserAxiomService getAxiomService() {
+	private ISnomedBrowserAxiomService getAxiomService() {
 		if (axiomService == null) {
 			axiomService = ApplicationContext.getServiceForClass(ISnomedBrowserAxiomService.class);
 		}
 		return axiomService;
+	}
+
+	private boolean isSystemCommit(String userName) {
+		return SpecialUserStore.SYSTEM_USER_NAME.equals(userName);
+	}
+
+	private boolean collectSystemChanges(String branch) {
+		
+		if (isDeltaImportInProgress(branch) || isClassificationInProgress(branch)) {
+			return true;
+		}
+		
+		return ApplicationContext.getServiceForClass(SnomedCoreConfiguration.class).isCollectSystemChanges();
+	}
+
+	private FeatureToggles getFeatureToggles() {
+		return ApplicationContext.getServiceForClass(FeatureToggles.class);
+	}
+
+	private boolean isDeltaImportInProgress(final String branch) {
+		return getFeatureToggles().isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branch, ContentSubType.DELTA.getLowerCaseName()));
+	}
+
+	private boolean isClassificationInProgress(final String branch) {
+		return getFeatureToggles().isEnabled(Features.getClassifyFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branch));
+	}
+
+	private IEventBus getBus() {
+		return ApplicationContext.getServiceForClass(IEventBus.class);
+	}
+
+	private List<ExtendedLocale> getLocales() {
+		return ApplicationContext.getInstance().getService(LanguageSetting.class).getLanguagePreference();
 	}
 
 }
