@@ -40,6 +40,8 @@ import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ApiError;
+import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.cdo.CDOServerCommitBuilder;
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
@@ -145,6 +147,7 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 		IBranchPath branchPath = taxonomy.getBranchPath();
 		SubMonitor subMonitor = SubMonitor.convert(monitor, "Persisting changes", 6);
 		SnomedEditingContext editingContext = null;
+		String classifyFeatureToggle = Features.getClassifyFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath());
 
 		try {
 
@@ -182,7 +185,9 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 //			}
 //
 //			new EquivalentConceptMerger(editingContext, equivalenciesToFix).fixEquivalencies();
-
+			
+			getFeatureToggles().enable(classifyFeatureToggle);
+			
 			CDOTransaction editingContextTransaction = editingContext.getTransaction();
 			editingContext.preCommit();
 
@@ -197,10 +202,15 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 			// }
 			throw e;
 		} finally {
+			getFeatureToggles().disable(classifyFeatureToggle);
 			if (editingContext != null) {
 				editingContext.close();
 			}
 		}
+	}
+
+	private FeatureToggles getFeatureToggles() {
+		return ApplicationContext.getServiceForClass(FeatureToggles.class);
 	}
 
 	private boolean isSubTypeOfSMP(IBranchPath branchPath, String subTypeId) {
