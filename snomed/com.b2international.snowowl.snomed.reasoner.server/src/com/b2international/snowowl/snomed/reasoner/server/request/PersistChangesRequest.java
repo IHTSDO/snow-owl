@@ -29,13 +29,14 @@ import org.eclipse.emf.cdo.util.CommitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.collections.longs.LongSet;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ApiError;
+import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.cdo.CDOServerCommitBuilder;
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
@@ -141,6 +142,7 @@ final class PersistChangesRequest implements Request<ServiceProvider, ApiError> 
 		IBranchPath branchPath = taxonomy.getBranchPath();
 		SubMonitor subMonitor = SubMonitor.convert(monitor, "Persisting changes", 6);
 		SnomedEditingContext editingContext = null;
+		String classifyFeatureToggle = Features.getClassifyFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath());
 
 		try {
 
@@ -150,6 +152,8 @@ final class PersistChangesRequest implements Request<ServiceProvider, ApiError> 
 			applyChanges(subMonitor, editingContext, namespaceAndModuleAssigner);
 			// fixEquivalences(editingContext);
 
+			getFeatureToggles().enable(classifyFeatureToggle);
+			
 			CDOTransaction editingContextTransaction = editingContext.getTransaction();
 			editingContext.preCommit();
 
@@ -167,6 +171,7 @@ final class PersistChangesRequest implements Request<ServiceProvider, ApiError> 
 			// }
 			throw e;
 		} finally {
+			getFeatureToggles().disable(classifyFeatureToggle);
 			if (editingContext != null) {
 				editingContext.close();
 			}
@@ -185,6 +190,10 @@ final class PersistChangesRequest implements Request<ServiceProvider, ApiError> 
 			namespaceAndModuleAssigner.allocateConcreteDomainModules(concreteDomainRecorder.getAddedSubjects().keySet(), editingContext);
 			applyConcreteDomainChanges(editingContext, concreteDomainRecorder, namespaceAndModuleAssigner);
 		}
+	}
+	
+	private FeatureToggles getFeatureToggles() {
+		return ApplicationContext.getServiceForClass(FeatureToggles.class);
 	}
 
 	private void recordChanges(final SubMonitor subMonitor,

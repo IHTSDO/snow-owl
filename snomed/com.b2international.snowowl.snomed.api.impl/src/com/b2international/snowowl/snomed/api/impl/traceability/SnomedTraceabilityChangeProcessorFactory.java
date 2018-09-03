@@ -15,9 +15,9 @@
  */
 package com.b2international.snowowl.snomed.api.impl.traceability;
 
-import com.b2international.index.revision.RevisionIndex;
+import java.util.TimeZone;
+
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.ft.FeatureToggles;
@@ -26,7 +26,11 @@ import com.b2international.snowowl.datastore.ICDOChangeProcessor;
 import com.b2international.snowowl.datastore.server.CDOChangeProcessorFactory;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 
 /**
  * CDO change processor factory responsible to create {@link SnomedTraceabilityChangeProcessor traceability change processors} for the SNOMED CT terminology.
@@ -34,28 +38,30 @@ import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfigurati
 public class SnomedTraceabilityChangeProcessorFactory implements CDOChangeProcessorFactory {
 
 	private static final String FACTORY_NAME = "SNOMED CT traceability change processor factory";
+	private ObjectWriter objectWriter;
+
+	public SnomedTraceabilityChangeProcessorFactory() {
+		this.objectWriter = createObjectWriter();
+	}
 
 	@Override
 	public ICDOChangeProcessor createChangeProcessor(final IBranchPath branchPath) throws SnowowlServiceException {
-		// SNOMED CT import is in progress
-		if (isImportInProgress(branchPath) || isReindexInProgress()) {
+		if (skipTraceabilityChangeProcessing(branchPath)) {
 			return ICDOChangeProcessor.NULL_IMPL;
 		} else {
-			final RevisionIndex index = ApplicationContext.getServiceForClass(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
-			final boolean collectSystemChanges = ApplicationContext.getServiceForClass(SnomedCoreConfiguration.class).isCollectSystemChanges();
-			final boolean isdeltaImportInProgress = isDeltaImportInProgress(branchPath);
-			return new SnomedTraceabilityChangeProcessor(index, branchPath, isdeltaImportInProgress ? isdeltaImportInProgress : collectSystemChanges);
+			return new SnomedTraceabilityChangeProcessor(branchPath, objectWriter);
 		}
 	}
 
-	private boolean isImportInProgress(final IBranchPath branchPath) {
-		return isSnapshotImportInProgress(branchPath) || isFullImportInProgress(branchPath);
+	@Override
+	public String getFactoryName() {
+		return FACTORY_NAME;
 	}
-	
-	private boolean isDeltaImportInProgress(final IBranchPath branchPath) {
-		return getFeatureToggles().isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), ContentSubType.DELTA.getLowerCaseName()));
+
+	private boolean skipTraceabilityChangeProcessing(final IBranchPath branchPath) {
+		return isSnapshotImportInProgress(branchPath) || isFullImportInProgress(branchPath) || isReindexInProgress();
 	}
-	
+
 	private boolean isSnapshotImportInProgress(final IBranchPath branchPath) {
 		return getFeatureToggles().isEnabled(Features.getImportFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), ContentSubType.SNAPSHOT.getLowerCaseName()));
 	}
@@ -72,8 +78,16 @@ public class SnomedTraceabilityChangeProcessorFactory implements CDOChangeProces
 		return ApplicationContext.getServiceForClass(FeatureToggles.class);
 	}
 	
-	@Override
-	public String getFactoryName() {
-		return FACTORY_NAME;
+	private ObjectWriter createObjectWriter() {
+		
+		final ObjectMapper objectMapper = new ObjectMapper();
+		objectMapper.setSerializationInclusion(Include.NON_EMPTY);
+	
+		final ISO8601DateFormat df = new ISO8601DateFormat();
+		df.setTimeZone(TimeZone.getTimeZone("UTC"));
+		objectMapper.setDateFormat(df);
+		objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+	
+		return objectMapper.writer();
 	}
 }
