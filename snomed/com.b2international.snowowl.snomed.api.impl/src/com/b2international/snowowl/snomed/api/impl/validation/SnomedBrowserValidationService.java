@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
@@ -38,6 +39,7 @@ import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.config.SnomedDroolsConfiguration;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
@@ -63,9 +65,11 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	private RuleExecutor ruleExecutor;
 	private Set<String> caseSignificantWords;
 	private Multimap<String, String> refsetToLanguageSpecificWordsMap;
+	private SnomedDroolsConfiguration droolsConfig;
 	
 	public SnomedBrowserValidationService() {
-		ruleExecutor = newRuleExecutor();
+		ruleExecutor = newRuleExecutor(false);
+		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedDroolsConfiguration.class);
 		String path = "/opt/termserver/resources/test-resources"; // TODO move to config
 		caseSignificantWords = loadCaseSignificantWords(path);
 		refsetToLanguageSpecificWordsMap = loadLanguageSpecificWords(path);
@@ -102,7 +106,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 
 	@Override
 	public int reloadRules() {
-		ruleExecutor = newRuleExecutor();
+		ruleExecutor = newRuleExecutor(true);
 		return ruleExecutor.getTotalRulesLoaded();
 	}
 	
@@ -133,8 +137,8 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		return String.format(message, branchPath, COMMA_JOINER.join(assertionGroups), conceptIds, more);
 	}
 	
-	private RuleExecutor newRuleExecutor() {
-		return new RuleExecutor("/opt/termserver/snomed-drools-rules");
+	private RuleExecutor newRuleExecutor(boolean releadSemanticTags) {
+		return new RuleExecutor(droolsConfig.getRulesDirectory(), droolsConfig.getAwsKey(), droolsConfig.getAwsPrivateKey(), droolsConfig.getResourcesBucket(), droolsConfig.getResourcesPath(), releadSemanticTags);
 	}
 
 	private Set<String> loadCaseSignificantWords(String path) {
