@@ -256,7 +256,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				
 				for (List<String> conceptIdPartitions : Lists.partition(run.getConceptIds(), 1000)) {
 					Set<ISnomedBrowserConcept> concepts = getConceptDetailsInBulk(branch, ImmutableSet.copyOf(conceptIdPartitions), locales);
-					allConcepts.putAll(concepts.stream().collect(toMap(ISnomedBrowserConcept::getId, java.util.function.Function.identity())));
+					allConcepts.putAll(concepts.stream().collect(toMap(ISnomedBrowserConcept::getId, c -> c)));
 				}
 				
 				run.setConcepts(run.getConceptIds().stream().map(allConcepts::get).collect(toList())); // keep the order

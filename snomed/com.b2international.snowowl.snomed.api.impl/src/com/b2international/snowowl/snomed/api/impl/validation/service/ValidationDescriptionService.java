@@ -28,7 +28,6 @@ import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -89,6 +88,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				.execute(bus)
 				.then(descriptions -> {
 					return descriptions.getItems().stream()
+						.filter(description -> description.getTerm().equals(exactTerm)) // see com.b2international.index.Analyzers.EXACT
 						.map(description -> new ValidationSnomedDescription(description, description.getConceptId()))
 						.collect(toSet());
 				})
@@ -110,6 +110,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				.execute(bus)
 				.then(descriptions -> {
 					return descriptions.getItems().stream()
+						.filter(description -> description.getTerm().equals(exactTerm)) // see com.b2international.index.Analyzers.EXACT
 						.map(description -> new ValidationSnomedDescription(description, description.getConceptId()))
 						.collect(toSet());
 				})
@@ -121,19 +122,24 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	@Override
 	public Set<Description> findMatchingDescriptionInHierarchy(Concept concept, Description description) {
 
-		SnomedDescriptions matchingDescriptions = SnomedRequests.prepareSearchDescription()
+		List<SnomedDescription> matchingDescriptions = SnomedRequests.prepareSearchDescription()
 			.all()
 			.filterByActive(true)
 			.filterByExactTerm(description.getTerm())
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 			.execute(bus)
+			.then(descriptions -> {
+				return descriptions.getItems().stream()
+					.filter(d -> d.getTerm().equals(description.getTerm())) // see com.b2international.index.Analyzers.EXACT
+					.collect(toList());
+			})
 			.getSync();
 
 		if (matchingDescriptions.isEmpty()) {
 			return emptySet();
 		}
 		
-		Set<String> conceptIdsWithSameTerm = matchingDescriptions.getItems().stream().map(SnomedDescription::getConceptId).collect(toSet()); 
+		Set<String> conceptIdsWithSameTerm = matchingDescriptions.stream().map(SnomedDescription::getConceptId).collect(toSet()); 
 		
 		Set<String> conceptIdsToFetch = newHashSet(conceptIdsWithSameTerm);
 		conceptIdsToFetch.add(concept.getId());
@@ -161,7 +167,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				.map(SnomedConcept::getId)
 				.collect(toSet());
 			
-			return matchingDescriptions.getItems().stream()
+			return matchingDescriptions.stream()
 				.filter(desc -> conceptIdsWithSameTermInHierarchy.contains(desc.getConceptId()))
 				.map(desc -> new ValidationSnomedDescription(desc, desc.getConceptId()))
 				.collect(toSet());
