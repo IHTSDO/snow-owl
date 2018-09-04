@@ -81,14 +81,7 @@ public class ValidationConceptService implements ConceptService {
 			return emptySet();
 		}
 		
-		Set<String> topLevelConceptIds = SnomedRequests.prepareSearchConcept()
-			.all()
-			.filterByActive(true)
-			.filterByStatedParent(Concepts.ROOT_CONCEPT)
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-			.execute(bus)
-			.then(concepts -> concepts.getItems().stream().map(SnomedConcept::getId).collect(toSet()))
-			.getSync();
+		Set<String> topLevelConceptIds = getAllTopLevelHierachies();
 		
 		if (topLevelConceptIds.contains(concept.getId())) {
 			LOGGER.info("Top level hierarchies of concept '{}': '{}'", concept.getId(), concept.getId());
@@ -181,10 +174,9 @@ public class ValidationConceptService implements ConceptService {
 						statedAncestorIds.add(String.valueOf(id));
 					}
 					
-					statedAncestorIds.add(conceptId);
-					
 				});
 				
+				statedAncestorIds.add(conceptId);
 				statedAncestorIds.remove(IComponent.ROOT_ID);
 				statedAncestorIds.remove(Concepts.ROOT_CONCEPT);
 				

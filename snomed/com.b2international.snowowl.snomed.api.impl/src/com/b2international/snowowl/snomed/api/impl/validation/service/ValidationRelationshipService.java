@@ -17,6 +17,7 @@ public class ValidationRelationshipService implements RelationshipService {
 				.add(CharacteristicType.STATED_RELATIONSHIP.getConceptId())
 				.add(CharacteristicType.ADDITIONAL_RELATIONSHIP.getConceptId())
 				.add(CharacteristicType.QUALIFYING_RELATIONSHIP.getConceptId())
+				.add(CharacteristicType.DEFINING_RELATIONSHIP.getConceptId())
 				.build();
 	
 	private String branchPath;
