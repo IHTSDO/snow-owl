@@ -70,9 +70,8 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	public SnomedBrowserValidationService() {
 		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDroolsConfig();
 		ruleExecutor = newRuleExecutor(false);
-		String path = "/opt/termserver/resources/test-resources"; // TODO move to config
-		caseSignificantWords = loadCaseSignificantWords(path);
-		refsetToLanguageSpecificWordsMap = loadLanguageSpecificWords(path);
+		caseSignificantWords = loadCaseSignificantWords(droolsConfig.getTermValidationResourcesPath());
+		refsetToLanguageSpecificWordsMap = loadLanguageSpecificWords(droolsConfig.getTermValidationResourcesPath());
 	}
 
 	@Override
@@ -106,7 +105,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 
 	@Override
 	public int reloadRules() {
-		ruleExecutor = newRuleExecutor(true);
+		ruleExecutor = createNewRuleExecutor(true);
 		return ruleExecutor.getTotalRulesLoaded();
 	}
 	
@@ -141,6 +140,16 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		return String.format(message, branchPath, COMMA_JOINER.join(assertionGroups), conceptIds, more);
 	}
 	
+	private RuleExecutor createNewRuleExecutor(boolean releasedSemanticTags) {
+		return new RuleExecutor(
+				droolsConfig.getRulesDirectory(),
+				droolsConfig.getAwsKey(),
+				droolsConfig.getAwsPrivateKey(),
+				droolsConfig.getResourcesBucket(),
+				droolsConfig.getResourcesPath(),
+				releasedSemanticTags);
+	}
+
 	private Set<String> loadCaseSignificantWords(String path) {
 		
 		Path wordsFilePath = Paths.get(path, CASE_SIGNIFICANT_WORDS_FILENAME);
