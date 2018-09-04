@@ -41,6 +41,9 @@ public class SnomedDroolsConfiguration {
 	@JsonProperty(required = false)
 	private String resourcesPath;
 	
+	@JsonProperty(required = false, defaultValue = "/opt/termserver/resources/test-resources")
+	private String termValidationResourcesPath;
+	
 	/**
 	 * @return the rules directory
 	 */
@@ -111,4 +114,18 @@ public class SnomedDroolsConfiguration {
 		this.resourcesPath = resourcesPath;
 	}
 
+	/**
+	 * @return the path to where term based validation resources are located. E.g. collection of case significant words, GB vs US words
+	 */
+	public String getTermValidationResourcesPath() {
+		return termValidationResourcesPath;
+	}
+	
+	/**
+	 * @param termValidationResourcesPath to set
+	 */
+	public void setTermValidationResourcesPath(String termValidationResourcesPath) {
+		this.termValidationResourcesPath = termValidationResourcesPath;
+	}
+	
 }
