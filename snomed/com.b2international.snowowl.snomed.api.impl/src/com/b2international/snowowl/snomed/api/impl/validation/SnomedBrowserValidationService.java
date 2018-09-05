@@ -68,7 +68,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	private SnomedDroolsConfiguration droolsConfig;
 	
 	public SnomedBrowserValidationService() {
-		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedDroolsConfiguration.class);
+		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDroolsConfig();
 		ruleExecutor = createNewRuleExecutor(false);
 		caseSignificantWords = loadCaseSignificantWords(droolsConfig.getTermValidationResourcesPath());
 		refsetToLanguageSpecificWordsMap = loadLanguageSpecificWords(droolsConfig.getTermValidationResourcesPath());
