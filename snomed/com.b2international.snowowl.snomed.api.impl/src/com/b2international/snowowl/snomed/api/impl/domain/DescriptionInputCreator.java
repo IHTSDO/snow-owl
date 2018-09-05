@@ -4,12 +4,12 @@ import java.util.Map;
 
 import com.b2international.commons.ClassUtils;
 import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
-import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
-import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionUpdateRequest;
@@ -20,7 +20,6 @@ import com.google.common.collect.Multimap;
 
 public class DescriptionInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedDescriptionCreateRequest, SnomedDescriptionUpdateRequest, SnomedBrowserDescription> {
 
-	
 	public DescriptionInputCreator(final Branch branch) {
 		super(branch);
 	}
@@ -134,12 +133,12 @@ public class DescriptionInputCreator extends AbstractInputCreator implements Com
 	}
 
 	@Override
-	public boolean canCreateInput(Class<? extends SnomedComponentCreateRequest> inputType) {
+	public boolean canCreateInput(Class<? extends Request<TransactionContext, String>> inputType) {
 		return ClassUtils.isClassAssignableFrom(SnomedDescriptionCreateRequest.class, inputType.getName());
 	}
 
 	@Override
-	public boolean canCreateUpdate(Class<? extends SnomedComponentUpdateRequest> updateType) {
+	public boolean canCreateUpdate(Class<? extends Request<TransactionContext, Boolean>> updateType) {
 		return ClassUtils.isClassAssignableFrom(SnomedDescriptionUpdateRequest.class, updateType.getName());
 	}
 }

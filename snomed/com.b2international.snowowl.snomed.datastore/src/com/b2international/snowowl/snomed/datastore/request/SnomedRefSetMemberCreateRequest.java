@@ -34,7 +34,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 /**
  * @since 4.5
  */
-final class SnomedRefSetMemberCreateRequest implements Request<TransactionContext, String> {
+public final class SnomedRefSetMemberCreateRequest implements Request<TransactionContext, String> {
 
 	@Nonnull
 	private String id;

@@ -48,6 +48,8 @@ import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
+import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
@@ -133,7 +135,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	private static final long BRANCH_READ_TIMEOUT = 5000L;
 	private static final long BRANCH_LOCK_TIMEOUT = 500L;
 	
-	public static String CLASSIFIED_ONTOLOGY = "Classified ontology.";
+	public static final String CLASSIFIED_ONTOLOGY = "Classified ontology.";
 	
 	private final class PersistChangesRunnable implements Runnable {
 		private final String branchPath;
@@ -226,16 +228,26 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				relationshipChanges = getRelationshipChanges(branchPath, classificationId, offset, RELATIONSHIP_BLOCK_SIZE);
 			}
 			
+			String classifyFeatureToggle = Features.getClassifyFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath);
+			
+			getFeatureToggles().enable(classifyFeatureToggle);
+			
 			commitChanges(branchPath, userId, builder, persistStopwatch)
 					.then(new Function<CommitResult, Void>() { @Override public Void apply(final CommitResult input) {
 						LOG.info("Classification changes saved on branch {}.", branchPath);
+						getFeatureToggles().disable(classifyFeatureToggle);
 						return updateStatus(classificationId, ClassificationStatus.SAVED); 
 					}})
 					.fail(new Function<Throwable, Void>() { @Override public Void apply(final Throwable input) {
 						LOG.error("Failed to save classification changes on branch {}.", branchPath, input);
+						getFeatureToggles().disable(classifyFeatureToggle);
 						return updateStatus(classificationId, ClassificationStatus.SAVE_FAILED); 
 					}})
 					.getSync();
+		}
+
+		private FeatureToggles getFeatureToggles() {
+			return ApplicationContext.getServiceForClass(FeatureToggles.class);
 		}
 
 		private Set<String> getInferredSourceIds(final IRelationshipChangeList relationshipChanges) {

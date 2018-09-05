@@ -15,9 +15,9 @@
  */
 package com.b2international.snowowl.snomed.api.impl.traceability;
 
-import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.collect.Lists.newArrayList;
 
-import java.util.Set;
+import java.util.List;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 
@@ -27,7 +27,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConce
 class ConceptWithChanges {
 	
 	private ISnomedBrowserConcept concept;
-	private final Set<TraceabilityChange> changes = newHashSet();
+	private final List<TraceabilityChange> changes = newArrayList();
 
 	public void setConcept(final ISnomedBrowserConcept concept) {
 		this.concept = concept;
@@ -41,7 +41,7 @@ class ConceptWithChanges {
 		return concept;
 	}
 	
-	public Set<TraceabilityChange> getChanges() {
+	public List<TraceabilityChange> getChanges() {
 		return changes;
 	}
 }

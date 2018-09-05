@@ -7,27 +7,21 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.b2international.commons.FileUtils;
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Preconditions;
 
 public class SnomedManualConceptMergeServiceImpl {
 
 	@Resource
 	private ObjectMapper objectMapper;
-	
-	private ObjectMapper objectMapper() {
-		return Preconditions.checkNotNull(objectMapper == null ? objectMapper = ApplicationContext.getInstance().getServiceChecked(ObjectMapper.class) : objectMapper,  "objectMapper cannot be null!");
-	}
-	
+
 	private String storeRoot;
 	
-	private static String MERGE_REVIEW_STORE = "merge-review-store";
+	private static final String MERGE_REVIEW_STORE = "merge-review-store";
 	private static final String SLASH = "/";
 	private static final String FILE_TYPE = ".json";
 	
@@ -69,4 +63,9 @@ public class SnomedManualConceptMergeServiceImpl {
 		final File parentFile = getConceptStorePath(branchPath, mergeReviewId, "1").getParentFile();
 		FileUtils.deleteDirectory(parentFile);
 	}
+	
+	private ObjectMapper objectMapper() {
+		return objectMapper;
+	}
+	
 }

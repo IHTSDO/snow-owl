@@ -36,7 +36,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 /**
  * @since 4.5
  */
-final class SnomedRefSetMemberUpdateRequest implements Request<TransactionContext, Boolean> {
+public final class SnomedRefSetMemberUpdateRequest implements Request<TransactionContext, Boolean> {
 
 	@NotEmpty
 	private final String memberId;

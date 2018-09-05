@@ -19,7 +19,7 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatusProvider;
 
 /**
- * Represents a summary of a specific SNOMED CT concept, returned when requesting concept children the IHTSDO SNOMED CT Browser.
+ * Represents a summary of a specific SNOMED CT concept, returned when requesting concept children with the IHTSDO SNOMED CT Browser.
  */
 public interface ISnomedBrowserChildConcept extends IConceptIdWithFsnProvider, IConceptIdWithPreferredSynonymProvider,
 		IStatusWithModuleIdProvider, DefinitionStatusProvider, TaxonomyNode {
