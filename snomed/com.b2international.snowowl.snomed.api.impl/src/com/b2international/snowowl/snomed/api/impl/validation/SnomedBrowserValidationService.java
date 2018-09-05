@@ -44,7 +44,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	private SnomedDroolsConfiguration droolsConfig;
 	
 	public SnomedBrowserValidationService() {
-		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedDroolsConfiguration.class);
+		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDroolsConfig();
 		ruleExecutor = newRuleExecutor(false);
 	}
 
