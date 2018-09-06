@@ -15,7 +15,7 @@
 		<!-- Maven Dependency Versions -->
 		
 		<snomed-owl-toolkit.version>1.2.0</snomed-owl-toolkit.version>
-		<snomed-drools-engine.version>1.9.0-SNAPSHOT</snomed-drools-engine.version>
+		<snomed-drools-engine.version>1.10.0-SNAPSHOT</snomed-drools-engine.version>
 		
 		<jackson.version>2.8.10</jackson.version>
 		<netty.version>4.1.16.Final</netty.version>
