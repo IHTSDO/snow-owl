@@ -65,6 +65,12 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 		final IndexConfiguration indexConfig = repositoryConfiguration.getIndexConfiguration();
 		if (indexConfig.getClusterUrl() != null) {
 			builder.put(IndexClientFactory.CLUSTER_URL, indexConfig.getClusterUrl());
+			if (indexConfig.getClusterUsername() != null) {
+				builder.put(IndexClientFactory.CLUSTER_USERNAME, indexConfig.getClusterUsername());
+			}
+			if (indexConfig.getClusterPassword() != null) {
+				builder.put(IndexClientFactory.CLUSTER_PASSWORD, indexConfig.getClusterPassword());
+			}
 		}
 		
 		if (isInReindexMode()) {
