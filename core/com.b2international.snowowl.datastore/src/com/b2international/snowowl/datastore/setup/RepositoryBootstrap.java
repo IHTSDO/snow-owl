@@ -58,11 +58,11 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 		builder.put(IndexClientFactory.DATA_DIRECTORY, env.getDataDirectory().toPath().resolve("indexes").toString());
 		builder.put(IndexClientFactory.CONFIG_DIRECTORY, env.getConfigDirectory().toPath().toString());
 		
-		RepositoryConfiguration repositoryConfiguration = env.service(SnowOwlConfiguration.class)
+		final RepositoryConfiguration repositoryConfig = env.service(SnowOwlConfiguration.class)
 				.getModuleConfig(RepositoryConfiguration.class);
-		builder.put(IndexClientFactory.INDEX_PREFIX, repositoryConfiguration.getDeploymentId());
+		builder.put(IndexClientFactory.INDEX_PREFIX, repositoryConfig.getDeploymentId());
 		
-		final IndexConfiguration indexConfig = repositoryConfiguration.getIndexConfiguration();
+		final IndexConfiguration indexConfig = repositoryConfig.getIndexConfiguration();
 		if (indexConfig.getClusterUrl() != null) {
 			builder.put(IndexClientFactory.CLUSTER_URL, indexConfig.getClusterUrl());
 			if (indexConfig.getClusterUsername() != null) {
@@ -88,8 +88,8 @@ public class RepositoryBootstrap extends DefaultBootstrapFragment {
 			
 			builder.put(IndexClientFactory.COMMIT_CONCURRENCY_LEVEL, commitConcurrencyLevel);
 			LOG.info("Set commit concurrency level to {}", commitConcurrencyLevel);
-			repositoryConfiguration.setRevisionCacheEnabled(false);
-			LOG.info("Set revision cache to {} for reindexing", repositoryConfiguration.isRevisionCacheEnabled());
+			repositoryConfig.setRevisionCacheEnabled(false);
+			LOG.info("Set revision cache to {} for reindexing", repositoryConfig.isRevisionCacheEnabled());
 			
 		} else {
 			builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, indexConfig.getCommitInterval());

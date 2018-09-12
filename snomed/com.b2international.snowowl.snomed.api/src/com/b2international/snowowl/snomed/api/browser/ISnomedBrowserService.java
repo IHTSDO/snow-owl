@@ -95,11 +95,12 @@ public interface ISnomedBrowserService {
 	 * @param preferredDescriptionType
 	 * @param scrollKeepAlive
 	 * @param scrollId
-	 * @param limit - the maximal number of results to return
+	 * @param searchAfter 
+	 * @param limit the maximal number of results to return
 	 * @return the search result list of descriptions
 	 * @throws IllegalArgumentException if the query is {@code null} or too short
 	 */
-	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, String scrollKeepAlive, String scrollId, int limit);
+	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, String scrollKeepAlive, String scrollId, String searchAfter, int limit);
 
 	/**
 	 * Retrieves a map of enum constants and corresponding concepts.

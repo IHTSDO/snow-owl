@@ -369,8 +369,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			SnomedBrowserDescriptionType preferredDescriptionType,
 			String scrollKeepAlive,
 			String scrollId,
+			String searchAfter,
 			int limit) {
 		
+		checkNotNull(branchPath, "BranchPath may not be null.");
 		checkNotNull(query, "Query may not be null.");
 		checkArgument(query.length() >= 3, "Query must be at least 3 characters long.");
 	
@@ -379,6 +381,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final Collection<SnomedDescription> descriptions = SnomedRequests.prepareSearchDescription()
 			.setScroll(scrollKeepAlive)
 			.setScrollId(scrollId)
+			.setSearchAfter(searchAfter)
 			.setLimit(limit)
 			.filterByTerm(query)
 			.filterByType(ImmutableSet.of(Concepts.FULLY_SPECIFIED_NAME, Concepts.SYNONYM))

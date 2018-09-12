@@ -145,6 +145,10 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@ApiParam(value="A scrollId to continue scrolling a previous query")
 			@RequestParam(value="scrollId", required=false) 
 			final String scrollId,
+			
+			@ApiParam(value="The search key to use for retrieving the next page of results")
+			@RequestParam(value="searchAfter", required=false) 
+			final String searchAfter,
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
@@ -175,6 +179,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				conceptIds,
 				scrollKeepAlive,
 				scrollId,
+				searchAfter,
 				limit,
 				expand,
 				acceptLanguage,
@@ -225,6 +230,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				body.getConceptIds(),
 				body.getScrollKeepAlive(),
 				body.getScrollId(),
+				body.getSearchAfter(),
 				body.getLimit(),
 				body.getExpand(),
 				acceptLanguage,
@@ -245,6 +251,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final Set<String> conceptIds,
 			final String scrollKeepAlive,
 			final String scrollId,
+			final String searchAfter,
 			final int limit,
 			final String expandParams,
 			final String acceptLanguage,
@@ -277,6 +284,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.setScroll(scrollKeepAlive)
 					.setScrollId(scrollId)
 					.setLimit(limit)
+					.setSearchAfter(searchAfter)
 					.filterByActive(activeFilter)
 					.filterByModule(moduleFilter)
 					.filterByEffectiveTime(effectiveTimeFilter)

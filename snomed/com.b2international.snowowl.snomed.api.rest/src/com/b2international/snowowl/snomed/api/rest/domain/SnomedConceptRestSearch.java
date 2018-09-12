@@ -31,6 +31,7 @@ public class SnomedConceptRestSearch {
 	private Boolean descriptionActiveFilter = null;
 	private String scrollKeepAlive;
 	private String scrollId;
+	private String searchAfter;
 	private int limit = 50;
 	
 	public String getTermFilter() {
@@ -135,6 +136,14 @@ public class SnomedConceptRestSearch {
 
 	public void setLimit(int limit) {
 		this.limit = limit;
+	}
+	
+	public String getSearchAfter() {
+		return searchAfter;
+	}
+	
+	public void setSearchAfter(String searchAfter) {
+		this.searchAfter = searchAfter;
 	}
 
 }

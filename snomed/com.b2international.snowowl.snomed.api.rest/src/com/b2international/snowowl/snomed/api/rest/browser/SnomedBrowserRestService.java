@@ -531,6 +531,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiParam(value="A scrollId to continue scrolling a previous query")
 			@RequestParam(value="scrollId", required=false) 
 			final String scrollId,
+			
+			@ApiParam(value="The search key to use for retrieving the next page of results")
+			@RequestParam(value="searchAfter", required=false) 
+			final String searchAfter,
+
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false)
@@ -550,7 +555,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 		
-		return browserService.getDescriptions(branchPath, query, extendedLocales, preferredDescriptionType, scrollKeepAlive, scrollId, limit);
+		return browserService.getDescriptions(branchPath, query, extendedLocales, preferredDescriptionType, scrollKeepAlive, scrollId, searchAfter, limit);
 	}
 
 	@ApiOperation(
