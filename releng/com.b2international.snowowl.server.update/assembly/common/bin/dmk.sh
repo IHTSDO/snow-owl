@@ -199,8 +199,8 @@ then
                     -Djava.awt.headless=true \
                     -XX:+AlwaysLockClassLoader \
                     -Dosgi.classloader.type=nonparallel \
-                    -Dfile.encoding=UTF-8" 
-                    -Djdk.security.defaultKeySize=DSA:1024
+                    -Dfile.encoding=UTF-8 \
+                    -Djdk.security.defaultKeySize=DSA:1024"
 
 		cd "$KERNEL_HOME"; exec $JAVA_EXECUTABLE \
 			$JAVA_OPTS \
