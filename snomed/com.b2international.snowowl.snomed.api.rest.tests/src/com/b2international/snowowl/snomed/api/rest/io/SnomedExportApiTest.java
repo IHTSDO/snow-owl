@@ -1157,7 +1157,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		
 		createNewRefSet(branchPath, SnomedRefSetType.OWL_AXIOM, Concepts.REFSET_OWL_AXIOM);
 		
-		String owlExpression = "dummy expression";
+		String owlExpression = "TransitiveObjectProperty(:733930001)";
 		
 		Map<?, ?> memberRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, Concepts.ROOT_CONCEPT)
 				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
