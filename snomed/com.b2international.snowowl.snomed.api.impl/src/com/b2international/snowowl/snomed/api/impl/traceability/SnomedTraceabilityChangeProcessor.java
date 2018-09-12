@@ -158,7 +158,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 			
 			this.entry = new TraceabilityEntry(commitChangeSet);
 			
-			if (isSystemCommit() && !collectSystemChanges) {
+			if (isSystemCommit(commitChangeSet.getUserId()) && !collectSystemChanges) {
 				return;
 			}
 			
@@ -474,8 +474,8 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		return axiomService;
 	}
 
-	private boolean isSystemCommit() {
-		return User.isSystem(commitChangeSet.getUserId());
+	private boolean isSystemCommit(String userId) {
+		return User.isSystem(userId);
 	}
 
 	private boolean collectSystemChanges(String branch) {
