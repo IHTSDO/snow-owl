@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.b2international.snowowl</groupId>
 	<artifactId>snowowl-parent</artifactId>
-	<version>5.15.1</version>
+	<version>5.16.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<properties>
@@ -15,7 +15,7 @@
 		<!-- Maven Dependency Versions -->
 		<jackson.version>2.6.6</jackson.version>
 		<snomed-owl-toolkit.version>1.2.0</snomed-owl-toolkit.version>
-		<snomed-drools-engine.version>1.8.0</snomed-drools-engine.version>
+		<snomed-drools-engine.version>1.10.0-SNAPSHOT</snomed-drools-engine.version>
 		<!-- Build tool/compiler versions -->
 		<tycho.version>0.23.0</tycho.version>
 		<tycho-extras.version>0.23.0</tycho-extras.version>
@@ -702,9 +702,9 @@
 		<profile>
 			<id>tp_dependencies</id>
 			<properties>
-				<target.platform.version>5.14.0</target.platform.version>
-				<previous-target.platform.version>5.13.0</previous-target.platform.version>
-				<target.platform.url>${nexus.url}/content/unzip/releases.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
+				<target.platform.version>5.16.0-SNAPSHOT</target.platform.version>
+				<previous-target.platform.version>5.14.0</previous-target.platform.version>
+				<target.platform.url>${nexus.url}/content/unzip/snapshots.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
 				<previous-target.platform.url>${nexus.url}/content/unzip/releases.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${previous-target.platform.version}/com.b2international.snowowl.server.target.update-${previous-target.platform.version}.zip-unzip/</previous-target.platform.url>
 			</properties>
 			<repositories>
