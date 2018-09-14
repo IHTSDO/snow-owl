@@ -157,12 +157,11 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 			traceabilityTimer.start();
 			
 			this.entry = new TraceabilityEntry(commitChangeSet);
+			this.commitChangeSet = commitChangeSet;
 			
 			if (isSystemCommit(commitChangeSet.getUserId()) && !collectSystemChanges) {
 				return;
 			}
-			
-			this.commitChangeSet = commitChangeSet;
 			
 			processNewComponents(commitChangeSet.getNewComponents());
 			processComponentUpdates(commitChangeSet.getDirtyComponents());
