@@ -88,7 +88,7 @@ public class SnomedResourceExpander {
 			}
 		}
 		
-		return new RelationshipChanges(extendedChanges, relationshipChanges.getScrollId(), relationshipChanges.getSearchAfter(), relationshipChanges.getLimit(), relationshipChanges.getTotal());
+		return RelationshipChanges.of(extendedChanges, relationshipChanges.getOffset(), relationshipChanges.getLimit(), relationshipChanges.getTotal());
 	}
 	
 	public SnomedConcepts expandConcepts(String branchPath, SnomedConcepts concepts, 

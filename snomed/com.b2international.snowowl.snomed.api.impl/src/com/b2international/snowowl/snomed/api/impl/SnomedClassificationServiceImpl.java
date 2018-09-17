@@ -173,7 +173,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			final String defaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch,
 					SnomedCoreConfiguration.BRANCH_DEFAULT_REASONER_NAMESPACE_KEY);
 			
-			RelationshipChanges relationshipChanges = getRelationshipChanges(branchPath, classificationId, Integer.MAX_VALUE);
+			RelationshipChanges relationshipChanges = getRelationshipChanges(branchPath, classificationId, 0, Integer.MAX_VALUE);
 			
 			Set<String> inferredSourceIds = relationshipChanges.getItems().stream()
 				.filter(change -> change.getChangeNature() == ChangeNature.INFERRED)
@@ -673,15 +673,15 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 	
 	@Override
-	public RelationshipChanges getRelationshipChanges(final String branchPath, final String classificationId, final int limit) {
-		return getRelationshipChanges(branchPath, classificationId, null, limit);
+	public RelationshipChanges getRelationshipChanges(final String branchPath, final String classificationId, final int offset, final int limit) {
+		return getRelationshipChanges(branchPath, classificationId, null, offset, limit);
 	}
 	
-	private RelationshipChanges getRelationshipChanges(String branchPath, String classificationId, String conceptId, int limit) {
+	private RelationshipChanges getRelationshipChanges(String branchPath, String classificationId, String conceptId, int offset, int limit) {
 		checkServices();
 		getClassificationRun(branchPath, classificationId);
 		try {
-			return indexService.getRelationshipChanges(branchPath, classificationId, conceptId, limit);
+			return indexService.getRelationshipChanges(branchPath, classificationId, conceptId, offset, limit);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -692,7 +692,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) getBrowserService().getConceptDetails(branchPath, conceptId, locales);
 
 		final List<ISnomedBrowserRelationship> relationships = Lists.newArrayList(conceptDetails.getRelationships());
-		final RelationshipChanges relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, 10000);
+		final RelationshipChanges relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, 0, 10000);
 
 		/* 
 		 * XXX: We don't want to match anything that is part of the inferred set below, so we remove relationships from the existing list, 

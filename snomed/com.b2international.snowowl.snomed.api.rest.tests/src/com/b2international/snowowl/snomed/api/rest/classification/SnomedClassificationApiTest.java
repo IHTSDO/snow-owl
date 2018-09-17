@@ -47,7 +47,6 @@ import org.junit.Test;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.domain.CollectionResource;
-import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConcept;
@@ -252,7 +251,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 			.statusCode(200)
 			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
 
-		PageableCollectionResource<RelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+		RelationshipChanges changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
 				.extract()
 				.asInputStream(), RelationshipChanges.class);
 
@@ -357,7 +356,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 			.statusCode(200)
 			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
 
-		PageableCollectionResource<RelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId)
+		RelationshipChanges changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId)
 				.statusCode(200)
 				.extract()
 				.asInputStream(), RelationshipChanges.class);
@@ -374,7 +373,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 			.statusCode(200)
 			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
 
-		PageableCollectionResource<RelationshipChange> secondChanges = MAPPER.readValue(getRelationshipChanges(branchPath, secondClassificationId)
+		RelationshipChanges secondChanges = MAPPER.readValue(getRelationshipChanges(branchPath, secondClassificationId)
 				.statusCode(200)
 				.extract()
 				.asInputStream(), RelationshipChanges.class);

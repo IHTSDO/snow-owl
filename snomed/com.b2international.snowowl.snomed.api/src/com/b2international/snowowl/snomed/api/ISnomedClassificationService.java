@@ -126,7 +126,7 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found or the
 	 *             classification run not found with the specified parameters
 	 */
-	RelationshipChanges getRelationshipChanges(String branchPath, String classificationId, int limit);
+	RelationshipChanges getRelationshipChanges(String branchPath, String classificationId, int offset, int limit);
 
 	/**
 	 * Computes an inferred preview of an existing concept, with all inferred relationships displayed which will be present after saving.

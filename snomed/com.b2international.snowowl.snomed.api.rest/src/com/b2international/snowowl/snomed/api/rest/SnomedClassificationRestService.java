@@ -205,6 +205,10 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@RequestParam(value="expand", defaultValue="", required=false)
 			final List<String> expand,
 
+			@ApiParam(value="The starting offset in the list")
+			@RequestParam(value="offset", defaultValue="0", required=false) 
+			final int offset,
+
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
@@ -213,7 +217,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		final RelationshipChanges relationshipChanges = delegate.getRelationshipChanges(branchPath, classificationId, limit);
+		final RelationshipChanges relationshipChanges = delegate.getRelationshipChanges(branchPath, classificationId, offset, limit);
 		
 		if (!relationshipChanges.getItems().isEmpty() && !expand.isEmpty()) {
 			

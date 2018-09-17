@@ -349,12 +349,12 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	 * @param limit
 	 * @return
 	 */
-	public RelationshipChanges getRelationshipChanges(final String branchPath, final String classificationId, final String sourceConceptId, final int limit) throws IOException {
+	public RelationshipChanges getRelationshipChanges(final String branchPath, final String classificationId, final String sourceConceptId, final int offset, final int limit) throws IOException {
 
 		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, branchPath, sourceConceptId);
 		final int total = getHitCount(query);
-		final List<RelationshipChange> changes = this.search(query, RelationshipChange.class, limit);
-		return new RelationshipChanges(changes, null, null, limit, total);
+		final List<RelationshipChange> changes = this.search(query, RelationshipChange.class, offset, limit);
+		return RelationshipChanges.of(changes, offset, limit, total);
 	}
 
 	private <T> void indexResult(final String id, final IBranchPath branchPath, final String userId, final long creationDate,
