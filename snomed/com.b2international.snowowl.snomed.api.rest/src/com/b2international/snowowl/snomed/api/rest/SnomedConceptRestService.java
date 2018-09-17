@@ -202,6 +202,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 	})
 	@RequestMapping(value="/{path:**}/concepts/search", method = RequestMethod.POST,  produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
 	public @ResponseBody DeferredResult<SnomedConcepts> searchViaPost(
+			
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branch,
@@ -220,8 +221,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		return doSearch(branch,
 				body.getActiveFilter(),
 				body.getModuleFilter(),
-				null, // TODO
-				null, // TODO
+				body.getNamespaceFilter(),
+				body.getEffectiveTimeFilter(),
 				body.getDefinitionStatusFilter(),
 				body.getTermFilter(),
 				body.getDescriptionActiveFilter(),
@@ -266,6 +267,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				expand = String.format("%s,descriptions()", expand);
 			}
 		}
+		
 		try {
 			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
 		} catch (IOException e) {

@@ -19,16 +19,17 @@ import java.util.Set;
 
 public class SnomedConceptRestSearch {
 
+	private Boolean activeFilter = null;
+	private String moduleFilter;
+	private String namespaceFilter;
+	private String effectiveTimeFilter;
+	private String definitionStatusFilter;
 	private String termFilter;
-	private String escgFilter;
+	private Boolean descriptionActiveFilter = null;
 	private String eclFilter;
 	private String statedEclFilter;
 	private Set<String> conceptIds;
-	private String moduleFilter;
-	private String definitionStatusFilter;
 	private String expand;
-	private Boolean activeFilter = null;
-	private Boolean descriptionActiveFilter = null;
 	private String scrollKeepAlive;
 	private String scrollId;
 	private String searchAfter;
@@ -42,14 +43,6 @@ public class SnomedConceptRestSearch {
 		this.termFilter = termFilter;
 	}
 
-	public String getEscgFilter() {
-		return escgFilter;
-	}
-
-	public void setEscgFilter(String escgFilter) {
-		this.escgFilter = escgFilter;
-	}
-	
 	public String getEclFilter() {
 		return eclFilter;
 	}
@@ -106,44 +99,60 @@ public class SnomedConceptRestSearch {
 		this.descriptionActiveFilter = descriptionActiveFilter;
 	}
 
-	public String getExpand() {
-		return expand;
+	public String getEffectiveTimeFilter() {
+		return effectiveTimeFilter;
+	}
+	
+	public void setEffectiveTimeFilter(String effectiveTimeFilter) {
+		this.effectiveTimeFilter = effectiveTimeFilter;
+	}
+	
+	public String getNamespaceFilter() {
+		return namespaceFilter;
+	}
+	
+	public void setNamespaceFilter(String namespaceFilter) {
+		this.namespaceFilter = namespaceFilter;
 	}
 
-	public void setExpand(String expand) {
-		this.expand = expand;
+	public String getExpand() {
+		return expand;
 	}
 
 	public String getScrollKeepAlive() {
 		return scrollKeepAlive;
 	}
 
-	public void setScrollKeepAlive(String scrollKeepAlive) {
-		this.scrollKeepAlive = scrollKeepAlive;
-	}
-
 	public String getScrollId() {
 		return scrollId;
 	}
 
-	public void setScrollId(String scrollId) {
-		this.scrollId = scrollId;
+	public String getSearchAfter() {
+		return searchAfter;
 	}
 
 	public int getLimit() {
 		return limit;
 	}
 
-	public void setLimit(int limit) {
-		this.limit = limit;
+	public void setExpand(String expand) {
+		this.expand = expand;
 	}
-	
-	public String getSearchAfter() {
-		return searchAfter;
+
+	public void setScrollKeepAlive(String scrollKeepAlive) {
+		this.scrollKeepAlive = scrollKeepAlive;
 	}
-	
+
+	public void setScrollId(String scrollId) {
+		this.scrollId = scrollId;
+	}
+
 	public void setSearchAfter(String searchAfter) {
 		this.searchAfter = searchAfter;
 	}
 
+	public void setLimit(int limit) {
+		this.limit = limit;
+	}
+	
 }
