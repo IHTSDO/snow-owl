@@ -40,6 +40,7 @@ import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.IComponent;
+import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
@@ -86,6 +87,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
@@ -331,7 +333,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 						.execute(getBus())
 						.getSync();
-				
 			}
 	
 			@Override
@@ -363,7 +364,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	@Override
-	public List<ISnomedBrowserDescriptionResult> getDescriptions(
+	public PageableCollectionResource<ISnomedBrowserDescriptionResult> getDescriptions(
 			String branchPath,
 			String query, List<ExtendedLocale> locales,
 			SnomedBrowserDescriptionType preferredDescriptionType,
@@ -378,7 +379,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 		final DescriptionService descriptionService = new DescriptionService(getBus(), branchPath);
 		
-		final Collection<SnomedDescription> descriptions = SnomedRequests.prepareSearchDescription()
+		SnomedDescriptions snomedDescriptions = SnomedRequests.prepareSearchDescription()
 			.setScroll(scrollKeepAlive)
 			.setScrollId(scrollId)
 			.setSearchAfter(searchAfter)
@@ -388,8 +389,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.sortBy(SearchIndexResourceRequest.SCORE)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 			.execute(getBus())
-			.getSync()
-			.getItems();
+			.getSync();
+		
+		final Collection<SnomedDescription> descriptions = snomedDescriptions.getItems();
 		
 		final List<SnomedDescription> sortedDescriptions = FluentIterable.from(descriptions)
 			.toSortedList((d1, d2) -> {
@@ -469,7 +471,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			resultBuilder.add(descriptionResult);
 		}
 	
-		return resultBuilder.build();
+		return PageableCollectionResource.of(resultBuilder.build(), snomedDescriptions.getScrollId(), snomedDescriptions.getSearchAfter(), snomedDescriptions.getLimit(), snomedDescriptions.getTotal());
 	}
 
 	@Override

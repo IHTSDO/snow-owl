@@ -21,6 +21,7 @@ import java.util.Set;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
+import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
@@ -100,7 +101,7 @@ public interface ISnomedBrowserService {
 	 * @return the search result list of descriptions
 	 * @throws IllegalArgumentException if the query is {@code null} or too short
 	 */
-	List<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, String scrollKeepAlive, String scrollId, String searchAfter, int limit);
+	PageableCollectionResource<ISnomedBrowserDescriptionResult> getDescriptions(String branchPath, String query, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType, String scrollKeepAlive, String scrollId, String searchAfter, int limit);
 
 	/**
 	 * Retrieves a map of enum constants and corresponding concepts.

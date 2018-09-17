@@ -42,6 +42,7 @@ import com.b2international.commons.CompareUtils;
 import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
+import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.request.ExpandParser;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
@@ -511,7 +512,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/{path:**}/descriptions",
 			method = RequestMethod.GET)
-	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
+	public @ResponseBody PageableCollectionResource<ISnomedBrowserDescriptionResult> searchDescriptions(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -535,7 +536,6 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiParam(value="The search key to use for retrieving the next page of results")
 			@RequestParam(value="searchAfter", required=false) 
 			final String searchAfter,
-
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false)
