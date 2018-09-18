@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,6 +88,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	private static final Logger LOGGER = LoggerFactory.getLogger(CisSnomedIdentifierService.class);
 	
 	private static final int BULK_LIMIT = 1000;
+	private static final int GENERATE_BULK_LIMIT = 10000;
 
 	private final long numberOfPollTries;
 	private final long numberOfReauthTries;
@@ -123,20 +124,31 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		HttpPost generateRequest = null;
 		HttpGet recordsRequest = null;
+		final Set<String> requestedComponentIds = Sets.newHashSet();
 		try {
-
 			if (quantity > 1) {
 				LOGGER.debug(String.format("Sending %s ID bulk generation request.", category.getDisplayName()));
 				
-				generateRequest = httpPost(String.format("sct/bulk/generate?token=%s", getToken()), createBulkGenerationData(namespace, category, quantity));
-				final String response = execute(generateRequest);
-				final String jobId = mapper.readValue(response, JsonNode.class).get("id").asText();
-				joinBulkJobPolling(jobId, quantity, getToken());
-	
-				recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
-				final String recordsResponse = execute(recordsRequest);
-				final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
-				return getComponentIds(records);
+				int generatedIds = 0;
+				int offset = 0;
+				// Calculate how many times we need to iterate for id generation
+				final int numberOfPages = quantity / GENERATE_BULK_LIMIT == 0 ? 1 : quantity / GENERATE_BULK_LIMIT + 1;
+				for (int currentPage = 1; currentPage <= numberOfPages; currentPage++) {
+					offset = calculateOffset(currentPage, quantity, generatedIds);
+					LOGGER.debug(String.format("Sending bulk generation request for namespace %s with size %d.", namespace, offset));
+					generatedIds += offset;
+					// Generate id-s
+					generateRequest = httpPost(String.format("sct/bulk/generate?token=%s", getToken()), createBulkGenerationData(namespace, category, offset));
+					final String response = execute(generateRequest);
+					final String jobId = mapper.readValue(response, JsonNode.class).get("id").asText();
+					joinBulkJobPolling(jobId, quantity, getToken());
+					
+					recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
+					final String recordsResponse = execute(recordsRequest);
+					final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
+					
+					requestedComponentIds.addAll(getComponentIds(records));
+				}
 				
 			} else {
 				LOGGER.debug(String.format("Sending %s ID single generation request.", category.getDisplayName()));
@@ -145,7 +157,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				final String response = execute(generateRequest);
 				final SctId sctid = mapper.readValue(response, SctId.class);
 				
-				return ImmutableSet.of(sctid.getSctid());
+				requestedComponentIds.add(sctid.getSctid());
 			}
 			
 		} catch (IOException e) {
@@ -154,6 +166,9 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			release(generateRequest);
 			release(recordsRequest);
 		}
+		
+		return requestedComponentIds;
+		
 	}
 
 	@Override
@@ -220,20 +235,32 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		HttpPost reserveRequest = null;
 		HttpGet recordsRequest = null;
+		final Set<String> requestedComponentIds = Sets.newHashSet();
 		try {
-
 			if (quantity > 1) {
 				LOGGER.debug(String.format("Sending %s ID bulk reservation request.", category.getDisplayName()));
-	
-				reserveRequest = httpPost(String.format("sct/bulk/reserve?token=%s", getToken()), createBulkReservationData(namespace, category, quantity));
-				final String bulkResponse = execute(reserveRequest);
-				final String jobId = mapper.readValue(bulkResponse, JsonNode.class).get("id").asText();
-				joinBulkJobPolling(jobId, quantity, getToken());
-	
-				recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
-				final String recordsResponse = execute(recordsRequest);
-				final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
-				return getComponentIds(records);
+				int reservedIds = 0;
+				int offset = 0;
+				// Calculate how many times we need to iterate for id reservation
+				final int numberOfPages = quantity / GENERATE_BULK_LIMIT == 0 ? 1 : quantity / GENERATE_BULK_LIMIT + 1;
+				for (int currentPage = 1; currentPage <= numberOfPages; currentPage++) {
+					// Calculate the offset based on the already reservedIds and how much is left to be reserved
+					offset = calculateOffset(currentPage, quantity, reservedIds);
+					LOGGER.debug(String.format("Sending bulk reservation request for namespace %s with size %d.", namespace, offset));
+					reservedIds += offset;
+					
+					// Reserve id-s
+					reserveRequest = httpPost(String.format("sct/bulk/reserve?token=%s", getToken()), createBulkReservationData(namespace, category, offset));
+					final String bulkResponse = execute(reserveRequest);
+					final String jobId = mapper.readValue(bulkResponse, JsonNode.class).get("id").asText();
+					joinBulkJobPolling(jobId, quantity, getToken());
+					
+					recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
+					final String recordsResponse = execute(recordsRequest);
+					final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
+					
+					requestedComponentIds.addAll(getComponentIds(records));
+				}
 			
 			} else {
 				LOGGER.debug(String.format("Sending %s ID reservation request.", category.getDisplayName()));
@@ -242,7 +269,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				final String response = execute(reserveRequest);
 				final SctId sctid = mapper.readValue(response, SctId.class);
 				
-				return ImmutableSet.of(sctid.getSctid());
+				requestedComponentIds.add(sctid.getSctid());
 			}
 			
 		} catch (IOException e) {
@@ -251,6 +278,8 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			release(reserveRequest);
 			release(recordsRequest);
 		}
+		
+		return requestedComponentIds;
 	}
 	
 	@Override
@@ -430,6 +459,10 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			return resultBuilder.build();
 		}
 		
+	}
+	
+	private int calculateOffset(int page, final int quantity, int alreadyGeneratedIds) {
+		return page * GENERATE_BULK_LIMIT > quantity ? quantity - alreadyGeneratedIds : GENERATE_BULK_LIMIT;
 	}
 
 	private SctId buildSctId(final String componentId, final IdentifierStatus status) {
