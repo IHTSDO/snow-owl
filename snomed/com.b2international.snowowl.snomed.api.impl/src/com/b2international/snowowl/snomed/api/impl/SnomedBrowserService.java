@@ -40,7 +40,6 @@ import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.IComponent;
-import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
@@ -64,6 +63,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescr
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserBulkChangeStatus;
+import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionResults;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.impl.domain.InputFactory;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserAxiom;
@@ -364,12 +364,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	@Override
-	public PageableCollectionResource<ISnomedBrowserDescriptionResult> getDescriptions(
+	public SnomedBrowserDescriptionResults getDescriptions(
 			String branchPath,
 			String query, List<ExtendedLocale> locales,
 			SnomedBrowserDescriptionType preferredDescriptionType,
-			String scrollKeepAlive,
-			String scrollId,
 			String searchAfter,
 			int limit) {
 		
@@ -380,8 +378,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final DescriptionService descriptionService = new DescriptionService(getBus(), branchPath);
 		
 		SnomedDescriptions snomedDescriptions = SnomedRequests.prepareSearchDescription()
-			.setScroll(scrollKeepAlive)
-			.setScrollId(scrollId)
 			.setSearchAfter(searchAfter)
 			.setLimit(limit)
 			.filterByTerm(query)
@@ -471,7 +467,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			resultBuilder.add(descriptionResult);
 		}
 	
-		return PageableCollectionResource.of(resultBuilder.build(), snomedDescriptions.getScrollId(), snomedDescriptions.getSearchAfter(), snomedDescriptions.getLimit(), snomedDescriptions.getTotal());
+		return SnomedBrowserDescriptionResults.of(resultBuilder.build(), snomedDescriptions);
 	}
 
 	@Override

@@ -17,44 +17,36 @@ package com.b2international.snowowl.snomed.api.rest.domain;
 
 import java.util.List;
 
+import com.b2international.snowowl.core.domain.CustomPageableCollectionResource;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.google.common.base.MoreObjects.ToStringHelper;
+
 /**
  * @since 1.0
  */
-public class SnomedInboundRelationships {
+public class SnomedInboundRelationships extends CustomPageableCollectionResource {
 
-	private static String[] expandable = {"source.fsn, type.fsn"};
+	protected SnomedInboundRelationships(String searchAfter, int limit, int total) {
+		super(searchAfter, limit, total);
+	}
 
 	private List<ExpandableSnomedRelationship> inboundRelationships;
-	private int total;
 
 	public List<ExpandableSnomedRelationship> getInboundRelationships() {
 		return inboundRelationships;
-	}
-
-	public int getTotal() {
-		return total;
-	}
-
-	public String[] getExpandable() {
-		return expandable;
 	}
 
 	public void setInboundRelationships(final List<ExpandableSnomedRelationship> inboundRelationships) {
 		this.inboundRelationships = inboundRelationships;
 	}
 
-	public void setTotal(final int total) {
-		this.total = total;
-	}
-
 	@Override
-	public String toString() {
-		final StringBuilder builder = new StringBuilder();
-		builder.append("SnomedInboundRelationships [inboundRelationships=");
-		builder.append(inboundRelationships);
-		builder.append(", total=");
-		builder.append(total);
-		builder.append("]");
-		return builder.toString();
+	protected void appendToString(ToStringHelper stringHelper) {
+		stringHelper.add("inboundRelationships", getInboundRelationships());
 	}
+	
+	public static SnomedInboundRelationships of(SnomedRelationships relationships) {
+		return new SnomedInboundRelationships(relationships.getSearchAfter(), relationships.getLimit(), relationships.getTotal());
+	}
+	
 }

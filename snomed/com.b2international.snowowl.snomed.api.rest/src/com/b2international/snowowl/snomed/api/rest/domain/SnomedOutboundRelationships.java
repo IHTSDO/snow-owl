@@ -17,40 +17,39 @@ package com.b2international.snowowl.snomed.api.rest.domain;
 
 import java.util.List;
 
+import com.b2international.snowowl.core.domain.CustomPageableCollectionResource;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.google.common.base.MoreObjects.ToStringHelper;
 
 /**
  * @since 1.0
  */
-public class SnomedOutboundRelationships {
+public class SnomedOutboundRelationships extends CustomPageableCollectionResource {
+
+	protected SnomedOutboundRelationships(String searchAfter, int limit, int total) {
+		super(searchAfter, limit, total);
+	}
 
 	private List<SnomedRelationship> outboundRelationships;
-	private int total;
 
 	public List<SnomedRelationship> getOutboundRelationships() {
 		return outboundRelationships;
-	}
-
-	public int getTotal() {
-		return total;
 	}
 
 	public void setOutboundRelationships(final List<SnomedRelationship> outboundRelationships) {
 		this.outboundRelationships = outboundRelationships;
 	}
 
-	public void setTotal(final int total) {
-		this.total = total;
-	}
-
 	@Override
-	public String toString() {
-		final StringBuilder builder = new StringBuilder();
-		builder.append("SnomedOutboundRelationships [outboundRelationships=");
-		builder.append(outboundRelationships);
-		builder.append(", total=");
-		builder.append(total);
-		builder.append("]");
-		return builder.toString();
+	protected void appendToString(ToStringHelper stringHelper) {
+		stringHelper.add("outboundRelationships", getOutboundRelationships());
 	}
+	
+	public static SnomedOutboundRelationships of(SnomedRelationships relationships) {
+		SnomedOutboundRelationships result = new SnomedOutboundRelationships(relationships.getSearchAfter(), relationships.getLimit(), relationships.getTotal());
+		result.setOutboundRelationships(relationships.getItems());
+		return result;
+	}
+	
 }

@@ -15,7 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
-import static com.google.common.collect.Lists.newArrayList;
+import static java.util.stream.Collectors.toList;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -46,12 +46,8 @@ import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
-import com.google.common.collect.ImmutableList;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -81,36 +77,55 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 		@ApiResponse(code = 200, message = "OK"),
 		@ApiResponse(code = 404, message = "Branch or Concept not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/concepts/{conceptId}/descriptions", method=RequestMethod.GET)
-	public @ResponseBody DeferredResult<SnomedConceptDescriptions> getConceptDescriptions(
+	@RequestMapping(value="/{path:**}/concepts/{conceptId}/conceptDescriptions", method=RequestMethod.GET)
+	public DeferredResult<SnomedConceptDescriptions> getConceptDescriptions(
+			
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
-
+			
 			@ApiParam(value="The concept identifier")
 			@PathVariable(value="conceptId")
 			final String conceptId,
 			
 			@ApiParam(value="Expansion parameters")
 			@RequestParam(value="expand", required=false)
-			final String expand) {
+			final String expand,
+			
+			@ApiParam(value="The search key to use for retrieving the next page of results")
+			@RequestParam(value="searchAfter", required=false) 
+			final String searchAfter,
+
+			@ApiParam(value="The maximum number of items to return")
+			@RequestParam(value="limit", defaultValue="50", required=false) 
+			final int limit,
+			
+			@ApiParam(value="Accepted language tags, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage) {
+		
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
 		
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareSearchDescription()
-					.all()
-					.filterByConcept(conceptId)
+					.setLimit(limit)
+					.setSearchAfter(searchAfter)
 					.setExpand(expand)
+					.setLocales(extendedLocales)
+					.filterByConcept(conceptId)
 					.build(repositoryId, branchPath)
 					.execute(bus)
-					.then(new Function<SnomedDescriptions, SnomedConceptDescriptions>() {
-						@Override
-						public SnomedConceptDescriptions apply(SnomedDescriptions input) {
-							final SnomedConceptDescriptions result = new SnomedConceptDescriptions();
-							result.setConceptDescriptions(ImmutableList.copyOf(input.getItems()));
-							return result;
-						};
-					}));
+					.then(descriptions -> SnomedConceptDescriptions.of(descriptions))
+				);
 	}
 
 	@ApiOperation(
@@ -127,6 +142,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 	})
 	@RequestMapping(value="/{path:**}/concepts/{conceptId}/inbound-relationships", method=RequestMethod.GET)
 	public DeferredResult<SnomedInboundRelationships> getInboundStatements(
+			
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -139,14 +155,10 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@RequestParam(value="expand", defaultValue="", required=false)
 			final String[] expand,
 			
-			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
-			@RequestParam(value="scrollKeepAlive", required=false) 
-			final String scrollKeepAlive,
-			
-			@ApiParam(value="A scrollId to continue scrolling a previous query")
-			@RequestParam(value="scrollId", required=false) 
-			final String scrollId,
-			
+			@ApiParam(value="The search key to use for retrieving the next page of results")
+			@RequestParam(value="searchAfter", required=false) 
+			final String searchAfter,
+
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
@@ -181,28 +193,23 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				SnomedRequests
 					.prepareSearchRelationship()
 					.filterByDestination(conceptId)
-					.setScroll(scrollKeepAlive)
-					.setScrollId(scrollId)
 					.setLimit(limit)
 					.setExpand(newExpand.toString())
 					.setLocales(extendedLocales)
 					.build(repositoryId, branchPath)
 					.execute(bus)
-					.then(new Function<SnomedRelationships, SnomedInboundRelationships>() {
-						@Override
-						public SnomedInboundRelationships apply(SnomedRelationships input) {
-							final SnomedInboundRelationships result = new SnomedInboundRelationships();
-							result.setTotal(input.getTotal());
-							
-							final List<ExpandableSnomedRelationship> members = newArrayList();
-							for (SnomedRelationship relationship : input) {
-								members.add(new ExpandableSnomedRelationship(relationship, expand));
-							}
-							
-							result.setInboundRelationships(members);
-							return result;
-						};
-					}));	}
+					.then(relationships -> {
+						
+						SnomedInboundRelationships result = SnomedInboundRelationships.of(relationships);
+						
+						result.setInboundRelationships(relationships.stream()
+							.map(relationship -> new ExpandableSnomedRelationship(relationship, expand))
+							.collect(toList()));
+						
+						return result;
+						
+					}));
+	}
 
 	@ApiOperation(
 			value="Retrieve outbound relationships of a concept",
@@ -214,6 +221,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 	})
 	@RequestMapping(value="/{path:**}/concepts/{conceptId}/outbound-relationships", method=RequestMethod.GET)
 	public DeferredResult<SnomedOutboundRelationships> getOutboundStatements(
+			
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -222,36 +230,39 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@PathVariable(value="conceptId")
 			final String conceptId,
 			
-			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
-			@RequestParam(value="scrollKeepAlive", required=false) 
-			final String scrollKeepAlive,
-			
-			@ApiParam(value="A scrollId to continue scrolling a previous query")
-			@RequestParam(value="scrollId", required=false) 
-			final String scrollId,
+			@ApiParam(value="The search key to use for retrieving the next page of results")
+			@RequestParam(value="searchAfter", required=false) 
+			final String searchAfter,
 
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
-			final int limit) {
+			final int limit,
+			
+			@ApiParam(value="Accepted language tags, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage) {
 
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareSearchRelationship()
-					.filterBySource(conceptId)
-					.setScroll(scrollKeepAlive)
-					.setScrollId(scrollId)
 					.setLimit(limit)
+					.setSearchAfter(searchAfter)
+					.setLocales(extendedLocales)
+					.filterBySource(conceptId)
 					.build(repositoryId, branchPath)
 					.execute(bus)
-					.then(new Function<SnomedRelationships, SnomedOutboundRelationships>() {
-						@Override
-						public SnomedOutboundRelationships apply(SnomedRelationships input) {
-							final SnomedOutboundRelationships result = new SnomedOutboundRelationships();
-							result.setTotal(input.getTotal());
-							result.setOutboundRelationships(input.getItems());
-							return result;
-						};
-					}));
+					.then(relationships -> SnomedOutboundRelationships.of(relationships))
+				);
 	}
 
 	@ApiOperation(
@@ -266,6 +277,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			value="/{path:**}/concepts/{conceptId}/descendants",
 			method = RequestMethod.GET)
 	public DeferredResult<SnomedConcepts> getDescendants(
+			
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -275,7 +287,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			final String conceptId,
 
 			@ApiParam(value="Return stated or inferred descendants")
-			@RequestParam(value="form", defaultValue="inferred", required=false)
+			@RequestParam(value="form", defaultValue=INFERRED_FORM, required=false)
 			final String form,
 			
 			@ApiParam(value="Return direct descendants only")
@@ -336,6 +348,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			value="/{path:**}/concepts/{conceptId}/ancestors",
 			method = RequestMethod.GET)
 	public DeferredResult<SnomedConcepts> getAncestors(
+			
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -345,7 +358,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			final String conceptId,
 
 			@ApiParam(value="Return stated or inferred ancestors")
-			@RequestParam(value="form", defaultValue="inferred", required=false)
+			@RequestParam(value="form", defaultValue=INFERRED_FORM, required=false)
 			final String form,
 			
 			@ApiParam(value="Return direct ancestors only")
@@ -406,6 +419,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			value="/{path:**}/concepts/{conceptId}/pt",
 			method = RequestMethod.GET)
 	public @ResponseBody SnomedDescription getPreferredTerm(
+			
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,

@@ -17,29 +17,40 @@ package com.b2international.snowowl.snomed.api.rest.domain;
 
 import java.util.List;
 
+import com.b2international.snowowl.core.domain.CustomPageableCollectionResource;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.google.common.base.MoreObjects.ToStringHelper;
+import com.google.common.collect.ImmutableList;
 
 /**
  * @since 1.0
  */
-public class SnomedConceptDescriptions {
+public class SnomedConceptDescriptions extends CustomPageableCollectionResource {
 
 	private List<SnomedDescription> conceptDescriptions;
 
+	protected SnomedConceptDescriptions(String searchAfter, int limit, int total) {
+		super(searchAfter, limit, total);
+	}
+	
 	public List<SnomedDescription> getConceptDescriptions() {
 		return conceptDescriptions;
 	}
-
-	public void setConceptDescriptions(final List<SnomedDescription> conceptDescriptions) {
+	
+	public void setConceptDescriptions(List<SnomedDescription> conceptDescriptions) {
 		this.conceptDescriptions = conceptDescriptions;
 	}
 
 	@Override
-	public String toString() {
-		final StringBuilder builder = new StringBuilder();
-		builder.append("SnomedConceptDescriptions [conceptDescriptions=");
-		builder.append(conceptDescriptions);
-		builder.append("]");
-		return builder.toString();
+	protected void appendToString(ToStringHelper stringHelper) {
+		stringHelper.add("conceptDescriptions", getConceptDescriptions());
 	}
+	
+	public static SnomedConceptDescriptions of (SnomedDescriptions descriptions) {
+		SnomedConceptDescriptions result = new SnomedConceptDescriptions(descriptions.getSearchAfter(), descriptions.getLimit(), descriptions.getTotal());
+		result.setConceptDescriptions(ImmutableList.copyOf(descriptions.getItems()));
+		return result;
+	}
+	
 }

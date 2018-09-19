@@ -42,7 +42,6 @@ import com.b2international.commons.CompareUtils;
 import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
-import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.request.ExpandParser;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
@@ -50,8 +49,8 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkC
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
+import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionResults;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
@@ -512,7 +511,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/{path:**}/descriptions",
 			method = RequestMethod.GET)
-	public @ResponseBody PageableCollectionResource<ISnomedBrowserDescriptionResult> searchDescriptions(
+	public @ResponseBody SnomedBrowserDescriptionResults searchDescriptions(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -525,14 +524,6 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
 			final SnomedBrowserDescriptionType preferredDescriptionType,
 
-			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
-			@RequestParam(value="scrollKeepAlive", required=false) 
-			final String scrollKeepAlive,
-			
-			@ApiParam(value="A scrollId to continue scrolling a previous query")
-			@RequestParam(value="scrollId", required=false) 
-			final String scrollId,
-			
 			@ApiParam(value="The search key to use for retrieving the next page of results")
 			@RequestParam(value="searchAfter", required=false) 
 			final String searchAfter,
@@ -555,7 +546,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 		
-		return browserService.getDescriptions(branchPath, query, extendedLocales, preferredDescriptionType, scrollKeepAlive, scrollId, searchAfter, limit);
+		return browserService.getDescriptions(branchPath, query, extendedLocales, preferredDescriptionType, searchAfter, limit);
 	}
 
 	@ApiOperation(
