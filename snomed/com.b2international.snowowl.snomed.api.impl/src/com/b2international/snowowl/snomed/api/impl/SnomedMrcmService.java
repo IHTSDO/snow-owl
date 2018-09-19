@@ -71,8 +71,8 @@ public class SnomedMrcmService {
 		
 	}
 
-	public SnomedConcepts getDomainAttributes(String branchPath, List<String> parentIds, 
-			String scrollKeepAlive, String scrollId, int limit, final List<ExtendedLocale> locales, final String expand) {
+	public SnomedConcepts getDomainAttributes(String branchPath, List<String> parentIds, String searchAfter, int limit,
+			final List<ExtendedLocale> locales, final String expand) {
 
 		String ecl;
 		
@@ -105,8 +105,7 @@ public class SnomedMrcmService {
 		
 		return SnomedRequests
 				.prepareSearchConcept()
-				.setScroll(scrollKeepAlive)
-				.setScrollId(scrollId)
+				.setSearchAfter(searchAfter)
 				.setLimit(limit)
 				.filterByEcl(ecl)
 				.filterByActive(true)
@@ -117,8 +116,8 @@ public class SnomedMrcmService {
 				.getSync();
 	}
 
-	public SnomedConcepts getAttributeValues(String branchPath, String attributeId, String termPrefix, 
-			String scrollKeepAlive, String scrollId, int limit, List<ExtendedLocale> locales, String expand) {
+	public SnomedConcepts getAttributeValues(String branchPath, String attributeId, String termPrefix,
+			String searchAfter, int limit, List<ExtendedLocale> locales, String expand) {
 		
 		final Collection<String> ancestorIds = SnomedRequests.prepareGetConcept(attributeId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
@@ -182,8 +181,7 @@ public class SnomedMrcmService {
 		
 		return SnomedRequests
 				.prepareSearchConcept()
-				.setScroll(scrollKeepAlive)
-				.setScrollId(scrollId)
+				.setSearchAfter(searchAfter)
 				.setLimit(limit)
 				.filterByEcl(relationshipValueExpression)
 				.filterByTerm(termPrefix)

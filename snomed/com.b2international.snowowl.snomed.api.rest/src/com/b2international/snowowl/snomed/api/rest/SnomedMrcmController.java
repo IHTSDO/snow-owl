@@ -75,14 +75,10 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestParam(value="expand", defaultValue="", required=false)
 			final String expand,
 			
-			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
-			@RequestParam(value="scrollKeepAlive", required=false) 
-			final String scrollKeepAlive,
+			@ApiParam(value="The search key to use for retrieving the next page of results")
+			@RequestParam(value="searchAfter", required=false) 
+			final String searchAfter,
 			
-			@ApiParam(value="A scrollId to continue scrolling a previous query")
-			@RequestParam(value="scrollId", required=false) 
-			final String scrollId,
-
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
@@ -101,7 +97,7 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 		
-		return mrcmService.getDomainAttributes(branchPath, parentIds, scrollKeepAlive, scrollId, limit, extendedLocales, expand);
+		return mrcmService.getDomainAttributes(branchPath, parentIds, searchAfter, limit, extendedLocales, expand);
 	}
 
 	@RequestMapping(value="/{path:**}/attribute-values/{attributeId}", method=RequestMethod.GET)
@@ -122,13 +118,9 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestParam(value="expand", defaultValue="", required=false)
 			final String expand,
 			
-			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
-			@RequestParam(value="scrollKeepAlive", required=false) 
-			final String scrollKeepAlive,
-			
-			@ApiParam(value="A scrollId to continue scrolling a previous query")
-			@RequestParam(value="scrollId", required=false) 
-			final String scrollId,
+			@ApiParam(value="The search key to use for retrieving the next page of results")
+			@RequestParam(value="searchAfter", required=false) 
+			final String searchAfter,
 			
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
@@ -148,7 +140,7 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 		
-		return mrcmService.getAttributeValues(branchPath, attributeId.toString(), termPrefix, scrollKeepAlive, scrollId, limit,
+		return mrcmService.getAttributeValues(branchPath, attributeId.toString(), termPrefix, searchAfter, limit,
 				extendedLocales, expand);
 	}
 
