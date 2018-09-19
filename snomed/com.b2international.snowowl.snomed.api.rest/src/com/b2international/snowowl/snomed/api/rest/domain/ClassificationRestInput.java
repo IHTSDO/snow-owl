@@ -17,13 +17,15 @@ package com.b2international.snowowl.snomed.api.rest.domain;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
+import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
+
 /**
  * @since 4.0
  */
 public class ClassificationRestInput {
 
 	@NotEmpty
-	private String reasonerId;
+	private String reasonerId = SnomedClassificationConfiguration.DEFAULT_REASONER;
 
 	private boolean useExternalService = false;
 	
