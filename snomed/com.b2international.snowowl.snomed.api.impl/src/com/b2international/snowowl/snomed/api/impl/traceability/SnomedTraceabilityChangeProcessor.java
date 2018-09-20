@@ -327,7 +327,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				} else if (SnomedTerminologyComponentConstants.CONCEPT_NUMBER == member.getReferencedComponentType()) {
 					
 					if (SnomedRefSetPackage.Literals.SNOMED_ASSOCIATION_REF_SET_MEMBER.equals(eClass) || SnomedRefSetPackage.Literals.SNOMED_ATTRIBUTE_VALUE_REF_SET_MEMBER.equals(eClass)) {
-						entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(SnomedPackage.Literals.CONCEPT.eClass(), member.getReferencedComponentId(), ChangeType.UPDATE));
+						entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(SnomedPackage.Literals.CONCEPT, member.getReferencedComponentId(), ChangeType.UPDATE));
 					} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
 						if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(member.getRefSetIdentifierId())) {
 							entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.UPDATE));
