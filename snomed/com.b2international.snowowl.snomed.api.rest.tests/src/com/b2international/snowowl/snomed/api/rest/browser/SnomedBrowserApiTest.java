@@ -553,13 +553,13 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		
 		SnomedBrowserRestRequests.searchDescriptionsReturnFSN(branchPath, "visotactile")
 				.assertThat().statusCode(200)		
-				.and().body("size()", equalTo(1))		
-				.and().body("[0].concept.fsn", equalTo(fsn));
+				.and().body("items.size()", equalTo(1))		
+				.and().body("items[0].concept.fsn", equalTo(fsn));
 		
 		SnomedBrowserRestRequests.searchDescriptionsReturnPT(branchPath, "circulatory")
 				.assertThat().statusCode(200)		
-				.and().body("size()", equalTo(1))		
-				.and().body("[0].concept.preferredSynonym", equalTo(pt));
+				.and().body("items.size()", equalTo(1))		
+				.and().body("items[0].concept.preferredSynonym", equalTo(pt));
 	}
 	
 	@Test
