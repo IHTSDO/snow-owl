@@ -68,6 +68,9 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRef
 import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedDescriptionTypeRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMAttributeDomainRefSetMember;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMAttributeRangeRefSetMember;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMModuleScopeRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedMappingRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedQueryRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
@@ -104,7 +107,12 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 			SnomedRefSetType.SIMPLE_MAP,
 			SnomedRefSetType.COMPLEX_MAP, 
 			SnomedRefSetType.EXTENDED_MAP,
-			SnomedRefSetType.QUERY);
+			SnomedRefSetType.QUERY,
+			SnomedRefSetType.OWL_AXIOM,
+			SnomedRefSetType.MRCM_DOMAIN,
+			SnomedRefSetType.MRCM_ATTRIBUTE_DOMAIN,
+			SnomedRefSetType.MRCM_ATTRIBUTE_RANGE,
+			SnomedRefSetType.MRCM_MODULE_SCOPE);
 	
 	private static final EnumSet<SnomedRefSetType> RELATIONSHIP_REFERRING_MEMBER_TYPES = EnumSet.of(
 			SnomedRefSetType.ATTRIBUTE_VALUE,
@@ -732,14 +740,10 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 			
 			for (final SnomedRefSetMember member : newMembers) {
 				// member is referencing to the investigated component. mark for deletion.
-				if (id.equals(member.getReferencedComponentId())) {
+				if (id.equals(member.getReferencedComponentId()) || isReferredBy(member, id)) {
 					referringMembers.add(member);
 				}
 				
-				final String specialFieldId = getSpecialFieldId(member);
-				if (id.equals(specialFieldId)) {
-					referringMembers.add(member);
-				}
 			}
 		// persistent component. check for referring members in index
 		} else {
@@ -792,15 +796,20 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 		return RepositoryRequests.prepareBulkRead()
 				.setBody(BulkRequest.<BranchContext>create()
 						.add(getReferringMembers(id, types))
-						.add(getReferringMembersByProps(id, types, Fields.ACCEPTABILITY_ID))
-						.add(getReferringMembersByProps(id, types, Fields.CHARACTERISTIC_TYPE_ID))
-						.add(getReferringMembersByProps(id, types, Fields.CORRELATION_ID))
+						.add(getReferringMembersByProps(id, types, Fields.TARGET_COMPONENT)) // association
+						.add(getReferringMembersByProps(id, types, Fields.VALUE_ID)) // attribute value
+						.add(getReferringMembersByProps(id, types, Fields.UNIT_ID)) // cd
+						.add(getReferringMembersByProps(id, types, Fields.CHARACTERISTIC_TYPE_ID)) // cd
+						.add(getReferringMembersByProps(id, types, Fields.OPERATOR_ID)) // cd
 						.add(getReferringMembersByProps(id, types, Fields.DESCRIPTION_FORMAT))
-						.add(getReferringMembersByProps(id, types, Fields.MAP_CATEGORY_ID))
-						.add(getReferringMembersByProps(id, types, Fields.OPERATOR_ID))
-						.add(getReferringMembersByProps(id, types, Fields.TARGET_COMPONENT))
-						.add(getReferringMembersByProps(id, types, Fields.UNIT_ID))
-						.add(getReferringMembersByProps(id, types, Fields.VALUE_ID))
+						.add(getReferringMembersByProps(id, types, Fields.ACCEPTABILITY_ID)) // language
+						.add(getReferringMembersByProps(id, types, Fields.MAP_TARGET)) // simple map
+						.add(getReferringMembersByProps(id, types, Fields.CORRELATION_ID)) // complex map
+						.add(getReferringMembersByProps(id, types, Fields.MAP_CATEGORY_ID)) // extended map
+						.add(getReferringMembersByProps(id, types, Fields.MRCM_DOMAIN_ID)) // MRCM attr domain
+						.add(getReferringMembersByProps(id, types, Fields.MRCM_RULE_STRENGTH_ID)) // MRCM attr domain/range
+						.add(getReferringMembersByProps(id, types, Fields.MRCM_CONTENT_TYPE_ID)) // MRCM attr domain/range
+						.add(getReferringMembersByProps(id, types, Fields.MRCM_RULE_REFSET_ID)) // MRCM module scope
 						)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
@@ -843,66 +852,70 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 		return SnomedDatastoreActivator.REFSET_ROOT_RESOURCE_NAME;
 	}
 	
-	/*returns with the 'special field' ID of a reference set member:
-	 * - value ID in case of attribute value member
-	 * - acceptability ID in case of language member
-	 * - map target ID in case of mapping member if the map target is a SNOMED CT component, otherwise null.
-	 * - null in case of query member
-	 * - null in case of CDT reference set member
-	 * - null if simple type member
-	 * - description format in case of description type member
-	 * - type ID in case of association reference set member*/
-	@Nullable private String getSpecialFieldId(final SnomedRefSetMember member) {
+	private boolean isReferredBy(final SnomedRefSetMember member, String componentId) {
 		
 		if (member instanceof SnomedAttributeValueRefSetMember) {
 			
-			return ((SnomedAttributeValueRefSetMember) member).getValueId();
-			
-		} else if (member instanceof SnomedLanguageRefSetMember) {
-			
-			return ((SnomedLanguageRefSetMember) member).getAcceptabilityId();
-			
-		} else if (member instanceof SnomedSimpleMapRefSetMember) { //includes complex map as well
-			
-			final short type = ((SnomedSimpleMapRefSetMember) member).getMapTargetComponentType();
-			
-			switch (type) {
-				
-				case SnomedTerminologyComponentConstants.CONCEPT_NUMBER: //$FALL-THROUGH$
-				case SnomedTerminologyComponentConstants.DESCRIPTION_NUMBER: //$FALL-THROUGH$
-				case SnomedTerminologyComponentConstants.RELATIONSHIP_NUMBER: //$FALL-THROUGH$
-					return ((SnomedSimpleMapRefSetMember) member).getMapTargetComponentId();
-					
-				default:
-					return null;
-				
-			}
-			
-			
-		} else if (member instanceof SnomedQueryRefSetMember) {
-			
-			return null; //query is not an ID
-			
-		} else if (member instanceof SnomedConcreteDataTypeRefSetMember) {
-			
-			return null; //does not have 'special field ID'
+			return componentId.equals(((SnomedAttributeValueRefSetMember) member).getValueId());
 			
 		} else if (member instanceof SnomedAssociationRefSetMember) {
 			
-			return ((SnomedAssociationRefSetMember) member).getTargetComponentId();
+			return componentId.equals(((SnomedAssociationRefSetMember) member).getTargetComponentId());
+			
+		} else if (member instanceof SnomedConcreteDataTypeRefSetMember) {
+			
+			SnomedConcreteDataTypeRefSetMember cdMember = (SnomedConcreteDataTypeRefSetMember) member;
+			return componentId.equals(cdMember.getUomComponentId()) 
+					|| componentId.equals(cdMember.getOperatorComponentId())
+					|| componentId.equals(cdMember.getCharacteristicTypeId());
 			
 		} else if (member instanceof SnomedDescriptionTypeRefSetMember) {
 			
-			return ((SnomedDescriptionTypeRefSetMember) member).getDescriptionFormat(); //XXX would be nice to have #getDescriptionFormatId
+			return componentId.equals(((SnomedDescriptionTypeRefSetMember) member).getDescriptionFormat());
 			
-		} else { //simple type member
+		} else if (member instanceof SnomedLanguageRefSetMember) {
 			
-			return null;
+			return componentId.equals(((SnomedLanguageRefSetMember) member).getAcceptabilityId());
+			
+		} else if (member instanceof SnomedSimpleMapRefSetMember) {
+			
+			short mapTargetComponentType = ((SnomedSimpleMapRefSetMember) member).getMapTargetComponentType();
+			
+			if (SnomedTerminologyComponentConstants.isCoreComponentType(mapTargetComponentType)) {
+				
+				if (member instanceof SnomedComplexMapRefSetMember) {
+					SnomedComplexMapRefSetMember complexMember = (SnomedComplexMapRefSetMember) member;
+					return componentId.equals(complexMember.getMapTargetComponentId())
+							|| componentId.equals(complexMember.getCorrelationId())
+							|| componentId.equals(complexMember.getMapCategoryId());
+				} else {
+					return componentId.equals(((SnomedSimpleMapRefSetMember) member).getMapTargetComponentId());
+				}
+				
+			}
+			
+		} else if (member instanceof SnomedMRCMAttributeDomainRefSetMember) {
+			
+			SnomedMRCMAttributeDomainRefSetMember mrcmMember = (SnomedMRCMAttributeDomainRefSetMember) member;
+			return componentId.equals(mrcmMember.getDomainId())
+					|| componentId.equals(mrcmMember.getRuleStrengthId())
+					|| componentId.equals(mrcmMember.getContentTypeId());
+			
+		} else if (member instanceof SnomedMRCMAttributeRangeRefSetMember) {
+			
+			SnomedMRCMAttributeRangeRefSetMember mrcmMember = (SnomedMRCMAttributeRangeRefSetMember) member;
+			return componentId.equals(mrcmMember.getRuleStrengthId())
+					|| componentId.equals(mrcmMember.getContentTypeId());
+			
+		} else if (member instanceof SnomedMRCMModuleScopeRefSetMember) {
+			
+			return componentId.equals(((SnomedMRCMModuleScopeRefSetMember) member).getMrcmRuleRefsetId());
 			
 		}
 		
-	} 
-
+		return false;
+	}
+	
 	private void createIdentifierAndAddRefSet(final SnomedRefSet snomedRefSet, final String parentConceptId, final String name) {
 		createIdentifierAndAddRefSet(snomedRefSet, getSnomedEditingContext().generateComponentId(ComponentCategory.CONCEPT), parentConceptId, name);
 	}
