@@ -9,13 +9,12 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>snowowl-parent</artifactId>
-		<version>6.8.1-SNAPSHOT</version>
+		<version>6.9.0</version>
 	</parent>
 	
 	<modules>
 		<module>com.b2international.snowowl.hibernate.validator</module>
 		<module>com.b2international.snowowl.logging.amq</module>
-		<module>com.b2international.org.apache.lucene</module>
 		<module>org.eclipse.emf.cdo</module>
 		<module>org.eclipse.emf.cdo.common</module>
 		<module>org.eclipse.emf.cdo.net4j</module>

@@ -175,7 +175,8 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 					.build());
 		}
 
-		if (containsKey(OptionKey.ECL)) {
+		//When filtering by term delegate ecl evaluation to description search
+		if (containsKey(OptionKey.ECL) && !containsKey(OptionKey.TERM)) {
 			final String ecl = getString(OptionKey.ECL);
 			//XXX: ECL evaluation may fire sub requests that may be aimed at an already FULL event bus
 			// thus the need for allowing this request to time out to avoid deadlock. 
@@ -299,6 +300,11 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		
 		if (containsKey(OptionKey.PARSED_TERM)) {
 			requestBuilder.withParsedTerm();
+		}
+		
+		if (containsKey(OptionKey.ECL)) {
+			final String ecl = getString(OptionKey.ECL);
+			requestBuilder.filterByConcept(ecl);
 		}
 		
 		final Collection<SnomedDescription> items = requestBuilder

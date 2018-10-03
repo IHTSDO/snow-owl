@@ -1,6 +1,6 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
- *
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -44,6 +44,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collection;
@@ -531,8 +532,6 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		Collection<MergeConflict> conflicts = SnomedRestFixtures.merge(taskAPath.getParent(), taskAPath, "Rebasing task A should fail")
 								.body("status", equalTo(Merge.Status.CONFLICTS.name()))
-								//	XXX:	"message"	: 	"Branch MAIN/SnomedConceptApiTest/deleteConceptOnNestedBranchThenRebase/P/A should be in FORWARD state to be merged into MAIN/SnomedConceptApiTest/deleteConceptOnNestedBranchThenRebase/P. It's currently DIVERGED",
-								//	XXX:	"status" 	: 	"FAILED"
 								.extract().as(Merge.class)
 								.getConflicts();
 		assertEquals(1, conflicts.size());
@@ -609,8 +608,8 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void addRelationshipViaConceptUpdate() throws Exception {
-		String conceptId = createNewConcept(branchPath);
-		SnomedConcept concept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "relationships()")
+		final String conceptId = createNewConcept(branchPath);
+		final SnomedConcept concept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "relationships()")
 				.statusCode(200)
 				.extract().as(SnomedConcept.class);
 
@@ -628,18 +627,18 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		newRelationship.setUnionGroup(0);
 		newRelationship.setModifier(RelationshipModifier.EXISTENTIAL);
 
-		List<SnomedRelationship> changedRelationships = ImmutableList.<SnomedRelationship>builder()
+		final List<SnomedRelationship> changedRelationships = ImmutableList.<SnomedRelationship>builder()
 				.addAll(concept.getRelationships())
 				.add(newRelationship)
 				.build();
 
-		Map<?, ?> updateRequestBody = ImmutableMap.builder()
+		final Map<?, ?> updateRequestBody = ImmutableMap.builder()
 				.put("relationships", SnomedRelationships.of(changedRelationships))
 				.put("commitComment", "Add new relationship via concept update")
 				.build();
 
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, updateRequestBody).statusCode(204);
-		SnomedConcept updatedConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "relationships()")
+		final SnomedConcept updatedConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "relationships()")
 				.statusCode(200)
 				.extract().as(SnomedConcept.class);
 
@@ -648,8 +647,8 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void addMemberViaConceptUpdate() throws Exception {
-		String refSetId = createNewRefSet(branchPath);
-		String conceptId = createNewConcept(branchPath);
+		final String refSetId = createNewRefSet(branchPath);
+		final String conceptId = createNewConcept(branchPath);
 		SnomedConcept concept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "members()")
 				.statusCode(200)
 				.extract().as(SnomedConcept.class);
@@ -663,18 +662,18 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		newMember.setReferenceSetId(refSetId);
 		newMember.setModuleId(Concepts.MODULE_SCT_CORE);
 
-		List<SnomedReferenceSetMember> changedMembers = ImmutableList.<SnomedReferenceSetMember>builder()
+		final List<SnomedReferenceSetMember> changedMembers = ImmutableList.<SnomedReferenceSetMember>builder()
 				.addAll(concept.getMembers())
 				.add(newMember)
 				.build();
 
-		Map<?, ?> updateRequestBody = ImmutableMap.builder()
+		final Map<?, ?> updateRequestBody = ImmutableMap.builder()
 				.put("members", SnomedReferenceSetMembers.of(changedMembers))
 				.put("commitComment", "Add new reference set member via concept update")
 				.build();
 
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, updateRequestBody).statusCode(204);
-		SnomedConcept updatedConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "members()")
+		final SnomedConcept updatedConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "members()")
 				.statusCode(200)
 				.extract().as(SnomedConcept.class);
 
@@ -684,8 +683,8 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	@Test(expected = ConflictException.class)
 	public void doNotDeleteReleasedConceptsInTheSameTransaction() {
 
-		String conceptId = createNewConcept(branchPath);
-
+		final String conceptId = createNewConcept(branchPath);
+		
 		getComponent(branchPath, SnomedComponentType.CONCEPT, Concepts.PART_OF)
 			.statusCode(200)
 			.body("released", equalTo(true));
@@ -829,4 +828,111 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		assertEquals(responseRows, expectedRows);
 	}
 
+	@Test
+	public void testConceptSearchRequestWithInboundRelationshipExpand() {
+		final String conceptId = createNewConcept(branchPath);
+		
+		final String inboundRelationshipId = createNewRelationship(branchPath, Concepts.NAMESPACE_ROOT, Concepts.IS_A, conceptId);
+		
+		final SnomedConcept conceptWithInboundRelationship = SnomedRequests.prepareSearchConcept()
+			.all()
+			.filterById(conceptId)
+			.setExpand("inboundRelationships()")
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.execute(getBus())
+			.getSync()
+			.stream().findFirst().get();
+		 
+		 assertNotNull(conceptWithInboundRelationship.getInboundRelationships());
+		 assertEquals(1, conceptWithInboundRelationship.getInboundRelationships().getItems().size());
+		 final SnomedRelationship expandedInboundRelationship = Iterables.getOnlyElement(conceptWithInboundRelationship.getInboundRelationships());
+		 assertEquals(inboundRelationshipId, expandedInboundRelationship.getId());
+	}
+	
+	@Test
+	public void testConceptSearchRequestWithInboundRelationshipExpandWithLimit() {
+		final String conceptId = createNewConcept(branchPath);
+		
+		createNewRelationship(branchPath, Concepts.NAMESPACE_ROOT, Concepts.IS_A, conceptId);
+		createNewRelationship(branchPath, Concepts.NAMESPACE_ROOT, Concepts.IS_A, conceptId);
+		
+		final SnomedConcept conceptWithInboundRelationships = SnomedRequests.prepareSearchConcept()
+			.all()
+			.filterById(conceptId)
+			.setExpand("inboundRelationships(limit:1)")
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.execute(getBus())
+			.getSync()
+			.stream().findFirst().get();
+		 
+		 assertNotNull(conceptWithInboundRelationships.getInboundRelationships());
+		 assertEquals(1, conceptWithInboundRelationships.getInboundRelationships().getItems().size());
+	}
+	
+	@Test
+	public void testConceptSearchRequestWithInboundRelationshipExpandWithTypeFilter() {
+		final String conceptId = createNewConcept(branchPath);
+		
+		createNewRelationship(branchPath, Concepts.NAMESPACE_ROOT, Concepts.HAS_DOSE_FORM, conceptId);
+		createNewRelationship(branchPath, Concepts.NAMESPACE_ROOT, Concepts.IS_A, conceptId);
+		
+		final String inboundRelationshipExpandWithTypeFilter = String.format("inboundRelationships(typeId:\"%s\")", Concepts.HAS_DOSE_FORM);
+		
+		final SnomedConcept conceptWithInboundRelationshipsTypeIdFiltered = SnomedRequests.prepareSearchConcept()
+			.all()
+			.filterById(conceptId)
+			.setExpand(inboundRelationshipExpandWithTypeFilter)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.execute(getBus())
+			.getSync()
+			.stream().findFirst().get();
+		 
+		assertNotNull(conceptWithInboundRelationshipsTypeIdFiltered.getInboundRelationships());
+		assertEquals(1, conceptWithInboundRelationshipsTypeIdFiltered.getInboundRelationships().getItems().size());
+		final SnomedRelationship inboundRelationship = Iterables.getOnlyElement(conceptWithInboundRelationshipsTypeIdFiltered.getInboundRelationships());
+		assertEquals(Concepts.HAS_DOSE_FORM, inboundRelationship.getTypeId());
+	}
+	
+	@Test
+	public void testConceptSearchRequestWithInboundRelationshipExpandWithSourceFilter() {
+		final String conceptId = createNewConcept(branchPath);
+		
+		createNewRelationship(branchPath, Concepts.MODULE_SCT_MODEL_COMPONENT, Concepts.HAS_DOSE_FORM, conceptId);
+		createNewRelationship(branchPath, Concepts.NAMESPACE_ROOT, Concepts.IS_A, conceptId);
+		
+		final String inboundRelationshipExpandWithSourceIdFilter = String.format("inboundRelationships(sourceId:\"%s\")", Concepts.MODULE_SCT_MODEL_COMPONENT);
+		
+		final SnomedConcept conceptWithInboundRelationshipsTypeIdFiltered = SnomedRequests.prepareSearchConcept()
+				.all()
+				.filterById(conceptId)
+				.setExpand(inboundRelationshipExpandWithSourceIdFilter)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+				.execute(getBus())
+				.getSync()
+				.stream().findFirst().get();
+		
+		assertNotNull(conceptWithInboundRelationshipsTypeIdFiltered.getInboundRelationships());
+		assertEquals(1, conceptWithInboundRelationshipsTypeIdFiltered.getInboundRelationships().getItems().size());
+		final SnomedRelationship inboundRelationship = Iterables.getOnlyElement(conceptWithInboundRelationshipsTypeIdFiltered.getInboundRelationships());
+		assertEquals(Concepts.MODULE_SCT_MODEL_COMPONENT, inboundRelationship.getSourceId());
+	}
+	
+	@Test
+	public void testConceptGetRequestWithInboundRelationshipExpand() {
+		final String conceptId = createNewConcept(branchPath);
+		
+		final String inboundRelationshipId = createNewRelationship(branchPath, Concepts.NAMESPACE_ROOT, Concepts.IS_A, conceptId);
+		
+		final SnomedConcept conceptWithInboundRelationship = SnomedRequests.prepareGetConcept(conceptId)
+			.setExpand("inboundRelationships()")
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.execute(getBus())
+			.getSync();
+		 
+		 assertNotNull(conceptWithInboundRelationship.getInboundRelationships());
+		 assertEquals(1, conceptWithInboundRelationship.getInboundRelationships().getItems().size());
+		 final SnomedRelationship expandedInboundRelationship = Iterables.getOnlyElement(conceptWithInboundRelationship.getInboundRelationships());
+		 assertEquals(inboundRelationshipId, expandedInboundRelationship.getId());
+	}
+	
 }

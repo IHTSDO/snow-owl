@@ -34,6 +34,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.ina
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Lists.newArrayList;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -49,6 +50,7 @@ import java.util.UUID;
 
 import org.junit.Test;
 
+import com.b2international.index.compat.TextConstants;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.domain.TransactionContext;
@@ -742,6 +744,19 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 			.getSync();
 		
+	}
+	
+	@Test
+	public void searchFuzzyWithFilteredCharacters() throws Exception {
+		int numberOfResults = SnomedRequests.prepareSearchDescription()
+			.setLimit(0)
+			.filterByTerm(TextConstants.DELIMITERS)
+			.withFuzzySearch()
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+			.execute(getBus())
+			.getSync()
+			.getTotal();
+		assertThat(numberOfResults).isZero();
 	}
 	
 }
