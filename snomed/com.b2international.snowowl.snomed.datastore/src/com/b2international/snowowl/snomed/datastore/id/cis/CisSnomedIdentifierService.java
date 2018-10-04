@@ -88,7 +88,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	private static final Logger LOGGER = LoggerFactory.getLogger(CisSnomedIdentifierService.class);
 	
 	private static final int BULK_LIMIT = 1000;
-	private static final int GENERATE_BULK_LIMIT = 10000;
+	private static final int BULK_JOB_REQUEST_LIMIT = 10000;
 
 	private final long numberOfPollTries;
 	private final long numberOfReauthTries;
@@ -124,20 +124,20 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		HttpPost generateRequest = null;
 		HttpGet recordsRequest = null;
-		final Set<String> requestedComponentIds = Sets.newHashSet();
+		final Set<String> componentIds = Sets.newHashSet();
+		
 		try {
 			if (quantity > 1) {
-				LOGGER.debug(String.format("Sending %s ID bulk generation request.", category.getDisplayName()));
 				
-				int generatedIds = 0;
-				int offset = 0;
-				// Calculate how many times we need to iterate for id generation
-				final int numberOfPages = quantity / GENERATE_BULK_LIMIT == 0 ? 1 : quantity / GENERATE_BULK_LIMIT + 1;
-				for (int currentPage = 1; currentPage <= numberOfPages; currentPage++) {
-					offset = calculateOffset(currentPage, quantity, generatedIds);
-					LOGGER.debug(String.format("Sending bulk generation request for namespace %s with size %d.", namespace, offset));
-					generatedIds += offset;
-					// Generate id-s
+				LOGGER.debug("Sending {} ID bulk generation request.", category.getDisplayName());
+				
+				while (componentIds.size() != quantity) {
+					
+					int difference = quantity - componentIds.size();
+					int offset = difference >= BULK_JOB_REQUEST_LIMIT ? BULK_JOB_REQUEST_LIMIT : difference;
+					
+					LOGGER.debug("Sending bulk generation request for namespace {} with size {}.", namespace, offset);
+					
 					generateRequest = httpPost(String.format("sct/bulk/generate?token=%s", getToken()), createBulkGenerationData(namespace, category, offset));
 					final String response = execute(generateRequest);
 					final String jobId = mapper.readValue(response, JsonNode.class).get("id").asText();
@@ -147,7 +147,8 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 					final String recordsResponse = execute(recordsRequest);
 					final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
 					
-					requestedComponentIds.addAll(getComponentIds(records));
+					componentIds.addAll(getComponentIds(records));
+
 				}
 				
 			} else {
@@ -157,7 +158,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				final String response = execute(generateRequest);
 				final SctId sctid = mapper.readValue(response, SctId.class);
 				
-				requestedComponentIds.add(sctid.getSctid());
+				componentIds.add(sctid.getSctid());
 			}
 			
 		} catch (IOException e) {
@@ -167,7 +168,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			release(recordsRequest);
 		}
 		
-		return requestedComponentIds;
+		return componentIds;
 		
 	}
 
@@ -235,21 +236,20 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		HttpPost reserveRequest = null;
 		HttpGet recordsRequest = null;
-		final Set<String> requestedComponentIds = Sets.newHashSet();
+		final Set<String> componentIds = Sets.newHashSet();
+		
 		try {
 			if (quantity > 1) {
-				LOGGER.debug(String.format("Sending %s ID bulk reservation request.", category.getDisplayName()));
-				int reservedIds = 0;
-				int offset = 0;
-				// Calculate how many times we need to iterate for id reservation
-				final int numberOfPages = quantity / GENERATE_BULK_LIMIT == 0 ? 1 : quantity / GENERATE_BULK_LIMIT + 1;
-				for (int currentPage = 1; currentPage <= numberOfPages; currentPage++) {
-					// Calculate the offset based on the already reservedIds and how much is left to be reserved
-					offset = calculateOffset(currentPage, quantity, reservedIds);
-					LOGGER.debug(String.format("Sending bulk reservation request for namespace %s with size %d.", namespace, offset));
-					reservedIds += offset;
+				
+				LOGGER.debug("Sending {} ID bulk reservation request.", category.getDisplayName());
+				
+				while (componentIds.size() != quantity) {
 					
-					// Reserve id-s
+					int difference = quantity - componentIds.size();
+					int offset = difference >= BULK_JOB_REQUEST_LIMIT ? BULK_JOB_REQUEST_LIMIT : difference;
+					
+					LOGGER.debug("Sending bulk reservation request for namespace {} with size {}.", namespace, offset);
+					
 					reserveRequest = httpPost(String.format("sct/bulk/reserve?token=%s", getToken()), createBulkReservationData(namespace, category, offset));
 					final String bulkResponse = execute(reserveRequest);
 					final String jobId = mapper.readValue(bulkResponse, JsonNode.class).get("id").asText();
@@ -259,7 +259,8 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 					final String recordsResponse = execute(recordsRequest);
 					final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
 					
-					requestedComponentIds.addAll(getComponentIds(records));
+					componentIds.addAll(getComponentIds(records));
+					
 				}
 			
 			} else {
@@ -269,7 +270,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				final String response = execute(reserveRequest);
 				final SctId sctid = mapper.readValue(response, SctId.class);
 				
-				requestedComponentIds.add(sctid.getSctid());
+				componentIds.add(sctid.getSctid());
 			}
 			
 		} catch (IOException e) {
@@ -279,7 +280,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			release(recordsRequest);
 		}
 		
-		return requestedComponentIds;
+		return componentIds;
 	}
 	
 	@Override
@@ -459,10 +460,6 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			return resultBuilder.build();
 		}
 		
-	}
-	
-	private int calculateOffset(int page, final int quantity, int alreadyGeneratedIds) {
-		return page * GENERATE_BULK_LIMIT > quantity ? quantity - alreadyGeneratedIds : GENERATE_BULK_LIMIT;
 	}
 
 	private SctId buildSctId(final String componentId, final IdentifierStatus status) {
