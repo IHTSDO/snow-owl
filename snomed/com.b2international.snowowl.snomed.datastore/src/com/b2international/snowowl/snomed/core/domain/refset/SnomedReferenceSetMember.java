@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.b2international.snowowl.core.date.DateFormats;
-import com.b2international.snowowl.core.date.Dates;
+import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
@@ -38,6 +38,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
+import com.google.common.base.Strings;
 
 /**
  * Represents a SNOMED&nbsp;CT Reference Set Member.
@@ -135,8 +136,8 @@ public final class SnomedReferenceSetMember extends SnomedComponent {
 	@JsonProperty("additionalFields")
 	private Map<String, Object> getPropertiesJson() {
 		HashMap<String, Object> jsonMap = newHashMap(properties);
-		jsonMap.computeIfPresent(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME, (k,v) -> Dates.formatByGmt(v, DateFormats.SHORT));
-		jsonMap.computeIfPresent(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME, (k,v) -> Dates.formatByGmt(v, DateFormats.SHORT));
+		jsonMap.computeIfPresent(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME, (k,v) -> EffectiveTimes.format(v, DateFormats.SHORT, ""));
+		jsonMap.computeIfPresent(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME, (k,v) -> EffectiveTimes.format(v, DateFormats.SHORT, ""));
 		return jsonMap;
 	}
 	
@@ -157,8 +158,12 @@ public final class SnomedReferenceSetMember extends SnomedComponent {
 	}
 	
 	@JsonAnySetter
-	public void setProperties(String key, Object value) {
-		this.properties.put(key, value);
+	public void setAdditionalFields(Map<String, Object> properties) {
+		properties.computeIfPresent(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME, (k,v) ->
+			Strings.isNullOrEmpty((String) v) ? null : EffectiveTimes.parse((String) v, DateFormats.SHORT));
+		properties.computeIfPresent(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME, (k,v) ->
+			Strings.isNullOrEmpty((String) v) ? null : EffectiveTimes.parse((String) v, DateFormats.SHORT));
+		this.properties = properties;
 	}
 	
 	@Override
