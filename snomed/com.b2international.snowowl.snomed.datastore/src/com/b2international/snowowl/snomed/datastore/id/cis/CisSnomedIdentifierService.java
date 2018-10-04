@@ -124,9 +124,11 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		HttpPost generateRequest = null;
 		HttpGet recordsRequest = null;
-		final Set<String> componentIds = Sets.newHashSet();
 		
 		try {
+			
+			final Set<String> componentIds = Sets.newHashSet();
+			
 			if (quantity > 1) {
 				
 				LOGGER.debug("Sending {} ID bulk generation request.", category.getDisplayName());
@@ -161,14 +163,14 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				componentIds.add(sctid.getSctid());
 			}
 			
+			return componentIds;
+			
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException("Caught exception while generating IDs.", e);
 		} finally {
 			release(generateRequest);
 			release(recordsRequest);
 		}
-		
-		return componentIds;
 		
 	}
 
@@ -236,9 +238,11 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		HttpPost reserveRequest = null;
 		HttpGet recordsRequest = null;
-		final Set<String> componentIds = Sets.newHashSet();
 		
 		try {
+			
+			final Set<String> componentIds = Sets.newHashSet();
+			
 			if (quantity > 1) {
 				
 				LOGGER.debug("Sending {} ID bulk reservation request.", category.getDisplayName());
@@ -273,6 +277,8 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				componentIds.add(sctid.getSctid());
 			}
 			
+			return componentIds;
+			
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException("Exception while bulk reserving IDs.", e);
 		} finally {
@@ -280,7 +286,6 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			release(recordsRequest);
 		}
 		
-		return componentIds;
 	}
 	
 	@Override
