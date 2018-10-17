@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -127,5 +127,15 @@ public abstract class SnomedSearchRequestBuilder<B extends SnomedSearchRequestBu
 		 * results have been returned.
 		 */
 		return filterByLanguageRefSetIds(DescriptionRequestHelper.getLanguageRefSetIds(locales));
+	}
+	
+	/**
+	 * Set the ECL expression form to evaluate all ECL expressions on this form.
+	 * 
+	 * @param expressionForm
+	 * @return this builder
+	 */
+	public final B setEclExpressionForm(String expressionForm) {
+		return addOption(OptionKey.ECL_EXPRESSION_FORM, expressionForm);
 	}
 }
