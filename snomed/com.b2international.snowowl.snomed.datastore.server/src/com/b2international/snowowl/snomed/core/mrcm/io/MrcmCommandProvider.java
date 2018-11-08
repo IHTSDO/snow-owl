@@ -23,21 +23,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
 
 import org.eclipse.osgi.framework.console.CommandInterpreter;
 import org.eclipse.osgi.framework.console.CommandProvider;
 
 import com.b2international.commons.StringUtils;
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.identity.domain.PermissionIdConstant;
-import com.b2international.snowowl.identity.domain.User;
-import com.b2international.snowowl.identity.request.UserRequests;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.server.console.CommandLineAuthenticator;
-import com.google.common.base.Optional;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.google.common.collect.Sets;
 
 /**
@@ -45,7 +41,7 @@ import com.google.common.collect.Sets;
  */
 public class MrcmCommandProvider implements CommandProvider {
 
-	private String exportFormatsString = StringUtils.toString(Sets.newHashSet(MrcmExportFormat.values()));
+	private static final String EXPORT_FORMATS = StringUtils.toString(Sets.newHashSet(MrcmExportFormat.values()));
 	
 	public void _mrcm(final CommandInterpreter interpreter) {
 		
@@ -76,20 +72,20 @@ public class MrcmCommandProvider implements CommandProvider {
 			return;
 		}
 		
-		final String targetPath = Optional.fromNullable(interpreter.nextArgument()).or("MAIN");
+		final String targetPath = Optional.ofNullable(interpreter.nextArgument()).orElse("MAIN");
+		
+		if (!BranchPathUtils.exists(SnomedDatastoreActivator.REPOSITORY_UUID, targetPath)) {
+			interpreter.println("The specified branch does not exist: '" + targetPath + "'");
+			return;
+		}
 		
 		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
 		
 		if (!authenticator.authenticate(interpreter)) {
+			interpreter.println("Authentication failed.");
 			return;
 		}
 		
-		final User user = getUser(authenticator.getUsername());
-		if (!user.hasPermission(PermissionIdConstant.IMPORT)) {
-			interpreter.print("User is unauthorized to import MRCM rules.");
-			return;
-		}
-
 		final Path file = Paths.get(filePath);
 		try (final InputStream content = Files.newInputStream(file, StandardOpenOption.READ)) {
 			new XMIMrcmImporter().doImport(targetPath, authenticator.getUsername(), content);
@@ -97,10 +93,6 @@ public class MrcmCommandProvider implements CommandProvider {
 			interpreter.printStackTrace(e);
 		}
 		
-	}
-
-	private User getUser(final String username) {
-		return UserRequests.prepareGet(username).buildAsync().execute(ApplicationContext.getServiceForClass(IEventBus.class)).getSync(1, TimeUnit.MINUTES);
 	}
 
 	public synchronized void _export(final CommandInterpreter interpreter) {
@@ -115,7 +107,7 @@ public class MrcmCommandProvider implements CommandProvider {
 		try {
 			selectedFormat = MrcmExportFormat.valueOf(format);
 		} catch(IllegalArgumentException iae) {
-			interpreter.println("Incorrect format: " + format + " Supported formats: " + exportFormatsString + ".");
+			interpreter.println("Incorrect format: " + format + " Supported formats: " + EXPORT_FORMATS + ".");
 			return;
 		}
 		
@@ -126,16 +118,17 @@ public class MrcmCommandProvider implements CommandProvider {
 			return;
 		}
 		
-		final String sourcePath = Optional.fromNullable(interpreter.nextArgument()).or("MAIN");
-		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
+		final String sourcePath = Optional.ofNullable(interpreter.nextArgument()).orElse("MAIN");
 		
-		if (!authenticator.authenticate(interpreter)) {
+		if (!BranchPathUtils.exists(SnomedDatastoreActivator.REPOSITORY_UUID, sourcePath)) {
+			interpreter.println("The specified branch does not exist: '" + sourcePath + "'");
 			return;
 		}
 		
-		final User user = getUser(authenticator.getUsername());
-		if (!user.hasPermission(PermissionIdConstant.EXPORT)) {
-			interpreter.print("User is not authorized to export MRCM rules.");
+		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
+		
+		if (!authenticator.authenticate(interpreter)) {
+			interpreter.println("Authentication failed.");
 			return;
 		}
 		
@@ -151,8 +144,7 @@ public class MrcmCommandProvider implements CommandProvider {
 			} else if (selectedFormat == MrcmExportFormat.CSV) {
 				new CsvMrcmExporter().doExport(sourcePath, authenticator.getUsername(), stream);
 			}
-			interpreter.println("Exported MRCM rules to " + exportPath + " in " 
-			+ selectedFormat.name() + " format.");
+			interpreter.println("Exported MRCM rules of " + sourcePath + " to " + exportPath + " in " + selectedFormat.name() + " format.");
 		} catch (IOException e) {
 			interpreter.printStackTrace(e);
 		}
@@ -171,10 +163,9 @@ public class MrcmCommandProvider implements CommandProvider {
 	@Override
 	public String getHelp() {
 		return new StringBuilder("--- MRCM commands ---\n")
-		.append("\tmrcm import [importFileAbsolutePath] - Imports the MRCM rules from the given XMI source file.\n")
-		.append("\tmrcm export ")
-		.append(exportFormatsString)
-		.append(" [destinationDirectoryPath] - Exports the MRCM rules in the given format to the destination folder.\n").toString();
+		.append("\tmrcm import <path_to_import_file> <targetBranch> - Imports the MRCM rules from the given XMI source file.\n")
+		.append("\tmrcm export " + EXPORT_FORMATS + " <path_to_destination_directory> <sourceBranch> - Exports the MRCM rules in the given format to the destination folder.\n")
+		.toString();
 	}
 
 }
