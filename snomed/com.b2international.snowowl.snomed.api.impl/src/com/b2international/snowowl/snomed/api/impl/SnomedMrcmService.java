@@ -1,5 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -24,8 +26,10 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.constraint.SnomedCardinalityPredicate;
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraint;
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
+import com.b2international.snowowl.snomed.core.domain.constraint.SnomedPredicate;
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedRelationshipPredicate;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintPredicateType;
@@ -57,10 +61,7 @@ public class SnomedMrcmService {
 						emptySet());
 			}).getSync();
 		
-		return constraints.stream()
-			.map(SnomedConstraint::getPredicate)
-			.filter(SnomedRelationshipPredicate.class::isInstance)
-			.map(SnomedRelationshipPredicate.class::cast)
+		return getRelationshipPredicates(constraints).stream()
 			.map( constraintPredicate -> {
 				Predicate predicate = new Predicate();
 				predicate.setRelationshipTypeExpression(constraintPredicate.getAttributeExpression());
@@ -86,11 +87,8 @@ public class SnomedMrcmService {
 					emptySet())
 				.getSync();
 			
-			Set<String> typeExpressions = constraints.stream()
-				.map(SnomedConstraint::getPredicate)
-				.filter(SnomedRelationshipPredicate.class::isInstance)
-				.map(SnomedRelationshipPredicate.class::cast)
-				.map( SnomedRelationshipPredicate::getAttributeExpression)
+			Set<String> typeExpressions = getRelationshipPredicates(constraints).stream()
+				.map(SnomedRelationshipPredicate::getAttributeExpression)
 				.collect(toSet());
 			
 			if (typeExpressions.isEmpty()) {
@@ -134,6 +132,8 @@ public class SnomedMrcmService {
 				})
 				.getSync();
 		
+		ancestorIds.remove(IComponent.ROOT_ID);
+		
 		String relationshipValueExpression = null;
 		String relationshipTypeExpression = null;
 		
@@ -144,30 +144,24 @@ public class SnomedMrcmService {
 				.execute(bus)
 				.getSync();
 		
-		for (SnomedConstraint constraint : constraints) {
+		for (SnomedRelationshipPredicate relationshipPredicate : getRelationshipPredicates(constraints.getItems())) {
 			
-			if (constraint.getPredicate() instanceof SnomedRelationshipPredicate) {
+			relationshipTypeExpression = relationshipPredicate.getAttributeExpression();
+			
+			if (relationshipTypeExpression.startsWith("<")) {
 				
-				SnomedRelationshipPredicate relationshipPredicate = (SnomedRelationshipPredicate) constraint.getPredicate();
+				String relationshipTypeId = relationshipTypeExpression.replace("<", "");
 				
-				relationshipTypeExpression = relationshipPredicate.getAttributeExpression();
-				
-				if (relationshipTypeExpression.startsWith("<")) {
-					
-					String relationshipTypeId = relationshipTypeExpression.replace("<", "");
-					
-					if ((relationshipTypeExpression.startsWith("<<")
-							&& (relationshipTypeId.equals(attributeId) || ancestorIds.contains(relationshipTypeId)))
-							|| ancestorIds.contains(relationshipTypeId)) {
-						relationshipValueExpression = relationshipPredicate.getRangeExpression();
-						break;
-					}
-					
-				} else if (relationshipTypeExpression.equals(attributeId)) {
+				if ((relationshipTypeExpression.startsWith("<<")
+						&& (relationshipTypeId.equals(attributeId) || ancestorIds.contains(relationshipTypeId)))
+						|| ancestorIds.contains(relationshipTypeId)) {
 					relationshipValueExpression = relationshipPredicate.getRangeExpression();
 					break;
 				}
 				
+			} else if (relationshipTypeExpression.equals(attributeId)) {
+				relationshipValueExpression = relationshipPredicate.getRangeExpression();
+				break;
 			}
 			
 		}
@@ -192,5 +186,27 @@ public class SnomedMrcmService {
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync();
+	}
+	
+	private Collection<SnomedRelationshipPredicate> getRelationshipPredicates(Collection<SnomedConstraint> constraints) {
+		
+		Set<SnomedRelationshipPredicate> predicates = newHashSet();
+		
+		for (SnomedConstraint constraint : constraints) {
+			
+			SnomedPredicate predicate = constraint.getPredicate();
+			
+			if (predicate instanceof SnomedRelationshipPredicate) {
+				predicates.add((SnomedRelationshipPredicate) predicate);
+			} else if (predicate instanceof SnomedCardinalityPredicate) {
+				SnomedPredicate innerPredicate = ((SnomedCardinalityPredicate) predicate).getPredicate();
+				if (innerPredicate instanceof SnomedRelationshipPredicate) {
+					predicates.add((SnomedRelationshipPredicate) innerPredicate);
+				}
+			}
+			
+		}
+		
+		return predicates;
 	}
 }
