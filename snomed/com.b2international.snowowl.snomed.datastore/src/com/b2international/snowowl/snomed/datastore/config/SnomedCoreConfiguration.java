@@ -38,6 +38,7 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	public static final String BRANCH_DEFAULT_REASONER_NAMESPACE_KEY = "defaultReasonerNamespace";
 	public static final String BRANCH_DEFAULT_MODULE_ID_KEY = "defaultModuleId";
 	public static final String BRANCH_ASSERTION_GROUP_NAMES_KEY = "assertionGroupNames";
+	public static final String BRANCH_EXTENSION_SHORTNAME_KEY = "shortname";
 	
 	@NotEmpty
 	private String language = DEFAULT_LANGUAGE;

@@ -54,9 +54,12 @@ import com.b2international.snowowl.retrofit.PromiseCallAdapterFactory;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.core.domain.Rf2ExportResult;
+import com.b2international.snowowl.snomed.core.domain.Rf2RefSetExportLayout;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
@@ -161,27 +164,32 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
         
 		try {
         	
+			Branch branch = RepositoryRequests.branching()
+					.prepareGet(branchPath)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getEventBus())
+					.getSync();
+			
+			String previousRelease = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, PREVIOUS_RELEASE_METADATA_KEY);
+			String shortName = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_EXTENSION_SHORTNAME_KEY);
+			String defaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.DEFAULT_NAMESPACE);
+			
+			String countryAndNamespaceElement = getCountryAndNamespaceElement(shortName, defaultNamespace);
+			
 			Rf2ExportResult exportResult = SnomedRequests.rf2().prepareExport()
         			.setReleaseType(Rf2ReleaseType.DELTA)
         			.setIncludePreReleaseContent(true)
-        			//.setConceptsAndRelationshipOnly(true) FIXME
+        			.setConceptsAndRelationshipsOnly(true)
         			.setUserId(userId)
         			.setReferenceBranch(branchPath)
+        			.setRefSetExportLayout(Rf2RefSetExportLayout.COMBINED)
+        			.setCountryNamespaceElement(countryAndNamespaceElement)
         			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
         			.execute(getEventBus())
         			.getSync();
         	
         	UUID fileId = exportResult.getRegistryId();
-        	
 			File rf2Delta = fileRegistry.getFile(fileId);
-        	
-        	Branch branch = RepositoryRequests.branching()
-        			.prepareGet(branchPath)
-        			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-        			.execute(getEventBus())
-        			.getSync();
-        	
-        	String previousRelease = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, PREVIOUS_RELEASE_METADATA_KEY);
         	
         	RequestBody previousReleaseRequestBody = RequestBody.create(MediaType.parse("text/plain"), previousRelease);
         	
@@ -206,6 +214,13 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 		} catch (Exception e) {
 			throw new SnowowlRuntimeException("Exception while preparing data for external classification", e);
 		}
+	}
+
+	private String getCountryAndNamespaceElement(String shortName, String defaultNamespace) {
+		if (!Strings.isNullOrEmpty(shortName) && !Strings.isNullOrEmpty(defaultNamespace)) {
+			return shortName.toUpperCase() + defaultNamespace;
+		}
+		return SnomedIdentifiers.INT_NAMESPACE;
 	}
 
 	@Override
