@@ -19,6 +19,7 @@ import static com.b2international.snowowl.datastore.cdo.CDOUtils.getObjectIfExis
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ENTIRE_TERM_CASE_INSENSITIVE;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.EXISTENTIAL_RESTRICTION_MODIFIER;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.FULLY_SPECIFIED_NAME;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.INFERRED_RELATIONSHIP;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.IS_A;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.PRIMITIVE;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_DESCRIPTION_TYPE;
@@ -323,11 +324,18 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		// add FSN
 		Description description = buildDefaultDescription(fullySpecifiedName, FULLY_SPECIFIED_NAME);
 		description.setConcept(concept);
-
-		// add 'Is a' relationship to parent if specified
-		buildDefaultIsARelationship(parentConcept, concept);
-
+		
+		// add 'Is a' relationships to parent if specified
+		buildDefaultIsARelationship(parentConcept, concept, STATED_RELATIONSHIP);
+		buildDefaultIsARelationship(parentConcept, concept, INFERRED_RELATIONSHIP);
+		
 		return concept;
+	}
+	
+	private void buildDefaultIsARelationship(Concept parentConcept, Concept concept, String charTypeId) {
+		Relationship relationship = buildDefaultRelationship(concept, findConceptById(IS_A), 
+				parentConcept, findConceptById(charTypeId));
+		relationship.setModule(concept.getModule());
 	}
 
 	/**Returns with the currently used language type reference set, falls back to an existing language if the configured identifier can not be resolved.*/
@@ -748,17 +756,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	public static SnomedConfiguration getSnomedConfiguration() {
 		return ApplicationContext.getInstance().getService(SnomedConfiguration.class);
 	}
-
-	private Relationship buildDefaultIsARelationship(Concept parentConcept, Concept concept) {
-
-		Relationship relationship = buildDefaultRelationship(concept, findConceptById(IS_A),
-				parentConcept, findConceptById(STATED_RELATIONSHIP));
-
-		relationship.setModule(concept.getModule());
-
-		return relationship;
-	}
-
+	
 	@Override
 	public void preCommit() {
 		if (deletionPlan.isRejected()) {
