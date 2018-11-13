@@ -1,9 +1,5 @@
 /*
-<<<<<<< issue/INFRA-2348_fix_ecl_serialization
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
-=======
  * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
->>>>>>> 2f88a79 [ecl] improve performance of ECL to ID set evaluation
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +26,7 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
 import com.b2international.snowowl.datastore.request.SearchResourceRequest;
 import com.b2international.snowowl.snomed.core.ecl.EclExpression;
+import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
 import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
@@ -72,7 +69,13 @@ public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<Branc
 		/**
 		 * Filter components by effective time ending with this value, inclusive.
 		 */
-		EFFECTIVE_TIME_END
+		EFFECTIVE_TIME_END,
+		
+		/**
+		 * Use this expression form for all ECL evaluations, by default it is set to inferred.
+		 */
+		ECL_EXPRESSION_FORM
+		
 	}
 	
 	protected SnomedSearchRequest() {}
@@ -148,13 +151,17 @@ public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<Branc
 				}
 				
 				// TODO replace sync call to concept search with async promise
-				idFilter = EclExpression.of(expression).resolve(context).getSync();
+				idFilter = EclExpression.of(expression, eclExpressionForm()).resolve(context).getSync();
 				if (idFilter.isEmpty()) {
 					throw new SearchResourceRequest.NoResultException();
 				}
 			}
 		}
 		queryBuilder.filter(matchingIdsToExpression.apply(idFilter));
+	}
+
+	protected final String eclExpressionForm() {
+		return containsKey(OptionKey.ECL_EXPRESSION_FORM) ? getString(OptionKey.ECL_EXPRESSION_FORM) : Trees.INFERRED_FORM;
 	}
 	
 }

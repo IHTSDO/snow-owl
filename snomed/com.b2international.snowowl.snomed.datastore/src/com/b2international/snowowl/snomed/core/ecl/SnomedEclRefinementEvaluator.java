@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -258,7 +258,6 @@ final class SnomedEclRefinementEvaluator {
 							if (cardinality != null && cardinality.getMin() == 0 && cardinality.getMax() != UNBOUNDED_CARDINALITY) {
 								// XXX internal evaluation returns negative matches, that should be excluded from the focusConcept set
 								final Function<Property, Object> idProvider = refinement.isReversed() ? Property::getValue : Property::getObjectId;
-							
 								
 								final Set<String> matchingIds = FluentIterable.from(input).transform(idProvider).filter(String.class).toSet();
 								return focusConcepts.resolveToConceptsWithGroups(context)

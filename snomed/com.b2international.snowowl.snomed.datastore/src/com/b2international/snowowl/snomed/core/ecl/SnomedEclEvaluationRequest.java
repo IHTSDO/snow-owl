@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -161,9 +161,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 					.build());
 		} else if (inner instanceof NestedExpression) {
 			final String focusConceptExpression = context.service(EclSerializer.class).serializeWithoutTerms(inner);
-			final EclExpression eclExpression = EclExpression.of(focusConceptExpression);
-			eclExpression.setExpressionForm(expressionForm);
-			return eclExpression
+			return EclExpression.of(focusConceptExpression, expressionForm)
 					.resolve(context)
 					.then(ids -> {
 						return Expressions.builder()
@@ -257,10 +255,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 	 */
 	protected Promise<Expression> eval(BranchContext context, final ParentOf parentOf) {
 		final String inner = context.service(EclSerializer.class).serializeWithoutTerms(parentOf.getConstraint());
-		final EclExpression eclExpression = EclExpression.of(inner);
-		eclExpression.setExpressionForm(expressionForm);
-		
-		return eclExpression
+		return EclExpression.of(inner, expressionForm)
 				.resolveConcepts(context)
 				.then(new Function<SnomedConcepts, Set<String>>() {
 					@Override
@@ -281,8 +276,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 	 */
 	protected Promise<Expression> eval(BranchContext context, final AncestorOf ancestorOf) {
 		final String inner = context.service(EclSerializer.class).serializeWithoutTerms(ancestorOf.getConstraint());
-		final EclExpression eclExpression = EclExpression.of(inner);
-		eclExpression.setExpressionForm(expressionForm);
+		final EclExpression eclExpression = EclExpression.of(inner, expressionForm);
 		return eclExpression
 				.resolveConcepts(context)
 				.then(new Function<SnomedConcepts, Set<String>>() {
@@ -310,9 +304,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 			return evaluate(context, innerConstraint);
 		} else {
 			final String inner = context.service(EclSerializer.class).serializeWithoutTerms(innerConstraint);
-			final EclExpression eclExpression = EclExpression.of(inner);
-			eclExpression.setExpressionForm(expressionForm);
-			return eclExpression
+			return EclExpression.of(inner, expressionForm)
 					.resolveConcepts(context)
 					.then(new Function<SnomedConcepts, Set<String>>() {
 						@Override
@@ -392,8 +384,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 	 */
 	protected Promise<Expression> eval(final BranchContext context, final RefinedExpressionConstraint refined) {
 		final String focusConceptExpression = context.service(EclSerializer.class).serializeWithoutTerms(refined.getConstraint());
-		final EclExpression eclExpression = EclExpression.of(focusConceptExpression);
-		eclExpression.setExpressionForm(expressionForm);
+		final EclExpression eclExpression = EclExpression.of(focusConceptExpression, expressionForm);
 		return new SnomedEclRefinementEvaluator(eclExpression).evaluate(context, refined.getRefinement());
 	}
 	
@@ -461,10 +452,7 @@ final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise
 					return Promise.immediate(extractIds(expression));
 				} catch (UnsupportedOperationException e) {
 					final String eclExpression = context.service(EclSerializer.class).serializeWithoutTerms(ecl);
-					// otherwise always evaluate the expression to ID set and return that
-					final EclExpression expressionWithForm = EclExpression.of(eclExpression);
-					expressionWithForm.setExpressionForm(expressionForm);
-					return expressionWithForm.resolve(context);
+					return EclExpression.of(eclExpression, expressionForm).resolve(context);
 				}
 			}
 		};
