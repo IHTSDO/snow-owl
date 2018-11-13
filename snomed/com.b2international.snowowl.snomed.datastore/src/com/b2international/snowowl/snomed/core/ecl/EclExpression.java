@@ -38,6 +38,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationsh
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.ecl.Ecl;
 import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
@@ -48,28 +49,33 @@ import com.google.common.collect.Multimaps;
 public final class EclExpression {
 
 	private final String ecl;
-	
-	private String expressionForm = Trees.INFERRED_FORM;
+	private final String expressionForm;
 	
 	private Promise<Set<String>> promise;
 	private Promise<Expression> expressionPromise;
 	private Promise<SnomedConcepts> conceptPromise;
 	private Promise<Multimap<String, Integer>> conceptsWithGroups;
 
-	private EclExpression(String ecl) {
+	private EclExpression(String ecl, String expressionForm) {
 		this.ecl = ecl.trim();
+		this.expressionForm = expressionForm;
+		Preconditions.checkArgument(isInferred() || isStated(), "Allowed expression forms are 'inferred', 'stated' but was '%s'", expressionForm);
 	}
 	
 	public String getEcl() {
 		return ecl;
 	}
 	
-	public void setExpressionForm(String expressionForm) {
-		this.expressionForm = expressionForm;
-	}
-	
 	public String getExpressionForm() {
 		return expressionForm;
+	}
+	
+	public boolean isInferred() {
+		return Trees.INFERRED_FORM.equals(expressionForm);
+	}
+	
+	public boolean isStated() {
+		return Trees.STATED_FORM.equals(expressionForm);
 	}
 	
 	public boolean isAnyExpression() {
@@ -117,8 +123,8 @@ public final class EclExpression {
 		return expressionPromise;
 	}
 	
-	public static EclExpression of(String ecl) {
-		return new EclExpression(ecl);
+	public static EclExpression of(String ecl, String expressionForm) {
+		return new EclExpression(ecl, expressionForm);
 	}
 	
 	public Promise<Expression> resolveToExclusionExpression(final BranchContext context, final Set<String> excludedMatches) {
@@ -137,7 +143,7 @@ public final class EclExpression {
 	
 	public Promise<Multimap<String, Integer>> resolveToConceptsWithGroups(final BranchContext context) {
 		if (conceptsWithGroups == null) {
-			final Set<String> characteristicTypes = Trees.INFERRED_FORM.equals(expressionForm)
+			final Set<String> characteristicTypes = isInferred()
 					? SnomedEclRefinementEvaluator.INFERRED_CHARACTERISTIC_TYPES
 					: SnomedEclRefinementEvaluator.STATED_CHARACTERISTIC_TYPES;
 			conceptsWithGroups = SnomedRequests.prepareSearchRelationship()
@@ -146,6 +152,7 @@ public final class EclExpression {
 					.filterByCharacteristicTypes(characteristicTypes)
 					.filterBySource(ecl)
 					.filterByGroup(1, Integer.MAX_VALUE)
+					.setEclExpressionForm(expressionForm)
 					.setFields(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID, SnomedRelationshipIndexEntry.Fields.GROUP)
 					.build(context.id(), context.branchPath())
 					.execute(context.service(IEventBus.class))
@@ -178,5 +185,5 @@ public final class EclExpression {
 					});
 		}
 	}
-	
+
 }

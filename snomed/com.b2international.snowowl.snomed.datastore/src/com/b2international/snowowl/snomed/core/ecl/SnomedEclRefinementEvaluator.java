@@ -238,7 +238,6 @@ final class SnomedEclRefinementEvaluator {
 						if (cardinality != null && cardinality.getMin() == 0 && cardinality.getMax() != UNBOUNDED_CARDINALITY) {
 							// XXX internal evaluation returns negative matches, that should be excluded from the focusConcept set
 							final Function<Property, Object> idProvider = refinement.isReversed() ? Property::getValue : Property::getObjectId;
-						
 							
 							final Set<String> matchingIds = FluentIterable.from(input).transform(idProvider).filter(String.class).toSet();
 							return focusConcepts.resolveToConceptsWithGroups(context)

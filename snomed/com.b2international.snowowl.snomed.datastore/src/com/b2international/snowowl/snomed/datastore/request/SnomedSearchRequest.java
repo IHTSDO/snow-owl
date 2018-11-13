@@ -23,6 +23,7 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.request.SearchResourceRequest;
 import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.snomed.core.ecl.EclExpression;
+import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.ecl.Ecl;
@@ -62,7 +63,12 @@ public abstract class SnomedSearchRequest<R, D extends SnomedDocument> extends S
 		/**
 		 * Filter components by effective time ending with this value, inclusive.
 		 */
-		EFFECTIVE_TIME_END
+		EFFECTIVE_TIME_END,
+		
+		/**
+		 * Use this expression form for all ECL evaluations, by default it is set to inferred.
+		 */
+		ECL_EXPRESSION_FORM
 		
 	}
 	
@@ -125,13 +131,17 @@ public abstract class SnomedSearchRequest<R, D extends SnomedDocument> extends S
 				}
 				
 				// TODO replace sync call to concept search with async promise
-				idFilter = EclExpression.of(expression).resolve(context).getSync();
+				idFilter = EclExpression.of(expression, eclExpressionForm()).resolve(context).getSync();
 				if (idFilter.isEmpty()) {
 					throw new SearchResourceRequest.NoResultException();
 				}
 			}
 		}
 		return idFilter;
+	}
+
+	protected final String eclExpressionForm() {
+		return containsKey(OptionKey.ECL_EXPRESSION_FORM) ? getString(OptionKey.ECL_EXPRESSION_FORM) : Trees.INFERRED_FORM;
 	}
 	
 }
