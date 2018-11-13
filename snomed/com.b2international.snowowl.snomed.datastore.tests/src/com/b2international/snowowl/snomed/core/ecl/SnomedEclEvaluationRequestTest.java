@@ -131,8 +131,11 @@ public class SnomedEclEvaluationRequestTest extends BaseRevisionIndexTest {
 	}
 	
 	@Parameters(name = "{0}")
-	public static Iterable<? extends Object> data() {
-		return Arrays.asList(Trees.INFERRED_FORM, Trees.STATED_FORM);
+	public static Collection<Object[]> data() {
+		return Arrays.asList(new Object[][] {
+			{ Trees.INFERRED_FORM },
+			{ Trees.STATED_FORM }
+		});
 	}
 	
 	@Override
