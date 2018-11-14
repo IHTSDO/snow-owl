@@ -15,7 +15,7 @@
 		<!-- Maven Dependency Versions -->
 		<jackson.version>2.6.6</jackson.version>
 		<snomed-owl-toolkit.version>1.2.0</snomed-owl-toolkit.version>
-		<snomed-drools-engine.version>1.10.0-SNAPSHOT</snomed-drools-engine.version>
+		<snomed-drools-engine.version>1.10.0</snomed-drools-engine.version>
 		<!-- Build tool/compiler versions -->
 		<tycho.version>0.23.0</tycho.version>
 		<tycho-extras.version>0.23.0</tycho-extras.version>
