@@ -60,8 +60,10 @@ public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 	 * Options are activated and become effective only after calling this method.
 	 */
 	public void start() {
+		addInfo("Setting up ActiveMQAppender");
 		try {
-			QueueConnectionFactory connectionFactory = new ActiveMQConnectionFactory(getProviderURL());
+			String providerURL = getProviderURL();
+			QueueConnectionFactory connectionFactory = new ActiveMQConnectionFactory(providerURL);
 
 			if (userName != null) {
 				queueConnection = connectionFactory.createQueueConnection(userName, password);
@@ -70,8 +72,11 @@ public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 			}
 
 			queueSession = queueConnection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
-			Queue queue = queueSession.createQueue(String.format("%s.%s", queuePrefix, QUEUE_SUFFIX)); 
+			String queueName = String.format("%s.%s", queuePrefix, QUEUE_SUFFIX);
+			Queue queue = queueSession.createQueue(queueName);
 			queueSender = queueSession.createSender(queue);
+
+			addInfo("ProviderURL: " + providerURL + ", userName: " + userName + ", queueName: " + queueName);
 
 			queueConnection.start();
 		} catch (Exception e) {
@@ -88,6 +93,8 @@ public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 	 * appender. A closed appender cannot be re-opened.
 	 */
 	public synchronized void stop() {
+		addInfo("Stopping ActiveMQAppender");
+
 		// The synchronized modifier avoids concurrent append and close operations
 		if (!this.started) {
 			return;
@@ -120,6 +127,8 @@ public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 	 * of the real appending work.
 	 */
 	public void append(ILoggingEvent event) {
+		addInfo("Logging message. Started:" + isStarted() + " message length:" + event.getMessage().length());
+
 		if (!isStarted()) {
 			return;
 		}
