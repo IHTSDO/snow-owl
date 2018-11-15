@@ -840,20 +840,6 @@ Visit us at http://b2i.sg
          version="5.5.2.b2i"/>
 
    <plugin
-         id="org.emfjson.core"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
-
-   <plugin
-         id="org.emfjson.jackson"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
-
-   <plugin
          id="org.junit"
          download-size="0"
          install-size="0"
