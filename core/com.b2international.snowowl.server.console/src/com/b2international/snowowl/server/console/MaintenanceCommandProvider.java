@@ -128,7 +128,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		buffer.append("\tsnowowl repositories [repositoryId] - prints all currently available repositories and their health statuses\n");
 		buffer.append("\tsnowowl taxonomy [branchPath] - checks whether the SNOMED CT taxonomy is correct or not on a given branch path (defaults to MAIN)\n");
 		buffer.append("\tsnowowl integrity [branchPath] [-f] - checks and fixes parent / ancestor arrays for SNOMED CT concepts on a given branch path (defaults to MAIN), Using the '-f' parameter will fix incorrect arrays on the specified branch\n");
-		buffer.append("\tsnowowl validate - validates the taxonomy and parent / ancestor integrity of all SNOMED CT codesystems on all code system branches and on all direct child branches (exception versions)");
+		buffer.append("\tsnowowl validate [taxonomy|integrity|all] - validates the taxonomy and parent / ancestor integrity of all SNOMED CT codesystems on all code system branches and on all direct child branches (exception versions)");
 		return buffer.toString();
 	}
 
@@ -212,6 +212,17 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	
 	private void validateBranches(CommandInterpreter interpreter) {
 		
+		String type;
+		
+		String argument = interpreter.nextArgument();
+		
+		if (!Strings.isNullOrEmpty(argument) && (argument.equals("all") || argument.equals("taxonomy") || argument.equals("integrity"))) {
+			type = argument;
+		} else {
+			interpreter.println("Invalid parameters, see command details by entering 'snowowl'");
+			return;
+		}
+		
 		List<String> branchPaths = newArrayList();
 		
 		CodeSystemRequests.prepareSearchCodeSystem()
@@ -248,10 +259,19 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				
 			});
 		
+		interpreter.println("The following branches will be validated:");
+		branchPaths.forEach(branch -> interpreter.println("\t" + branch));
+		
 		branchPaths.forEach(branch -> {
 			
-			checkTaxonomy(branch);
-			checkIntegrity(branch, false);
+			if (type.equals("all")) {
+				checkTaxonomy(branch);
+				checkIntegrity(branch, false);
+			} else if (type.equals("taxonomy")) {
+				checkTaxonomy(branch);
+			} else if (type.equals("integrity")) {
+				checkIntegrity(branch, false);
+			}
 			
 		});
 		
