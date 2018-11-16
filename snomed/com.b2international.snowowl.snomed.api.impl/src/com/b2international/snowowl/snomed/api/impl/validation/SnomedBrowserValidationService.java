@@ -39,11 +39,11 @@ import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.config.SnomedDroolsConfiguration;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
-import com.b2international.snowowl.snomed.datastore.config.SnomedDroolsConfiguration;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
@@ -68,7 +68,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	private Multimap<String, String> refsetToLanguageSpecificWordsMap;
 
 	public SnomedBrowserValidationService() {
-		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedDroolsConfiguration.class);
+		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDroolsConfig();
 		ruleExecutor = createNewRuleExecutor(false);
 		caseSignificantWords = loadCaseSignificantWords(droolsConfig.getTermValidationResourcesPath());
 		refsetToLanguageSpecificWordsMap = loadLanguageSpecificWords(droolsConfig.getTermValidationResourcesPath());
