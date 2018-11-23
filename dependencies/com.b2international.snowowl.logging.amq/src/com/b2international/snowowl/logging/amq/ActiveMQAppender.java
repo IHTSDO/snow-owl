@@ -23,16 +23,15 @@ import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
-import ch.qos.logback.classic.net.JMSQueueAppender;
+import com.b2international.snowowl.logging.jms.JMSAppenderBase;
+
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
-import ch.qos.logback.core.net.JMSAppenderBase;
 
 /**
  * A tweaked version of Logback's JMS queue appender that publishes events to an ActiveMQ Queue. The events are
  * serialized and transmitted as JMS message type {@link javax.jms.TextMessage}.
  * 
- * @see JMSQueueAppender
  */
 public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 
