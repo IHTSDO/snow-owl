@@ -981,7 +981,7 @@ Visit us at http://b2i.sg
          unpack="false"/>
 
    <plugin
-         id="org.slf4j.api"
+         id="slf4j.api"
          download-size="0"
          install-size="0"
          version="0.0.0"
@@ -1198,15 +1198,28 @@ Visit us at http://b2i.sg
          unpack="false"/>
 
    <plugin
-         id="ch.qos.logback.slf4j"
+         id="com.b2international.snowowl.logging.amq"
          download-size="0"
          install-size="0"
          version="0.0.0"
-         fragment="true"
          unpack="false"/>
-         
+
    <plugin
-         id="com.b2international.snowowl.logging.amq"
+         id="jcl.over.slf4j"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="jul.to.slf4j"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="log4j.over.slf4j"
          download-size="0"
          install-size="0"
          version="0.0.0"

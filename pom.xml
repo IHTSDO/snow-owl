@@ -20,8 +20,9 @@
 		<jackson.version>2.8.11</jackson.version>
 		<jackson.databind.version>2.8.11.2</jackson.databind.version>
 		<netty.version>4.1.16.Final</netty.version>
-		<slf4j.version>[1.7.2,1.7.3)</slf4j.version>
-		<logback.version>[1.0.7,1.0.8)</logback.version>
+		<slf4j.version>1.7.25</slf4j.version>
+		<logback.version>1.2.3</logback.version>
+		<logback.versionRange>[1.2.3,1.3.0)</logback.versionRange>
 		<guava.version>[18.0.0,19.0.0)</guava.version>
 		<groovy.version>[2.4.0,2.5.0)</groovy.version>
 		<commons.collections.version>[3.2.2,3.3.0)</commons.collections.version>
@@ -233,7 +234,7 @@
 						<!-- Restrict SLF4J version to Virgo 3.7.0 compatible version -->
 						<filter>
 							<type>p2-installable-unit</type>
-							<id>org.slf4j.api</id>
+							<id>slf4j.api</id>
 							<restrictTo>
 								<versionRange>${slf4j.version}</versionRange>
 							</restrictTo>
@@ -248,13 +249,6 @@
 						<filter>
 							<type>p2-installable-unit</type>
 							<id>ch.qos.logback.core</id>
-							<restrictTo>
-								<versionRange>${logback.version}</versionRange>
-							</restrictTo>
-						</filter>
-						<filter>
-							<type>p2-installable-unit</type>
-							<id>ch.qos.logback.slf4j</id>
 							<restrictTo>
 								<versionRange>${logback.version}</versionRange>
 							</restrictTo>
@@ -721,6 +715,42 @@
 				    <artifactId>kotlin-osgi-bundle</artifactId>
 				    <version>${kotlin.version}</version>
    				    <scope>provided</scope>
+				</dependency>
+				<dependency>
+					<groupId>ch.qos.logback</groupId>
+					<artifactId>logback-classic</artifactId>
+					<version>${logback.version}</version>
+					<scope>provided</scope>
+				</dependency>
+				<dependency>
+					<groupId>ch.qos.logback</groupId>
+					<artifactId>logback-core</artifactId>
+					<version>${logback.version}</version>
+					<scope>provided</scope>
+				</dependency>
+				<dependency>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+					<version>${slf4j.version}</version>
+					<scope>provided</scope>
+				</dependency>
+				<dependency>
+					<groupId>org.slf4j</groupId>
+					<artifactId>log4j-over-slf4j</artifactId>
+					<version>${slf4j.version}</version>
+					<scope>provided</scope>
+				</dependency>
+				<dependency>
+					<groupId>org.slf4j</groupId>
+					<artifactId>jul-to-slf4j</artifactId>
+					<version>${slf4j.version}</version>
+					<scope>provided</scope>
+				</dependency>
+				<dependency>
+					<groupId>org.slf4j</groupId>
+					<artifactId>jcl-over-slf4j</artifactId>
+					<version>${slf4j.version}</version>
+					<scope>provided</scope>
 				</dependency>
 			</dependencies>
 			<repositories>

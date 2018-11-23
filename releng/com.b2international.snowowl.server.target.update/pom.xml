@@ -34,7 +34,7 @@
 						<!-- Restricted Logging API and implementation to version of Virgo 3.7.x -->
 						<filter>
 							<type>p2-installable-unit</type>
-							<id>org.slf4j.api</id>
+							<id>slf4j.api</id>
 							<restrictTo>
 								<versionRange>${slf4j.version}</versionRange>
 							</restrictTo>
@@ -49,13 +49,6 @@
 						<filter>
 							<type>p2-installable-unit</type>
 							<id>ch.qos.logback.core</id>
-							<restrictTo>
-								<versionRange>${logback.version}</versionRange>
-							</restrictTo>
-						</filter>
-						<filter>
-							<type>p2-installable-unit</type>
-							<id>ch.qos.logback.slf4j</id>
 							<restrictTo>
 								<versionRange>${logback.version}</versionRange>
 							</restrictTo>

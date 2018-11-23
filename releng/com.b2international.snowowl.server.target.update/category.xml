@@ -54,17 +54,13 @@
    <feature url="features/org.eclipse.jetty.bundles.f.source_8.1.14.201311072346.jar" id="org.eclipse.jetty.bundles.f.source" version="8.1.14.201311072346">
       <category name="Eclipse Runtime"/>
    </feature>
-   <bundle id="ch.qos.logback.classic" version="1.0.7.v20121108-1250"/>
-   <bundle id="ch.qos.logback.classic.source" version="1.0.7.v20121108-1250"/>
-   <bundle id="ch.qos.logback.core" version="1.0.7.v20121108-1250"/>
-   <bundle id="ch.qos.logback.core.source" version="1.0.7.v20121108-1250"/>
-   <bundle id="ch.qos.logback.slf4j" version="1.0.7.v201505121915"/>
-   <bundle id="ch.qos.logback.slf4j.source" version="1.0.7.v201505121915"/>
+   <bundle id="ch.qos.logback.classic" version="1.2.3"/>
+   <bundle id="ch.qos.logback.core" version="1.2.3"/>
    <bundle id="com.google.guava" version="18.0.0"/>
-   <bundle id="org.slf4j.api" version="1.7.2.v20121108-1250"/>
-   <bundle id="org.slf4j.api.source" version="1.7.2.v20121108-1250"/>
-   <bundle id="org.slf4j.log4j" version="1.7.2.v20130115-1340"/>
-   <bundle id="org.slf4j.log4j.source" version="1.7.2.v20130115-1340"/>
+   <bundle id="slf4j.api" version="1.7.25"/>
+   <bundle id="jcl.over.slf4j" version="1.7.25"/>
+   <bundle id="jul.to.slf4j" version="1.7.25"/>
+   <bundle id="log4j.over.slf4j" version="1.7.25"/>
    <bundle id="org.eclipse.xtend" version="1.4.0.v201306110406"/>
    <bundle id="org.eclipse.xpand" version="1.4.0.v201306110406"/>
    <bundle id="org.eclipse.xtend.lib" version="2.11.0.v20170124-1424"/>
