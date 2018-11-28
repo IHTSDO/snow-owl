@@ -264,14 +264,18 @@ final class SnomedEclRefinementEvaluator {
 										.then(new Function<Multimap<String, Integer>, Collection<Property>>() {
 											@Override
 											public Collection<Property> apply(Multimap<String, Integer> groupsById) {
-												final Collection<Property> matchingProperties = newHashSetWithExpectedSize(groupsById.size() - matchingIds.size());
-												for (Entry<String, Integer> entry : groupsById.entries()) {
-													final String id = entry.getKey();
-													if (!matchingIds.contains(id)) {
-														matchingProperties.add(new Property(id, entry.getValue()));
+												if (groupsById.isEmpty()) {
+													return Sets.newHashSet();
+												} else {
+													final Collection<Property> matchingProperties = newHashSetWithExpectedSize(groupsById.size() - matchingIds.size());
+													for (Entry<String, Integer> entry : groupsById.entries()) {
+														final String id = entry.getKey();
+														if (!matchingIds.contains(id)) {
+															matchingProperties.add(new Property(id, entry.getValue()));
+														}
 													}
+													return matchingProperties;
 												}
-												return matchingProperties;
 											}
 										});
 							} else {
