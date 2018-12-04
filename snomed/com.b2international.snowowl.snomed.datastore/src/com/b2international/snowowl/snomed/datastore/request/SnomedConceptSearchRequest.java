@@ -22,9 +22,11 @@ import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedCon
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedAncestors;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedParents;
 import static com.google.common.collect.Maps.newHashMap;
+import static com.google.common.collect.Sets.newHashSet;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.b2international.commons.CompareUtils;
@@ -47,6 +49,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDoc
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 
 /**
  * @since 4.5
@@ -282,10 +285,6 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 			requestBuilder.filterByActive(getBoolean(OptionKey.DESCRIPTION_ACTIVE));
 		}
 		
-		if (containsKey(SnomedDescriptionSearchRequest.OptionKey.LANGUAGE_REFSET)) {
-			requestBuilder.filterByLanguageRefSets(getCollection(SnomedDescriptionSearchRequest.OptionKey.LANGUAGE_REFSET, String.class));
-		}
-			
 		applyIdFilter(requestBuilder, (rb, ids) -> rb.filterByConceptId(ids));
 		
 		if (containsKey(OptionKey.DESCRIPTION_TYPE)) {
@@ -308,13 +307,19 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		
 		final Map<String, Float> conceptMap = newHashMap();
 		
+		Set<String> languageRefsetIds = newHashSet(getCollection(SnomedDescriptionSearchRequest.OptionKey.LANGUAGE_REFSET, String.class));
+		
 		for (SnomedDescription description : items) {
-			if (!conceptMap.containsKey(description.getConceptId())) {
-				conceptMap.put(description.getConceptId(), description.getScore());
+			if (!description.isActive() || (languageRefsetIds.isEmpty() || isAcceptable(description, languageRefsetIds))) {
+				conceptMap.putIfAbsent(description.getConceptId(), description.getScore());
 			}
 		}
 		
 		return conceptMap;
+	}
+	
+	private boolean isAcceptable(SnomedDescription description, Set<String> languageRefsetIds) {
+		return !Sets.intersection(description.getAcceptabilityMap().keySet(), languageRefsetIds).isEmpty();
 	}
 
 }

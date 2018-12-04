@@ -28,6 +28,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.getComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.updateComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createConceptRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createDescriptionRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRefSet;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
@@ -37,6 +38,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.rea
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reserveComponentId;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
+import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -44,6 +46,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -76,6 +79,7 @@ import com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
@@ -83,6 +87,7 @@ import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
@@ -737,6 +742,74 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
 		assertEquals(responseRows, expectedRows);
 
+	}
+	
+	@Test
+	public void testConceptSearchViaPostWithInactiveDescription() {
+		
+		String uniqueDescriptionTerm = "Cheesecake";
+		
+		String conceptId = createNewConcept(branchPath);
+		
+		Map<String, Object> descriptionRequestBody = newHashMap(createDescriptionRequestBody(conceptId).build());
+		descriptionRequestBody.put(SnomedRf2Headers.FIELD_TERM, uniqueDescriptionTerm);
+		descriptionRequestBody.put("commitComment", "Created new description");
+
+		String descriptionId = lastPathSegment(createComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionRequestBody)
+			.statusCode(201)
+			.body(equalTo(""))
+			.extract().header("Location"));
+		
+		getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId)
+			.statusCode(200)
+			.body("active", equalTo(true));
+		
+		Map<?, ?> inactivationRequestBody = ImmutableMap.builder()
+				.put("active", false)
+				.put("commitComment", "Inactivated description")
+				.build();
+
+		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, inactivationRequestBody)
+			.statusCode(204);
+		
+		SnomedDescription description = getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, "members()")
+			.statusCode(200)
+			.extract()
+			.as(SnomedDescription.class);
+		
+		assertFalse(description.isActive());
+		assertFalse(description.getMembers().isEmpty());
+		
+		description.getMembers().stream()
+			.map(SnomedReferenceSetMember::getId)
+			.forEach(memberId -> {
+				deleteComponent(branchPath, SnomedComponentType.MEMBER, memberId, false).statusCode(204);
+			});
+		
+		SnomedDescription description2 = getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, "members()")
+			.statusCode(200)
+			.extract()
+			.as(SnomedDescription.class);
+		
+		assertTrue(description2.getMembers().isEmpty());
+		
+		final Map<?, ?> requestBody = ImmutableMap.builder()
+				.put("expand", "fsn()")
+				.put("activeFilter", true)
+				.put("termFilter", uniqueDescriptionTerm)
+				.build();
+
+		SnomedConcepts hits = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+				.contentType(CONTENT_TYPE_UTF_8_JSON)
+				.body(requestBody)
+				.post("/{path}/concepts/search", branchPath.getPath())
+				.then()
+				.statusCode(200)
+				.extract().as(SnomedConcepts.class);
+		
+		assertEquals(1, hits.getTotal());
+		assertEquals(conceptId, hits.getItems().get(0).getId());
+		
 	}
 
 	@Test
