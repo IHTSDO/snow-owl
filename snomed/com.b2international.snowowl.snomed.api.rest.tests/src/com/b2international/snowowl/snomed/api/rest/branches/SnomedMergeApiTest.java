@@ -25,11 +25,29 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests.createMerge;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRefSetRestRequests.updateRefSetComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRefSetRestRequests.updateRefSetMemberEffectiveTime;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.*;
-import static org.hamcrest.CoreMatchers.*;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.changeCaseSignificance;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.changeRelationshipGroup;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createInactiveConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewDescription;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRefSetMember;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewTextDefinition;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.merge;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
+import static com.google.common.collect.Sets.newHashSet;
+import static java.util.stream.Collectors.toSet;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Calendar;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.After;
 import org.junit.Ignore;
@@ -47,7 +65,9 @@ import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.google.common.collect.ImmutableMap;
 
 /**
@@ -762,4 +782,73 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		.body("active", equalTo(false)); // Child didn't update the status, so inactivation on the parent is in effect
 	}
 
+	@Test
+	public void verifyParentageUpdateUponInvalidTaxonomy() throws Exception {
+		
+		// new concept with stated IS-A to root
+		final String conceptId = createNewConcept(branchPath);
+		
+		// new task branch
+		final IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
+		createBranch(a).statusCode(201);
+		
+		// new child concept with stated IS-A to concept
+		final String childConceptId = createNewConcept(branchPath, conceptId);
+		
+		SnomedConcept childConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, childConceptId, "relationships()").extract()
+				.as(SnomedConcept.class);
+		
+		final String newInboundStatedIsaToConcept = childConcept.getRelationships().getItems().stream()
+				.filter(r -> r.getCharacteristicType() == CharacteristicType.STATED_RELATIONSHIP)
+				.findFirst().get().getId();
+		
+		// add an outbound inferred ISA to concept
+		final String newOutboundInferredIsaFromConcept = createNewRelationship(branchPath, conceptId, Concepts.IS_A, Concepts.ROOT_CONCEPT,
+				CharacteristicType.INFERRED_RELATIONSHIP);
+		
+		// add grandchild concept
+		final String grandChildConceptId = createNewConcept(branchPath, childConceptId);
+		
+		// delete concept on task branch
+		deleteComponent(a, SnomedComponentType.CONCEPT, conceptId, false);
+		getComponent(a, SnomedComponentType.CONCEPT, conceptId).statusCode(404);
+		
+		// rebase task branch with deletion over new relationships
+		merge(branchPath, a, "Rebase task").body("status", equalTo(Merge.Status.COMPLETED.name())); // XXX this should throw a conflict
+		
+		// taxonomy should become invalid due to relationship with unknown destination
+		
+		getComponent(a, SnomedComponentType.RELATIONSHIP, newInboundStatedIsaToConcept).statusCode(200); // XXX this should not be present
+		getComponent(a, SnomedComponentType.RELATIONSHIP, newOutboundInferredIsaFromConcept).statusCode(404);
+		
+		// verify stated ancestors of child concept on "project" branch
+		childConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, childConceptId, "statedAncestors(direct:false)")
+				.extract().as(SnomedConcept.class);
+		
+		Set<String> childConceptStatedAncestorIdsOnProject = childConcept.getStatedAncestors().getItems().stream().map(SnomedConcept::getId).collect(toSet());
+		assertEquals(newHashSet(Concepts.ROOT_CONCEPT, conceptId), childConceptStatedAncestorIdsOnProject);
+		
+		// verify stated ancestors of grand child concept on "project" branch
+		SnomedConcept grandChildConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, grandChildConceptId, "statedAncestors(direct:false)")
+				.extract().as(SnomedConcept.class);
+		
+		Set<String> grandChildConceptStatedAncestorIdsOnProject = grandChildConcept.getStatedAncestors().getItems().stream().map(SnomedConcept::getId).collect(toSet());
+		assertEquals(newHashSet(Concepts.ROOT_CONCEPT, conceptId, childConceptId), grandChildConceptStatedAncestorIdsOnProject);
+		
+		// verify stated ancestors of child concept on task branch
+		childConcept = getComponent(a, SnomedComponentType.CONCEPT, childConceptId, "statedAncestors(direct:false)")
+				.extract().as(SnomedConcept.class);
+		
+		Set<String> childConceptStatedAncestorIdsOnTask = childConcept.getStatedAncestors().getItems().stream().map(SnomedConcept::getId).collect(toSet());
+		assertTrue(childConceptStatedAncestorIdsOnTask.isEmpty());
+
+		// verify stated ancestors of grand child concept on task branch
+		grandChildConcept = getComponent(a, SnomedComponentType.CONCEPT, grandChildConceptId, "statedAncestors(direct:false)")
+				.extract().as(SnomedConcept.class);
+		
+		Set<String> grandChildStatedAncestorIdsOnTask = grandChildConcept.getStatedAncestors().getItems().stream().map(SnomedConcept::getId).collect(toSet());
+		assertEquals(newHashSet(childConceptId), grandChildStatedAncestorIdsOnTask); // this should fail prior taxonomy builder fix
+		
+	}
+	
 }
