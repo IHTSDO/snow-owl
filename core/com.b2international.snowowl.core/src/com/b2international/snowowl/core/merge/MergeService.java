@@ -24,11 +24,12 @@ import com.google.common.base.Predicate;
  */
 public interface MergeService {
 
-	Merge enqueue(UUID id, String source, String target, String commitMessage, String reviewId);
-	
+	Merge enqueue(UUID id, String source, String target, String userId, String commitMessage, String reviewId, String parentLockContext);
+
 	Merge getMerge(UUID id);
 	
 	MergeCollection search(Predicate<Merge> query);
 	
 	void deleteMerge(UUID id);
+	
 }

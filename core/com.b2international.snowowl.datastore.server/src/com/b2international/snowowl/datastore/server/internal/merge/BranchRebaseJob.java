@@ -29,6 +29,7 @@ import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
+import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.request.AbstractBranchChangeRequest;
 import com.b2international.snowowl.datastore.request.Locks;
 import com.b2international.snowowl.datastore.request.RepositoryRequest;
@@ -43,8 +44,8 @@ public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
 
 		private static final Logger LOG = LoggerFactory.getLogger(SyncRebaseRequest.class);
 		
-		SyncRebaseRequest(final Merge merge, final String commitMessage, String reviewId) {
-			super(merge.getId(), merge.getSource(), merge.getTarget(), commitMessage, reviewId);
+		SyncRebaseRequest(final Merge merge, final String userId, final String commitMessage, String reviewId, String parentLockContext) {
+			super(merge.getId(), merge.getSource(), merge.getTarget(), userId, commitMessage, reviewId, parentLockContext);
 		}
 
 		@Override
@@ -53,9 +54,9 @@ public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
 			if (!target.parent().equals(source)) {
 				throw new BadRequestException("Cannot rebase target '%s' on source '%s'; source is not the direct parent of target.", target.path(), source.path());
 			}
-
-			try (Locks locks = new Locks(context, source, target)) {
-				return target.rebase(source, commitMessage, new Runnable() {
+			
+			try (Locks locks = new Locks(context, userId, DatastoreLockContextDescriptions.SYNCHRONIZE, parentLockContext, source, target)) {
+				return target.rebase(source, userId, commitMessage, new Runnable() {
 					@Override
 					public void run() {
 						try {
@@ -75,13 +76,13 @@ public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
 		}
 	}
 	
-	public BranchRebaseJob(Repository repository, UUID id, String source, String target, String commitMessage, String reviewId) {
-		super(repository, id, source, target, commitMessage, reviewId);
+	public BranchRebaseJob(Repository repository, UUID id, String source, String target, String userId, String commitMessage, String reviewId, String parentLockContext) {
+		super(repository, id, source, target, userId, commitMessage, reviewId, parentLockContext);
 	}
 
 	@Override
 	protected void applyChanges() {
-		new AsyncRequest<>(new RepositoryRequest<>(repository.id(), new SyncRebaseRequest(getMerge(), commitComment, reviewId)))
+		new AsyncRequest<>(new RepositoryRequest<>(repository.id(), new SyncRebaseRequest(getMerge(), userId, commitComment, reviewId, parentLockContext)))
 			.execute(repository.events())
 			.getSync();
 	}

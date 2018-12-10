@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -683,21 +683,22 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 	}
 	
 	@Test
-	public void updateReleasedDescriptionTerm() throws Exception {
-		String descriptionId = createNewDescription(branchPath);
-		Map<?, ?> update = ImmutableMap.builder()
-				.put(SnomedRf2Headers.FIELD_TERM, "updatedUnreleasedDescriptionTerm")
+	public void shouldUpdateReleasedDescriptionTerm() throws Exception {
+		final String descriptionId = createNewDescription(branchPath);
+		final String newTerm = "updatedUnreleasedDescriptionTerm";
+		final Map<?, ?> update = ImmutableMap.builder()
+				.put(SnomedRf2Headers.FIELD_TERM, newTerm)
 				.put("commitComment", "Update unreleased description term")
 				.build();
 		
 		// release component
 		createCodeSystemAndVersion(branchPath, "SNOMEDCT-RELDESC-TERM", "v1", "20170301");
-		
-		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, update).statusCode(400);
+
+		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, update).statusCode(204);
 		
 		getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId)
 			.statusCode(200)
-			.body(SnomedRf2Headers.FIELD_TERM, equalTo(SnomedRestFixtures.DEFAULT_TERM));
+			.body(SnomedRf2Headers.FIELD_TERM, equalTo(newTerm));
 	}
 	
 	@Test

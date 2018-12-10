@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 package com.b2international.snowowl.datastore.request;
 
 import java.util.UUID;
+
+import org.hibernate.validator.constraints.NotEmpty;
 
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
@@ -36,20 +38,30 @@ public abstract class AbstractBranchChangeRequest<R> implements Request<Reposito
 	@JsonProperty
 	protected final UUID id;
 	@JsonProperty
+	@NotEmpty
 	protected final String sourcePath;
 	@JsonProperty
+	@NotEmpty
 	protected final String targetPath;
 	@JsonProperty
+	@NotEmpty
+	protected final String userId;
+	@JsonProperty
+	@NotEmpty
 	protected final String commitMessage;
 	@JsonProperty
 	protected final String reviewId;
+	@JsonProperty
+	protected final String parentLockContext;
 
-	protected AbstractBranchChangeRequest(UUID id, String sourcePath, String targetPath, String commitMessage, String reviewId) {
+	protected AbstractBranchChangeRequest(UUID id, String sourcePath, String targetPath, String userId, String commitMessage, String reviewId, String parentLockContext) {
 		this.id = id;
 		this.sourcePath = sourcePath;
 		this.targetPath = targetPath;
+		this.userId = userId;
 		this.commitMessage = commitMessage;
 		this.reviewId = reviewId;
+		this.parentLockContext = parentLockContext;
 	}
 
 	@Override

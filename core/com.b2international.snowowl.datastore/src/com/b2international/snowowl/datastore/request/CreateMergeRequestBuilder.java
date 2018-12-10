@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,9 @@ public final class CreateMergeRequestBuilder extends BaseRequestBuilder<CreateMe
 	private String commitComment;
 	private String reviewId;
 	
+	private String userId;
+	private String parentLockContext;
+	
 	CreateMergeRequestBuilder() {}
 	
 	public CreateMergeRequestBuilder setSource(String source) {
@@ -44,6 +47,11 @@ public final class CreateMergeRequestBuilder extends BaseRequestBuilder<CreateMe
 	
 	public CreateMergeRequestBuilder setTarget(String target) {
 		this.target = target;
+		return this;
+	}
+	
+	public CreateMergeRequestBuilder setUserId(String userId) {
+		this.userId = userId;
 		return this;
 	}
 	
@@ -61,15 +69,20 @@ public final class CreateMergeRequestBuilder extends BaseRequestBuilder<CreateMe
 		this.id = id;
 		return this;
 	}
+
+	public CreateMergeRequestBuilder setParentLockContext(String parentLockContext) {
+		this.parentLockContext = parentLockContext;
+		return this;
+	}
 	
 	@Override
 	protected Request<RepositoryContext, Merge> doBuild() {
 		final IBranchPath sourcePath = BranchPathUtils.createPath(source);
 		final IBranchPath targetPath = BranchPathUtils.createPath(target);
 		if (targetPath.getParent().equals(sourcePath)) {
-			return new BranchRebaseRequest(id, source, target, commitComment, reviewId);
+			return new BranchRebaseRequest(id, source, target, userId, commitComment, reviewId, parentLockContext);
 		} else {
-			return new BranchMergeRequest(id, source, target, commitComment, reviewId);
+			return new BranchMergeRequest(id, source, target, userId, commitComment, reviewId, parentLockContext);
 		}
 	}
 	
