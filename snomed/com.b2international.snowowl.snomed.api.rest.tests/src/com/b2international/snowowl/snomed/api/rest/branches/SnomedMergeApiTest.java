@@ -35,19 +35,14 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewTextDefinition;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.merge;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
-import static com.google.common.collect.Sets.newHashSet;
-import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.util.Calendar;
 import java.util.Map;
-import java.util.Set;
 
 import org.junit.After;
 import org.junit.Ignore;
@@ -853,7 +848,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 	}
 
 	@Test
-	public void verifyParentageUpdateUponInvalidTaxonomy() throws Exception {
+	public void verifyDanglingInboundRelationshipCausesConflict() throws Exception {
 		
 		// new concept with stated IS-A to root
 		final String conceptId = createNewConcept(branchPath);
@@ -884,41 +879,8 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		getComponent(a, SnomedComponentType.CONCEPT, conceptId).statusCode(404);
 		
 		// rebase task branch with deletion over new relationships
-		merge(branchPath, a, "Rebase task").body("status", equalTo(Merge.Status.COMPLETED.name())); // XXX this should throw a conflict
-		
-		// taxonomy should become invalid due to relationship with unknown destination
-		
-		getComponent(a, SnomedComponentType.RELATIONSHIP, newInboundStatedIsaToConcept).statusCode(200); // XXX this should not be present
-		getComponent(a, SnomedComponentType.RELATIONSHIP, newOutboundInferredIsaFromConcept).statusCode(404);
-		
-		// verify stated ancestors of child concept on "project" branch
-		childConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, childConceptId, "statedAncestors(direct:false)")
-				.extract().as(SnomedConcept.class);
-		
-		Set<String> childConceptStatedAncestorIdsOnProject = childConcept.getStatedAncestors().getItems().stream().map(SnomedConcept::getId).collect(toSet());
-		assertEquals(newHashSet(Concepts.ROOT_CONCEPT, conceptId), childConceptStatedAncestorIdsOnProject);
-		
-		// verify stated ancestors of grand child concept on "project" branch
-		SnomedConcept grandChildConcept = getComponent(branchPath, SnomedComponentType.CONCEPT, grandChildConceptId, "statedAncestors(direct:false)")
-				.extract().as(SnomedConcept.class);
-		
-		Set<String> grandChildConceptStatedAncestorIdsOnProject = grandChildConcept.getStatedAncestors().getItems().stream().map(SnomedConcept::getId).collect(toSet());
-		assertEquals(newHashSet(Concepts.ROOT_CONCEPT, conceptId, childConceptId), grandChildConceptStatedAncestorIdsOnProject);
-		
-		// verify stated ancestors of child concept on task branch
-		childConcept = getComponent(a, SnomedComponentType.CONCEPT, childConceptId, "statedAncestors(direct:false)")
-				.extract().as(SnomedConcept.class);
-		
-		Set<String> childConceptStatedAncestorIdsOnTask = childConcept.getStatedAncestors().getItems().stream().map(SnomedConcept::getId).collect(toSet());
-		assertTrue(childConceptStatedAncestorIdsOnTask.isEmpty());
-
-		// verify stated ancestors of grand child concept on task branch
-		grandChildConcept = getComponent(a, SnomedComponentType.CONCEPT, grandChildConceptId, "statedAncestors(direct:false)")
-				.extract().as(SnomedConcept.class);
-		
-		Set<String> grandChildStatedAncestorIdsOnTask = grandChildConcept.getStatedAncestors().getItems().stream().map(SnomedConcept::getId).collect(toSet());
-		assertEquals(newHashSet(childConceptId), grandChildStatedAncestorIdsOnTask); // this should fail prior taxonomy builder fix
-		
+		merge(branchPath, a, "Rebase task").body("status", equalTo(Merge.Status.CONFLICTS.name()));
+				
 	}
 	
 }
