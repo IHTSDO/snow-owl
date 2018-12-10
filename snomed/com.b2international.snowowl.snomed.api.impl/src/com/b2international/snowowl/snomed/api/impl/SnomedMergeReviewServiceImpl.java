@@ -60,6 +60,7 @@ import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.IHandler;
 import com.b2international.snowowl.eventbus.IMessage;
+import com.b2international.snowowl.identity.domain.User;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
@@ -971,6 +972,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			.merging()
 			.prepareCreate()
 			.setId(mergeId)
+			.setUserId(User.SYSTEM.getUsername())
 			.setSource(sourcePath)
 			.setTarget(targetPath)
 			.setReviewId(mergeReview.sourceToTargetReviewId())
