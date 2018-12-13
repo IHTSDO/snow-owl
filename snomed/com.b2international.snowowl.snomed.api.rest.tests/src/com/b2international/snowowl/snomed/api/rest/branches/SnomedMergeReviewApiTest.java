@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,14 +48,20 @@ import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
+import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
+import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Multimap;
 import com.jayway.restassured.http.ContentType;
 
 /**
@@ -770,4 +776,156 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		assertEquals(0, reviewDetails.size());
 		
 	}
+	
+	/**
+	 * Scenario 1: Two different inactivation reasons, one has a historical association target, the other one does not
+	 */
+	@Test
+	public void testDifferingInactivationReasonsWithOnlyOneHistoricalAssociation() {
+		SnomedBranchingRestRequests.createBranch(branchPath);
+		
+		// Create concept
+		final String conceptId = SnomedRestFixtures.createNewConcept(branchPath);
+		final Multimap<AssociationType, String> associationTargets = ArrayListMultimap.create();
+		associationTargets.put(AssociationType.POSSIBLY_EQUIVALENT_TO, Concepts.ROOT_CONCEPT);
+		
+		// Inactivate concept on project branch
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setActive(false)
+			.setInactivationIndicator(InactivationIndicator.AMBIGUOUS)
+			.setAssociationTargets(associationTargets)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), "info@b2international.com", "Inactivating concept")
+			.execute(getBus())
+			.getSync();
+		
+		final IBranchPath taskBranch = BranchPathUtils.createPath(branchPath, "task");
+		SnomedBranchingRestRequests.createBranch(taskBranch);
+		
+		// Change inactivation indicator to Duplicate on the project branch
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setInactivationIndicator(InactivationIndicator.DUPLICATE)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), "info@b2international.com", "Change indicator to duplicate")
+			.execute(getBus())
+			.getSync();
+		
+		// Remove association targets from the task and change Indicator to Erroneous on the task
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setInactivationIndicator(InactivationIndicator.ERRONEOUS)
+			.setAssociationTargets(ArrayListMultimap.create())
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, taskBranch.getPath(), "info@b2international.com", "Change indicator remove association targets")
+			.execute(getBus())
+			.getSync();
+		
+		SnomedRestFixtures.merge(branchPath, taskBranch, "Rebasing project on to task branch");
+		
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), taskBranch.getPath()));
+		assertReviewCurrent(reviewId);
+		
+		final JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
+		
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());		
+	}
+	
+	/**
+	 * Scenario 2: Two different inactivation reasons, but same target for historical association
+	 */
+	@Test
+	public void testDifferingInactivationReasonsWithSameHistoricalAssociation() {
+		SnomedBranchingRestRequests.createBranch(branchPath);
+		
+		// Create concept
+		final String conceptId = SnomedRestFixtures.createNewConcept(branchPath);
+		final Multimap<AssociationType, String> associationTargets = ArrayListMultimap.create();
+		associationTargets.put(AssociationType.POSSIBLY_EQUIVALENT_TO, Concepts.ROOT_CONCEPT);
+		
+		// Inactivate concept on project branch
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setActive(false)
+			.setInactivationIndicator(InactivationIndicator.AMBIGUOUS)
+			.setAssociationTargets(associationTargets)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), "info@b2international.com", "Inactivating concept and setting association targets")
+			.execute(getBus())
+			.getSync();
+		
+		final IBranchPath taskBranch = BranchPathUtils.createPath(branchPath, "task");
+		SnomedBranchingRestRequests.createBranch(taskBranch);
+		
+		// Change inactivation indicator to Duplicate on the project branch
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setInactivationIndicator(InactivationIndicator.DUPLICATE)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), "info@b2international.com", "Changing inactivation indicator to Duplicate")
+			.execute(getBus())
+			.getSync();
+		
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setInactivationIndicator(InactivationIndicator.ERRONEOUS)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, taskBranch.getPath(), "info@b2international.com", "Change inactivation indicator to 'Erroneous'.")
+			.execute(getBus())
+			.getSync();
+		
+		SnomedRestFixtures.merge(branchPath, taskBranch, "Rebasing project on to task branch");
+		
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), taskBranch.getPath()));
+		assertReviewCurrent(reviewId);
+		
+		final JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
+
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());		
+	}
+	
+	/**
+	 * Scenario 3: Same inactivation reason, but different targets for historical association 
+	 */
+	@Test
+	public void testSameInactivationReasonWithDifferentHistoricalAssociationTargets() {
+		// Create concept
+		final String conceptId = SnomedRestFixtures.createNewConcept(branchPath);
+		final Multimap<AssociationType, String> associationTargets = ArrayListMultimap.create();
+		associationTargets.put(AssociationType.POSSIBLY_EQUIVALENT_TO, Concepts.ROOT_CONCEPT);
+		
+		// Inactivate concept on project branch
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setActive(false)
+			.setInactivationIndicator(InactivationIndicator.AMBIGUOUS)
+			.setAssociationTargets(associationTargets)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), "info@b2international.com", "Inactivating concept and setting association targets")
+			.execute(getBus())
+			.getSync();
+		
+		final IBranchPath taskBranch = BranchPathUtils.createPath(branchPath, "task");
+		SnomedBranchingRestRequests.createBranch(taskBranch);
+		
+		final Multimap<AssociationType, String> newProjectAssociationTargets = ArrayListMultimap.create();
+		newProjectAssociationTargets.put(AssociationType.POSSIBLY_EQUIVALENT_TO, Concepts.MODULE_ROOT);
+		
+		// Change inactivation indicator to Duplicate on the project branch
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setAssociationTargets(newProjectAssociationTargets)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath(), "info@b2international.com", "Changing association targets")
+			.execute(getBus())
+			.getSync();
+		
+		final Multimap<AssociationType, String> newTaskAssociationTargets = ArrayListMultimap.create();
+		newTaskAssociationTargets.put(AssociationType.POSSIBLY_EQUIVALENT_TO, Concepts.REFSET_ROOT_CONCEPT);
+		
+		SnomedRequests.prepareUpdateConcept(conceptId)
+			.setAssociationTargets(newTaskAssociationTargets)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, taskBranch.getPath(), "info@b2international.com", "Change historical assocation target.")
+			.execute(getBus())
+			.getSync();
+	
+		SnomedRestFixtures.merge(branchPath, taskBranch, "Rebasing project on to task branch");
+		
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), taskBranch.getPath()));
+		assertReviewCurrent(reviewId);
+		
+		final JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
+	
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());		
+		
+	}
+ 	
 }
