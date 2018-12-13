@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -226,7 +226,6 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			"descendants",
 			
 			"id",
-			"associationTargets",
 			"members",
 			"referenceSet",
 			"relationships",
@@ -445,7 +444,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 
 		private SnomedConcept getConcept(final String path, final String conceptId) {
 			return SnomedRequests.prepareGetConcept(conceptId)
-				.setExpand("fsn(),pt()")
+				.setExpand("fsn(),pt(),inactivationProperties()")
 				.setLocales(parameters.getExtendedLocales())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
 				.execute(getBus())
