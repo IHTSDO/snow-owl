@@ -79,6 +79,7 @@ import io.reactivex.disposables.Disposable;
 public class SnomedReasonerServerService extends CollectingService<Reasoner, ClassificationSettings> implements SnomedInternalReasonerService, IDisposableService {
 
 	private static final class ConcreteDomainChangeCollector extends OntologyChangeProcessor<ConcreteDomainFragment> {
+		
 		private final ImmutableList.Builder<ConcreteDomainChangeEntry> concreteDomainBuilder;
 
 		private ConcreteDomainChangeCollector(final ImmutableList.Builder<ConcreteDomainChangeEntry> concreteDomainBuilder) {
@@ -108,6 +109,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 	}
 
 	private static final class RelationshipChangeCollector extends OntologyChangeProcessor<StatementFragment> {
+		
 		private final ImmutableList.Builder<RelationshipChangeEntry> relationshipBuilder;
 
 		private RelationshipChangeCollector(final ImmutableList.Builder<RelationshipChangeEntry> relationshipBuilder) {
@@ -116,22 +118,23 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 
 		@Override 
 		protected void handleAddedSubject(final String conceptId, final StatementFragment addedSubject) {
-			registerEntry(conceptId, addedSubject, Nature.INFERRED);
+			registerEntry(conceptId, addedSubject, Nature.INFERRED, null);
 		}
 
 		@Override 
 		protected void handleRemovedSubject(final String conceptId, final StatementFragment removedSubject) {
-			registerEntry(conceptId, removedSubject, Nature.REDUNDANT);
+			registerEntry(conceptId, removedSubject, Nature.REDUNDANT, Long.toString(removedSubject.getStatementId()));
 		}
 
-		private void registerEntry(final String conceptId, final StatementFragment subject, final Nature changeNature) {
+		private void registerEntry(final String conceptId, final StatementFragment subject, final Nature changeNature, final String id) {
 			
 			final String modifierId = subject.isUniversal() 
 					? Concepts.UNIVERSAL_RESTRICTION_MODIFIER
 					: Concepts.EXISTENTIAL_RESTRICTION_MODIFIER;
 			
 			final RelationshipChangeEntry entry = new RelationshipChangeEntry(
-					changeNature, 
+					changeNature,
+					id,
 					conceptId, 
 					Long.toString(subject.getTypeId()), 
 					subject.getGroup(), 

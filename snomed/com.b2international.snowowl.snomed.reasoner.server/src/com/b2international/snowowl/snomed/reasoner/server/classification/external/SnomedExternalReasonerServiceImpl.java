@@ -67,8 +67,7 @@ import com.b2international.snowowl.snomed.reasoner.classification.EquivalenceSet
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponseChanges;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedExternalReasonerService;
-import com.b2international.snowowl.snomed.reasoner.classification.entry.AbstractChangeEntry.Nature;
-import com.b2international.snowowl.snomed.reasoner.classification.entry.ChangeConcept;
+import com.b2international.snowowl.snomed.reasoner.classification.entry.ChangeEntry.Nature;
 import com.b2international.snowowl.snomed.reasoner.classification.entry.RelationshipChangeEntry;
 import com.b2international.snowowl.snomed.reasoner.server.request.SnomedReasonerRequests;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -369,21 +368,21 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 				
 				String id = elements.get(0);
 				boolean active = BooleanUtils.valueOf(elements.get(2));
-				long sourceId = Long.valueOf(elements.get(4));
-				long destinationId = Long.valueOf(elements.get(5));
-				int groupId = Integer.valueOf(elements.get(6));
-				long typeId = Long.valueOf(elements.get(7));
-				long modifierId = Long.valueOf(elements.get(9));
+				String sourceId = elements.get(4);
+				String destinationId = elements.get(5);
+				int group = Integer.valueOf(elements.get(6));
+				String typeId = elements.get(7);
+				String modifierId = elements.get(9);
 				
 				RelationshipChangeEntry entry = new RelationshipChangeEntry(
 						active ? Nature.INFERRED : Nature.REDUNDANT, 
 						Strings.isNullOrEmpty(id) ? null : id,
-						new ChangeConcept(sourceId, sourceId), 
-						new ChangeConcept(typeId, typeId), 
-						new ChangeConcept(destinationId, destinationId), 
-						groupId, 
+						sourceId, 
+						typeId, 
+						group, 
+						destinationId, 
 						0, 
-						new ChangeConcept(modifierId, modifierId), 
+						modifierId, 
 						false);
 				
 				builder.add(entry);
