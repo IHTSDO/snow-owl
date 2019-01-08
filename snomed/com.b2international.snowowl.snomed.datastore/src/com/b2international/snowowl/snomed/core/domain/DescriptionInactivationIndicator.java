@@ -67,12 +67,12 @@ public enum DescriptionInactivationIndicator implements ConceptEnum {
 	CONCEPT_NON_CURRENT(Concepts.CONCEPT_NON_CURRENT),
 	
 	/**
-	 * The description fails to comply with the current editorial guidance.
+	 * The description fails to comply with the current editorial guidance
 	 */
 	NONCONFORMANCE_TO_EDITORIAL_POLICY(Concepts.NONCONFORMANCE_TO_EDITORIAL_POLICY),
 	
 	/**
-	 * The description does not represent the same meaning as the concept FSN.
+	 * The description does not represent the same meaning as the concept's Fully Specified Name (FSN)
 	 */
 	NOT_SEMANTICALLY_EQUIVALENT(Concepts.NOT_SEMANTICALLY_EQUIVALENT),
 	

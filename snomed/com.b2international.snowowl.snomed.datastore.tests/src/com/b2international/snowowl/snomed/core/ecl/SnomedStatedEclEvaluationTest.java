@@ -16,10 +16,10 @@
 package com.b2international.snowowl.snomed.core.ecl;
 
 import static com.b2international.snowowl.datastore.index.RevisionDocument.Expressions.ids;
-import static com.b2international.snowowl.snomed.core.tests.util.DocumentBuilders.concept;
-import static com.b2international.snowowl.snomed.core.tests.util.DocumentBuilders.relationship;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedAncestors;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.statedParents;
+import static com.b2international.snowowl.test.commons.snomed.DocumentBuilders.concept;
+import static com.b2international.snowowl.test.commons.snomed.DocumentBuilders.relationship;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Collection;

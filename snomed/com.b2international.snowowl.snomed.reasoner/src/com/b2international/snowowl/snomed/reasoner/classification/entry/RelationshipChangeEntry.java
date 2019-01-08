@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,21 +15,21 @@
  */
 package com.b2international.snowowl.snomed.reasoner.classification.entry;
 
-import com.google.common.base.Objects;
+import java.util.Objects;
 
 /**
  * Represents a reasoner change entry capturing the details of inferred or redundant relationships.
  */
-public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
+public final class RelationshipChangeEntry extends ChangeEntry {
 
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 2L;
 
 	// XXX: not part of equals and hashCode computations
 	private final String id;
 
-	private final int group;
+	private final String destinationId;
 	private final int unionGroup;
-	private final ChangeConcept modifier;
+	private final String modifierId;
 	private final boolean destinationNegated;
 
 	/**
@@ -37,30 +37,30 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 	 * 
 	 * @param nature the change nature
 	 * @param id the relationship's SCTID (only set if the inferred relationship is redundant) 
-	 * @param source the source component
-	 * @param type the type component
-	 * @param destination the destination component
+	 * @param sourceId the source component SCTID
+	 * @param typeId the type component SCTID
+	 * @param destinationId the destination component SCTID
 	 * @param group the relationship's group
 	 * @param unionGroup the relationship's union group
-	 * @param modifier the modifier component
+	 * @param modifierId the modifier SCTID
 	 * @param destinationNegated {@code true} if the destination component is to be negated, {@code false} otherwise
 	 */
-	public RelationshipChangeEntry(final Nature nature,
+	public RelationshipChangeEntry(final Nature nature, 
 			final String id,
-			final ChangeConcept source, 
-			final ChangeConcept type,
-			final ChangeConcept destination, 
+			final String sourceId, 
+			final String typeId,
 			final int group, 
+			final String destinationId, 
 			final int unionGroup, 
-			final ChangeConcept modifier,
+			final String modifierId,
 			final boolean destinationNegated) {
 
-		super(nature, source, type, destination);
+		super(nature, sourceId, typeId, group);
 
 		this.id = id;
-		this.group = group;
+		this.destinationId = destinationId;
 		this.unionGroup = unionGroup;
-		this.modifier = modifier;
+		this.modifierId = modifierId;
 		this.destinationNegated = destinationNegated;
 	}
 	
@@ -71,11 +71,8 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 		return id;
 	}
 
-	/**
-	 * @return the relationship group
-	 */
-	public int getGroup() {
-		return group;
+	public String getDestinationId() {
+		return destinationId;
 	}
 
 	/**
@@ -86,10 +83,10 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 	}
 
 	/**
-	 * @return the modifier component ("existential" or "universal")
+	 * @return the modifier SCTID
 	 */
-	public ChangeConcept getModifier() {
-		return modifier;
+	public String getModifierId() {
+		return modifierId;
 	}
 
 	/**
@@ -101,13 +98,7 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 
 	@Override 
 	public int hashCode() {
-		final int prime = 31;
-		int result = super.hashCode();
-		result = prime * result + (destinationNegated ? 1231 : 1237);
-		result = prime * result + group;
-		result = prime * result + ((modifier == null) ? 0 : modifier.hashCode());
-		result = prime * result + unionGroup;
-		return result;
+		return 31 * super.hashCode() + Objects.hash(destinationId, unionGroup, modifierId, destinationNegated);
 	}
 
 	@Override 
@@ -118,10 +109,11 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 
 		final RelationshipChangeEntry other = (RelationshipChangeEntry) obj;
 
-		if (destinationNegated != other.destinationNegated) { return false; }
-		if (group != other.group) { return false; }
+		if (!Objects.equals(destinationId, other.destinationId)) { return false; }
 		if (unionGroup != other.unionGroup) { return false; }
-		if (!Objects.equal(modifier, other.modifier)) { return false; }
+		if (destinationNegated != other.destinationNegated) { return false; }
+		if (!Objects.equals(modifierId, other.modifierId)) { return false; }
+
 		return true;
 	}
 }
