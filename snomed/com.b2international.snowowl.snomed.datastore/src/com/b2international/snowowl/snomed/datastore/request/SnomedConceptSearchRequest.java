@@ -25,11 +25,11 @@ import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import com.b2international.commons.CompareUtils;
 import com.b2international.index.Hits;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
@@ -38,6 +38,7 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.ecl.EclExpression;
@@ -211,11 +212,9 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 			final Map<String, Float> conceptScoreMap = executeDescriptionSearch(context, term);
 			
 			try {
-				if (!CompareUtils.isEmpty(term)) {
-					final ComponentCategory category = SnomedIdentifiers.getComponentCategory(term);
-					if (category == ComponentCategory.CONCEPT) {
-						conceptScoreMap.put(term, Float.MAX_VALUE);
-					}
+				final ComponentCategory category = SnomedIdentifiers.getComponentCategory(term);
+				if (category == ComponentCategory.CONCEPT) {
+					conceptScoreMap.put(term, Float.MAX_VALUE);
 				}
 			} catch (IllegalArgumentException e) {
 				// ignored
