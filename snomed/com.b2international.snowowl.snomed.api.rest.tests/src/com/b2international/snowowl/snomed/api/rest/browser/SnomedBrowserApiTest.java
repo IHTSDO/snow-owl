@@ -35,6 +35,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -702,7 +703,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		
 		Map<String, Object> associationTargets = (Map<String, Object>) inactiveDescription.get().get("associationTargets");
 		assertTrue(associationTargets.containsKey("POSSIBLY_EQUIVALENT_TO"));
-		assertEquals(ImmutableSet.of(ptId, fsnId), ImmutableSet.of(associationTargets.get("POSSIBLY_EQUIVALENT_TO")));
+		assertEquals(ImmutableSet.of(ptId, fsnId), ImmutableSet.copyOf((Collection<String>) associationTargets.get("POSSIBLY_EQUIVALENT_TO")));
 	}
 
 	@Test
