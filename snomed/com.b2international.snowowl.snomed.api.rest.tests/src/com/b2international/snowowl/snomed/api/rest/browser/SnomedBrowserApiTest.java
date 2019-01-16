@@ -67,6 +67,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.jayway.restassured.response.ExtractableResponse;
 import com.jayway.restassured.response.Response;
@@ -699,9 +700,9 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		assertEquals(false, inactiveDescription.get().get("active"));
 		assertEquals("NOT_SEMANTICALLY_EQUIVALENT", inactiveDescription.get().get("inactivationIndicator"));
 		
-		assertEquals(ImmutableMap.of("POSSIBLY_EQUIVALENT_TO", ImmutableList.of(ptId, fsnId)),
-				inactiveDescription.get().get("associationTargets"));
-		
+		Map<String, Object> associationTargets = (Map<String, Object>) inactiveDescription.get().get("associationTargets");
+		assertTrue(associationTargets.containsKey("POSSIBLY_EQUIVALENT_TO"));
+		assertEquals(ImmutableSet.of(ptId, fsnId), ImmutableSet.of(associationTargets.get("POSSIBLY_EQUIVALENT_TO")));
 	}
 
 	@Test
