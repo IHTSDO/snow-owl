@@ -26,15 +26,19 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.res
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
+import static java.util.Collections.emptyMap;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.Test;
 
@@ -64,6 +68,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.jayway.restassured.response.ExtractableResponse;
 import com.jayway.restassured.response.Response;
@@ -623,6 +628,82 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		String conceptId = (String) conceptRequest.get("conceptId");
 		conceptRequest.put("active", false);
 		updateBrowserConcept(branchPath, conceptId, conceptRequest).statusCode(200);
+	}
+	
+	@Test
+	@SuppressWarnings("unchecked")
+	public void inactivateDescriptionWithAssociationTargets() throws Exception {
+		
+		Map<?, ?> synonym = ImmutableMap.<String, Object>builder()
+				.put("active", true)
+				.put("term", "TEST")
+				.put("type", SnomedBrowserDescriptionType.SYNONYM)
+				.put("lang", "en")
+				.put("moduleId", Concepts.MODULE_SCT_CORE)
+				.put("caseSignificance", CaseSignificance.CASE_INSENSITIVE)
+				.put("acceptabilityMap", SnomedApiTestConstants.UK_ACCEPTABLE_MAP)
+				.build();
+		
+		Map<String, Object> requestBody = Maps.newHashMap(createBrowserConceptRequest());
+		
+		List<?> descriptions = createDefaultDescriptions("pt", "fsn");
+		List<?> allDescriptions = ImmutableList.of(descriptions.get(0), descriptions.get(1), synonym);
+		requestBody.put("descriptions", allDescriptions);
+		
+		final Map<String, Object> response = newHashMap(createBrowserConcept(branchPath, requestBody).statusCode(200)
+				.extract().as(Map.class));
+		String conceptId = (String) response.get("conceptId");
+		
+		List<Map<String, Object>> newDescriptions = (List<Map<String, Object>>) response.get("descriptions");
+		
+		Optional<Map<String, Object>> pt = newDescriptions.stream().filter(map -> map.containsValue("pt")).findFirst();
+		Optional<Map<String, Object>> fsn = newDescriptions.stream().filter(map -> map.containsValue("fsn")).findFirst();
+		Optional<Map<String, Object>> test = newDescriptions.stream().filter(map -> map.containsValue("TEST")).findFirst();
+		
+		assertTrue(pt.isPresent());
+		String ptId = (String) pt.get().get("descriptionId");
+		assertTrue(fsn.isPresent());
+		String fsnId = (String) fsn.get().get("descriptionId");
+		assertTrue(test.isPresent());
+		String testId = (String) test.get().get("descriptionId");
+		
+		response.remove("descriptions");
+		
+		Map<?, ?> inactiveSynonym = ImmutableMap.<String, Object>builder()
+				.put("active", false)
+				.put("descriptionId", testId)
+				.put("term", "TEST")
+				.put("type", SnomedBrowserDescriptionType.SYNONYM)
+				.put("lang", "en")
+				.put("moduleId", Concepts.MODULE_SCT_CORE)
+				.put("caseSignificance", CaseSignificance.CASE_INSENSITIVE)
+				.put("acceptabilityMap", emptyMap())
+				.put("inactivationIndicator", "NOT_SEMANTICALLY_EQUIVALENT")
+				.put("associationTargets",
+						ImmutableMap.of(AssociationType.POSSIBLY_EQUIVALENT_TO.name(),
+								ImmutableList.of(ptId, fsnId)))
+				.build();
+		
+		response.put("descriptions", ImmutableList.of(pt.get(), fsn.get(), inactiveSynonym));
+		Map<String, Object> updatedConcept = SnomedBrowserRestRequests.updateBrowserConcept(branchPath, conceptId, response)
+			.statusCode(200)
+			.extract().as(Map.class);
+		
+		List<Map<String, Object>> updatedDescriptions = (List<Map<String, Object>>) updatedConcept.get("descriptions");
+		
+		assertEquals(3, updatedDescriptions.size());
+		
+		Optional<Map<String, Object>> inactiveDescription = updatedDescriptions.stream()
+				.filter(d -> d.get("descriptionId").equals(testId)).findFirst();
+		
+		assertTrue(inactiveDescription.isPresent());
+		
+		assertEquals(false, inactiveDescription.get().get("active"));
+		assertEquals("NOT_SEMANTICALLY_EQUIVALENT", inactiveDescription.get().get("inactivationIndicator"));
+		
+		Map<String, Object> associationTargets = (Map<String, Object>) inactiveDescription.get().get("associationTargets");
+		assertTrue(associationTargets.containsKey("POSSIBLY_EQUIVALENT_TO"));
+		assertEquals(ImmutableSet.of(ptId, fsnId), ImmutableSet.copyOf((Collection<String>) associationTargets.get("POSSIBLY_EQUIVALENT_TO")));
 	}
 
 	@Test
