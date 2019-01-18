@@ -1,3 +1,18 @@
+/*
+ * Copyright 2019 B2i Healthcare Pte Ltd, http://b2i.sg
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.b2international.snowowl.test.commons
 
 import com.b2international.commons.time.TimeUtil
@@ -10,6 +25,7 @@ import com.b2international.snowowl.datastore.BranchPathUtils
 import com.b2international.snowowl.datastore.CodeSystemEntry
 import com.b2international.snowowl.datastore.request.RepositoryRequests
 import com.b2international.snowowl.eventbus.IEventBus
+import com.b2international.snowowl.identity.domain.User
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator
 import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests
 import com.google.common.base.Stopwatch
@@ -19,17 +35,18 @@ def bus = ApplicationContext.getServiceForClass(IEventBus)
 def repositoryId = SnomedDatastoreActivator.REPOSITORY_UUID
 
 // specify the path of the target version
-def targetVersionPath = "MAIN/2018-07-31"
-// specify the short name of the target version (used for metadata) 
-def targetVersionShortName = "20180731"
+def targetVersionPath = "MAIN/2019-01-31"
+// specify the short name of the target version (used for metadata)
+def targetVersionShortName = "20190131"
 
 // specify the short name of the extension and the name of the related project branches here that need to be handled during the upgrade
-def extensionsAndProjects = ImmutableListMultimap.builder() 
-	.put("SNOMEDCT-US", "USSEPT18")
-//	.put("SNOMEDCT-DK", "DKSEP18")
-//	.put("SNOMEDCT-BE", "BESEPT18")
-//	.put("SNOMEDCT-SE", "SENOV18")
-//	.put("SNOMEDCT-NO", "NO18")
+def extensionsAndProjects = ImmutableListMultimap.builder()
+	.put("SNOMEDCT-US", "USMARCH19")
+//	.put("SNOMEDCT-DK", "DKMAR19")
+//	.put("SNOMEDCT-BE", "BEMAR19")
+//	.put("SNOMEDCT-SE", "SEMAY19")
+//	.put("SNOMEDCT-NO", "NOAPR19")
+//	.put("SNOMEDCT-IE", "IEAPRIL19")
 	.build()
 
 def extensionsToCurrentBranchMap = [:]
@@ -61,6 +78,7 @@ def mergeBranches = { source, target ->
 	Merge merge = RepositoryRequests.merging().prepareCreate()
 		.setSource(source)
 		.setTarget(target)
+		.setUserId(User.SYSTEM.getUsername())
 		.build(repositoryId)
 		.execute(bus)
 		.getSync()
@@ -105,7 +123,7 @@ def mergeBranches = { source, target ->
 
 def upgrade = { shortName ->
 	
-	Stopwatch stopwatch = Stopwatch.createStarted() 
+	Stopwatch stopwatch = Stopwatch.createStarted()
 	
 	println("Checking project branch states for " + shortName)
 	
@@ -216,7 +234,7 @@ def upgrade = { shortName ->
 			
 			CodeSystemRequests.prepareUpdateCodeSystem(shortName)
 				.setBranchPath(targetExtensionBranchPath)
-				.build(repositoryId, "MAIN", "System", "Updated branch path of " + shortName)
+				.build(repositoryId, Branch.MAIN_PATH, User.SYSTEM.getUsername(), "Updated branch path of " + shortName)
 				.execute(bus)
 				.getSync()
 			
