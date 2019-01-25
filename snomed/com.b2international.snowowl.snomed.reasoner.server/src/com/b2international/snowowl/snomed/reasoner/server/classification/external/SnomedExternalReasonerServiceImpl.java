@@ -197,8 +197,8 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
         	UUID fileId = exportResult.getRegistryId();
 			File rf2Delta = fileRegistry.getFile(fileId);
         	
-        	RequestBody previousPackageRequestBody = RequestBody.create(MediaType.parse("text/plain"), previousPackage);
-        	RequestBody dependencyPackageRequestBody = RequestBody.create(MediaType.parse("text/plain"), dependencyPackage);
+        	RequestBody previousPackageRequestBody = previousPackage != null ? RequestBody.create(MediaType.parse("text/plain"), previousPackage) : null;
+        	RequestBody dependencyPackageRequestBody = dependencyPackage != null ? RequestBody.create(MediaType.parse("text/plain"), dependencyPackage) : null;
         	
         	RequestBody fileRequestBody = RequestBody.create(MediaType.parse("multipart/form-data"), rf2Delta);
         	MultipartBody.Part rf2DeltaBody = MultipartBody.Part.createFormData("rf2Delta", rf2Delta.getName(), fileRequestBody);
