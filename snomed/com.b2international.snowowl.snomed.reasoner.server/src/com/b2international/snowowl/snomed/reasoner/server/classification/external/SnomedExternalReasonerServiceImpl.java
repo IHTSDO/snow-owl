@@ -98,7 +98,8 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
  */
 public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasonerService, IDisposableService {
 
-	private static final String PREVIOUS_RELEASE_METADATA_KEY = "classification.previousPackage";
+	private static final String PREVIOUS_PACKAGE_METADATA_KEY = "previousPackage";
+	private static final String DEPENDENCY_PACKAGE_METADATA_KEY = "dependencyPackage";
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedExternalReasonerService.class);
 	private static final Splitter TAB_SPLITTER = Splitter.on('\t');
@@ -170,7 +171,12 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
 					.execute(getEventBus())
 					.getSync();
 			
-			String previousRelease = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, PREVIOUS_RELEASE_METADATA_KEY);
+			String previousPackage = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, PREVIOUS_PACKAGE_METADATA_KEY);
+			String dependencyPackage = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, DEPENDENCY_PACKAGE_METADATA_KEY);
+			if (Strings.isNullOrEmpty(previousPackage)) {
+				throw new SnowowlRuntimeException("Exception while preparing request for external classification. No previousPackage metadata set.");
+			}
+
 			String shortName = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_EXTENSION_SHORTNAME_KEY);
 			String defaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.DEFAULT_NAMESPACE);
 			
@@ -191,7 +197,8 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
         	UUID fileId = exportResult.getRegistryId();
 			File rf2Delta = fileRegistry.getFile(fileId);
         	
-        	RequestBody previousReleaseRequestBody = RequestBody.create(MediaType.parse("text/plain"), previousRelease);
+        	RequestBody previousPackageRequestBody = RequestBody.create(MediaType.parse("text/plain"), previousPackage);
+        	RequestBody dependencyPackageRequestBody = RequestBody.create(MediaType.parse("text/plain"), dependencyPackage);
         	
         	RequestBody fileRequestBody = RequestBody.create(MediaType.parse("multipart/form-data"), rf2Delta);
         	MultipartBody.Part rf2DeltaBody = MultipartBody.Part.createFormData("rf2Delta", rf2Delta.getName(), fileRequestBody);
@@ -199,9 +206,10 @@ public class SnomedExternalReasonerServiceImpl implements SnomedExternalReasoner
         	RequestBody branchPathRequestBody = RequestBody.create(MediaType.parse("text/plain"), branchPath);
         	RequestBody reasonerIdRequestBody = RequestBody.create(MediaType.parse("text/plain"), reasonerId);
         	
-        	LOGGER.info("Sending export results for external classification, branch path: {}, previous release: {}, reasoner: {}", branchPath, previousRelease, reasonerId);
+        	LOGGER.info("Sending export results for external classification, branch path: {}, previous package: {}, {}reasoner: {}", branchPath, previousPackage, 
+        			Strings.isNullOrEmpty(dependencyPackage) ? "" : String.format("dependency package: %s, ", dependencyPackage), reasonerId);
         	
-        	String location = client.sendResults(previousReleaseRequestBody, rf2DeltaBody, branchPathRequestBody, reasonerIdRequestBody)
+        	String location = client.sendResults(previousPackageRequestBody, dependencyPackageRequestBody, rf2DeltaBody, branchPathRequestBody, reasonerIdRequestBody)
         			.fail(fail -> {
         				throw Throwables.propagate(fail);
         			})
