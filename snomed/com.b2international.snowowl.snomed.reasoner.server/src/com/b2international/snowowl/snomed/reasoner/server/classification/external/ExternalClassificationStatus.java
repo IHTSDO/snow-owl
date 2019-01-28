@@ -29,7 +29,8 @@ public class ExternalClassificationStatus {
 	private String branch;
 	private String reasonerId;
 	private Date created;
-	private String previousRelease;
+	private String previousPackage;
+	private String dependencyPackage;
 	private ClassificationStatus status;
 	private String errorMessage;
 	private String developerMessage;
@@ -66,14 +67,22 @@ public class ExternalClassificationStatus {
 		this.created = created;
 	}
 	
-	public String getPreviousRelease() {
-		return previousRelease;
+	public String getPreviousPackage() {
+		return previousPackage;
 	}
 	
-	public void setPreviousRelease(String previousRelease) {
-		this.previousRelease = previousRelease;
+	public void setPreviousPackage(String previousPackage) {
+		this.previousPackage = previousPackage;
 	}
-	
+
+	public String getDependencyPackage() {
+		return dependencyPackage;
+	}
+
+	public void setDependencyPackage(String dependencyPackage) {
+		this.dependencyPackage = dependencyPackage;
+	}
+
 	public ClassificationStatus getStatus() {
 		return status;
 	}
