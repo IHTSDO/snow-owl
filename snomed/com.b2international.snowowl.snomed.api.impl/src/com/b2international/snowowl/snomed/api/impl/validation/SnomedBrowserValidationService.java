@@ -50,23 +50,23 @@ import com.google.common.collect.Multimap;
 public class SnomedBrowserValidationService implements ISnomedBrowserValidationService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserValidationService.class);
-	
+
 	private static final Splitter COMMA_SPLITTER = Splitter.on(',');
 	private static final Splitter WHITESPACE_SPLITTER = Splitter.on(CharMatcher.WHITESPACE);
 	private static final Joiner COMMA_JOINER = Joiner.on(", ");
-	
+
 	private static final String US_TERMS_FILENAME = "usTerms.txt";
 	private static final String GB_TERMS_FILENAME = "gbTerms.txt";
 	private static final String CASE_SIGNIFICANT_WORDS_FILENAME = "cs_words.txt";
-	
+
 	@Resource
 	private IEventBus bus;
-	
+
 	private RuleExecutor ruleExecutor;
+	private SnomedDroolsConfiguration droolsConfig;
 	private Set<String> caseSignificantWords;
 	private Multimap<String, String> refsetToLanguageSpecificWordsMap;
-	private SnomedDroolsConfiguration droolsConfig;
-	
+
 	public SnomedBrowserValidationService() {
 		droolsConfig = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDroolsConfig();
 		ruleExecutor = createNewRuleExecutor(false);
@@ -76,28 +76,28 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 
 	@Override
 	public List<ISnomedInvalidContent> validateConcepts(String branchPath, List<? extends ISnomedBrowserConcept> concepts, List<ExtendedLocale> locales) {
-		
+
 		if (concepts.isEmpty()) {
 			return Collections.emptyList();
 		}
-		
+
 		List<String> assertionGroups = getAssertionGroups(branchPath);
 
 		LOGGER.info(getLogMessage(branchPath, assertionGroups, concepts));
-		
+
 		try {
-			
+
 			List<ValidationConcept> validationConcepts = concepts.stream().map(concept -> new ValidationConcept(concept)).collect(toList());
-			
+
 			List<InvalidContent> invalidContent = ruleExecutor.execute(newHashSet(assertionGroups),
 					validationConcepts,
 					new ValidationConceptService(branchPath),
 					new ValidationDescriptionService(branchPath, caseSignificantWords, refsetToLanguageSpecificWordsMap),
 					new ValidationRelationshipService(branchPath),
 					false, false);
-			
+
 			return invalidContent.stream().map(content -> new SnomedInvalidContent(content)).collect(toList());
-			
+
 		} catch (BadRequestRuleExecutorException e) {
 			throw new BadRequestException(e.getMessage());
 		}
@@ -108,22 +108,26 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		ruleExecutor = createNewRuleExecutor(true);
 		return ruleExecutor.getTotalRulesLoaded();
 	}
-	
+
 	private List<String> getAssertionGroups(String branchPath) {
-		
+
 		final Branch branch = RepositoryRequests.branching().prepareGet(branchPath)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)
 				.getSync();
-		
+
 		final String assertionGroupNamesString = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_ASSERTION_GROUP_NAMES_KEY);
 		if (Strings.isNullOrEmpty(assertionGroupNamesString)) {
 			throw new BadRequestException("No assertion groups configured for this branch.");
 		}
-		
+
 		List<String> assertionGroups = COMMA_SPLITTER.splitToList(assertionGroupNamesString);
-		
+
 		return assertionGroups;
+	}
+
+	private RuleExecutor newRuleExecutor(boolean releadSemanticTags) {
+		return new RuleExecutor(droolsConfig.getRulesDirectory(), droolsConfig.getAwsKey(), droolsConfig.getAwsPrivateKey(), droolsConfig.getResourcesBucket(), droolsConfig.getResourcesPath(), releadSemanticTags);
 	}
 
 	private String getLogMessage(String branchPath, List<String> assertionGroups, List<? extends ISnomedBrowserConcept> concepts) {
@@ -147,18 +151,18 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	}
 
 	private Set<String> loadCaseSignificantWords(String path) {
-		
+
 		Path wordsFilePath = Paths.get(path, CASE_SIGNIFICANT_WORDS_FILENAME);
-		
+
 		if (!Files.exists(wordsFilePath)) {
 			LOGGER.info("Failed to retrieve case sensitive words file at {}", wordsFilePath);
 			return emptySet();
 		}
-		
+
 		Set<String> words = newHashSet();
-		
+
 		try {
-			
+
 			Files.lines(wordsFilePath)
 				.skip(1) // skip header
 				.forEach( line -> {
@@ -166,17 +170,17 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 					String word = lineElements.next();
 					String type = lineElements.next();
 					if (type.equals("1")) {
-						words.add(word); 
+						words.add(word);
 					}
 				});
-			
+
 		} catch (IOException e) {
 			LOGGER.info("Failed to retrieve case sensitive words file at {}", wordsFilePath);
 			return emptySet();
 		}
-		
+
 		LOGGER.info("Loaded {} case sensitive words into cache from: {}", words.size(), wordsFilePath);
-		
+
 		return words;
 	}
 
@@ -188,28 +192,28 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	}
 
 	private Set<String> loadLanguageSpecificWordsFromFile(Path filePath) {
-		
+
 		if (!Files.exists(filePath)) {
 			LOGGER.info("Failed to retrieve language-specific terms from {}", filePath);
 			return emptySet();
 		}
-		
+
 		try {
-			
+
 			Set<String> words = Files.lines(filePath)
 				.skip(1) // skip header
 				.map(String::toLowerCase)
 				.collect(toSet());
-			
+
 			LOGGER.info("Loaded {} language-specific spellings into cache from: {}", words.size(), filePath);
-			
+
 			return words;
-			
+
 		} catch (IOException e) {
 			LOGGER.info("Failed to retrieve language-specific terms from {}", filePath);
 			return emptySet();
 		}
-		
+
 	}
 
 }

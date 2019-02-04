@@ -15,55 +15,52 @@
  */
 package com.b2international.snowowl.server.console;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
+import static java.util.stream.Collectors.toSet;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.emf.common.util.EList;
-import org.eclipse.emf.ecore.EObject;
 import org.eclipse.osgi.framework.console.CommandInterpreter;
 import org.eclipse.osgi.framework.console.CommandProvider;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongSet;
 import com.b2international.commons.StringUtils;
-import com.b2international.index.BulkIndexWrite;
 import com.b2international.index.Hits;
-import com.b2international.index.Index;
-import com.b2international.index.IndexWrite;
-import com.b2international.index.Searcher;
-import com.b2international.index.Writer;
-import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.Purge;
+import com.b2international.index.revision.RevisionIndex;
+import com.b2international.index.revision.RevisionIndexWrite;
+import com.b2international.index.revision.RevisionSearcher;
+import com.b2international.index.revision.RevisionWriter;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.Repositories;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.RepositoryInfo;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.branch.Branch;
-import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
+import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfo;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
-import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.SearchResourceRequest.SortField;
 import com.b2international.snowowl.datastore.request.repository.RepositorySearchRequestBuilder;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
-import com.b2international.snowowl.datastore.server.internal.branch.BranchManagerImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.server.migrate.MigrateRequest;
 import com.b2international.snowowl.datastore.server.migrate.MigrateRequestBuilder;
 import com.b2international.snowowl.datastore.server.migrate.MigrationResult;
@@ -73,24 +70,30 @@ import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequestBuilder;
 import com.b2international.snowowl.datastore.server.reindex.ReindexResult;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Builder;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry.Views.StatementWithId;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilder;
+import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilderResult;
+import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 
@@ -106,6 +109,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	private static final String DBCREATEINDEX_COMMAND = "dbcreateindex";
 	private static final String REPOSITORIES_COMMAND = "repositories";
 	private static final String VERSION_COMMAND = "--version";
+	private static final String COLUMN_FORMAT = "|%-16s|%-16s|%-16s|";
 	
 	@Override
 	public String getHelp() {
@@ -120,8 +124,11 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		buffer.append("\tsnowowl purge [repositoryId] [branchPath] [ALL|LATEST|HISTORY] - optimizes the underlying index by deleting unnecessary documents from the given branch using the given purge strategy (default strategy is LATEST)\n");
 		buffer.append("\tsnowowl migrate [repositoryId] [remoteLocation] [-s scriptLocation] [-t commitTimestamp]"
 				+ " - migrates content from a remote database into the given repository (optionally you can specify a script to run before each"
-				+ " commit and/or the start commit timestamp). If commitTimestamp is not specified the latest commit of the current dataset will be used \n");
-		buffer.append("\tsnowowl repositories [repositoryId] - prints all currently available repositories and their health statuses");
+				+ " commit and/or the start commit timestamp). If commitTimestamp is not specified the latest commit of the current dataset will be used\n");
+		buffer.append("\tsnowowl repositories [repositoryId] - prints all currently available repositories and their health statuses\n");
+		buffer.append("\tsnowowl taxonomy [branchPath] - checks whether the SNOMED CT taxonomy is correct or not on a given branch path (defaults to MAIN)\n");
+		buffer.append("\tsnowowl integrity [branchPath] [-f] - checks and fixes parent / ancestor arrays for SNOMED CT concepts on a given branch path (defaults to MAIN), Using the '-f' parameter will fix incorrect arrays on the specified branch\n");
+		buffer.append("\tsnowowl validate [taxonomy|integrity|all] - validates the taxonomy and parent / ancestor integrity of all SNOMED CT codesystems on all code system branches and on all direct child branches (exception versions)");
 		return buffer.toString();
 	}
 
@@ -171,26 +178,28 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				return;
 			}
 			
-			if ("fixtempbranches".equals(cmd)) {
-				fixTempBranches(interpreter);
-				return;
-			}
-			
-			if ("fixrefsetdocs".equals(cmd)) {
-				fixRefsetDocs(interpreter);
-				return;
-			}
-			
-			if ("fixrelationships".equals(cmd)) {
-				fixRelationships(interpreter);
-			}
-			
 			if ("migrate".equals(cmd)) {
 				migrate(interpreter);
 				return;
 			}
 			
+			if ("taxonomy".equals(cmd)) {
+				checkTaxonomy(interpreter);
+				return;
+			}
+			
+			if ("integrity".equals(cmd)) {
+				checkIntegrity(interpreter);
+				return;
+			}
+			
+			if ("validate".equals(cmd)) {
+				validateBranches(interpreter);
+				return;
+			}
+			
 			interpreter.println(getHelp());
+			
 		} catch (Exception ex) {
 			LoggerFactory.getLogger("console").error("Failed to execute command", ex);
 			if (Strings.isNullOrEmpty(ex.getMessage())) {
@@ -201,254 +210,424 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		}
 	}
 	
-	public synchronized void fixRelationships(final CommandInterpreter interpreter) {
+	private void validateBranches(CommandInterpreter interpreter) {
 		
-		final RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
-		final Repository repository = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID);
+		String type;
 		
-		Index index = repository.service(Index.class);
+		String argument = interpreter.nextArgument();
 		
-		index.write(new IndexWrite<Void>() {
-			@Override
-			public Void execute(Writer writer) throws IOException {
+		if (!Strings.isNullOrEmpty(argument) && (argument.equals("all") || argument.equals("taxonomy") || argument.equals("integrity"))) {
+			type = argument;
+		} else {
+			interpreter.println("Invalid parameters, see command details by entering 'snowowl'");
+			return;
+		}
+		
+		List<String> branchPaths = newArrayList();
+		
+		CodeSystemRequests.prepareSearchCodeSystem()
+			.all()
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+			.execute(getBus())
+			.getSync()
+			.getItems()
+			.forEach( codeSystem -> {
 				
-				Set<String> relationshipIds = newHashSet("6624515026", "6624516025", "6624517023", "6613668024");
+				String codeSystemBranchPath = codeSystem.getBranchPath();
+				branchPaths.add(codeSystemBranchPath);
 				
-				Searcher searcher = writer.searcher();
-				Hits<SnomedRelationshipIndexEntry> hits = searcher.search(Query.select(SnomedRelationshipIndexEntry.class)
-						.where(RevisionDocument.Expressions.ids(relationshipIds)).limit(Integer.MAX_VALUE).build());
+				RepositoryRequests.branching().prepareGetChildren(codeSystemBranchPath)
+					.filterImmediate(true)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getBus())
+					.getSync()
+					.getItems()
+					.forEach( branch -> {
+						branchPaths.add(branch.path());
+					});
 				
-				interpreter.println(String.format("Found %s relationship documents", hits.getTotal()));
+				CodeSystemRequests.prepareSearchCodeSystemVersion()
+					.all()
+					.filterByCodeSystemShortName(codeSystem.getShortName())
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getBus())
+					.getSync()
+					.getItems()
+					.forEach( version -> {
+						branchPaths.remove(version.getPath());
+					});
 				
-				for (SnomedRelationshipIndexEntry entry : hits) {
-					writer.remove(SnomedRelationshipIndexEntry.class, entry._id());
-					interpreter.println(String.format("Removing relationships document: %s", entry));
-				}
-								
-				writer.commit();
-				
-				return null;
+			});
+		
+		interpreter.println("The following branches will be validated:");
+		branchPaths.forEach(branch -> interpreter.println("\t" + branch));
+		
+		branchPaths.forEach(branch -> {
+			
+			if (type.equals("all")) {
+				checkTaxonomy(branch);
+				checkIntegrity(branch, false);
+			} else if (type.equals("taxonomy")) {
+				checkTaxonomy(branch);
+			} else if (type.equals("integrity")) {
+				checkIntegrity(branch, false);
 			}
+			
 		});
-		
 		
 	}
 
-	public synchronized void fixRefsetDocs(final CommandInterpreter interpreter) {
+	private void checkIntegrity(CommandInterpreter interpreter) {
+	
+		String workingBranch;
 		
-		final RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
-		final Repository repository = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID);
+		String branchPath = interpreter.nextArgument();
 		
-		Index index = repository.service(Index.class);
+		if (!Strings.isNullOrEmpty(branchPath) && BranchPathUtils.exists(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)) {
+			workingBranch = branchPath;
+		} else {
+			workingBranch = Branch.MAIN_PATH;
+		}
 		
-		index.write(new IndexWrite<Void>() {
-			@Override
-			public Void execute(Writer writer) throws IOException {
-				
-				try (SnomedEditingContext editingContext = new SnomedEditingContext(BranchPathUtils.createMainPath())) {
-					
-					Set<String> refsetIds = Sets.newHashSet();
-					
-					EList<EObject> eRefsets = editingContext.getRefSetEditingContext().getEditingContextRootResource().eContents();
-					for (EObject eRefset : eRefsets) {
-						if (eRefset instanceof SnomedRefSet) {
-							SnomedRefSet snomedRefSet = (SnomedRefSet) eRefset;
-							refsetIds.add(snomedRefSet.getIdentifierId());
-						}
-					}
-					
-					interpreter.println(String.format("Found %s reference sets", refsetIds.size()));
-					
-					Searcher searcher = writer.searcher();
-					Hits<SnomedConceptDocument> hits = searcher.search(Query.select(SnomedConceptDocument.class)
-							.where(RevisionDocument.Expressions.ids(refsetIds)).limit(Integer.MAX_VALUE).build());
-					
-					for (SnomedConceptDocument hit : hits) {
-						
-						if (hit.getRefSetStorageKey() > 0) {
-							interpreter.println(String.format("Found correct refset document: %s", hit.getId()));
-							continue;
-						}
-						
-						final Builder doc = SnomedConceptDocument.builder(hit);
-						doc.branchPath(hit.getBranchPath());
-						doc.replacedIns(hit.getReplacedIns());
-						doc.commitTimestamp(hit.getCommitTimestamp());
-						doc.segmentId(hit.getSegmentId());
-						
-						SnomedRefSet refSet = editingContext.getRefSetEditingContext().lookup(hit.getId(), SnomedRefSet.class);
-						
-						if (refSet != null) {
-							doc.refSet(refSet);
-						}
-						
-						interpreter.println(String.format("Fixed refset document with id %s", hit.getId()));
-						
-						writer.put(hit._id(), doc.build());
-						
-					}
-					
-					writer.commit();
-				}
-				
-				return null;
-			}
-		});
+		boolean applyFix = false;
+		
+		String fixArgument = interpreter.nextArgument();
+		
+		if (!Strings.isNullOrEmpty(fixArgument) && fixArgument.equals("-f")) {
+			applyFix = true;
+		}
+		
+		checkIntegrity(workingBranch, applyFix);
+		
 	}
 
-	public synchronized void fixTempBranches(final CommandInterpreter interpreter) {
+	private void checkIntegrity(String workingBranch, boolean applyFix) {
 		
-		final RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
-		final Repository repository = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID);
+		System.out.println(String.format("Checking integrity of parent/ancestor arrays on branch %s%s...", workingBranch, applyFix ? " (applying fix if necessary)" : ""));
 		
-		Index index = repository.service(Index.class);
+		List<SnomedConcept> activeConcepts = SnomedRequests.prepareSearchConcept()
+			.all()
+			.filterByActive(true)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, workingBranch)
+			.execute(getBus())
+			.getSync()
+			.getItems();
 		
-		Integer numberOfAffectedBranches = index.write(new IndexWrite<Integer>() {
-			@Override
-			public Integer execute(Writer writer) throws IOException {
+		List<SnomedRelationship> inferredRelationships = SnomedRequests.prepareSearchRelationship()
+			.all()
+			.filterByActive(true)
+			.filterByType(Concepts.IS_A)
+			.filterByCharacteristicType(Concepts.INFERRED_RELATIONSHIP)
+			.setFields(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID, SnomedRelationshipIndexEntry.Fields.DESTINATION_ID)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, workingBranch)
+			.execute(getBus())
+			.getSync()
+			.getItems();
+		
+		Multimap<String, String> correctInferredParents = checkParentIntegrity(workingBranch, activeConcepts, inferredRelationships, CharacteristicType.INFERRED_RELATIONSHIP);
+		Multimap<String, String> correctInferredAncestors = checkAncestorIntegrity(workingBranch, activeConcepts, inferredRelationships, CharacteristicType.INFERRED_RELATIONSHIP);
+		
+		inferredRelationships.clear();
+		
+		List<SnomedRelationship> statedRelationships = SnomedRequests.prepareSearchRelationship()
+			.all()
+			.filterByActive(true)
+			.filterByType(Concepts.IS_A)
+			.filterByCharacteristicType(Concepts.STATED_RELATIONSHIP)
+			.setFields(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID, SnomedRelationshipIndexEntry.Fields.DESTINATION_ID)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, workingBranch)
+			.execute(getBus())
+			.getSync()
+			.getItems();
+		
+		Multimap<String, String> correctStatedParents = checkParentIntegrity(workingBranch, activeConcepts, statedRelationships, CharacteristicType.STATED_RELATIONSHIP);
+		Multimap<String, String> correctStatedAncestors = checkAncestorIntegrity(workingBranch, activeConcepts, statedRelationships, CharacteristicType.STATED_RELATIONSHIP);
+		
+		statedRelationships.clear();
+		activeConcepts.clear();
+		
+		if (applyFix) {
+			
+			if (!correctInferredParents.isEmpty() || !correctInferredAncestors.isEmpty() || !correctStatedParents.isEmpty() || !correctStatedAncestors.isEmpty()) {
 				
-				Searcher searcher = writer.searcher();
-				Hits<InternalBranch> hits = searcher.search(Query.select(InternalBranch.class).where(Expressions.matchAll()).limit(Integer.MAX_VALUE).build());
+				Set<String> conceptIds = newHashSet();
+				conceptIds.addAll(correctInferredParents.keySet());
+				conceptIds.addAll(correctInferredAncestors.keySet());
+				conceptIds.addAll(correctStatedParents.keySet());
+				conceptIds.addAll(correctStatedAncestors.keySet());
 				
-				Multimap<Integer, InternalBranch> idToBranchesMap = Multimaps.index(hits, new Function<InternalBranch, Integer>() {
+				final RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
+				final Repository repository = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID);
+				
+				RevisionIndex index = repository.service(RevisionIndex.class);
+				
+				index.write(workingBranch, -1L, new RevisionIndexWrite<Void>() {
+					
 					@Override
-					public Integer apply(InternalBranch input) {
-						input.setBranchManager((BranchManagerImpl) repository.service(BranchManager.class));
-						return ((InternalCDOBasedBranch) input).cdoBranchId();
+					public Void execute(RevisionWriter writer) throws IOException {
+						
+						RevisionSearcher searcher = writer.searcher();
+						
+						Query<SnomedConceptDocument> query = Query.select(SnomedConceptDocument.class)
+								.where(RevisionDocument.Expressions.ids(conceptIds))
+								.limit(conceptIds.size())
+								.build();
+						
+						Hits<SnomedConceptDocument> hits = searcher.search(query);
+						
+						for (SnomedConceptDocument hit : hits) {
+							
+							final Builder doc = SnomedConceptDocument.builder(hit)
+									.branchPath(hit.getBranchPath())
+									.commitTimestamp(hit.getCommitTimestamp())
+									.replacedIns(hit.getReplacedIns())
+									.segmentId(hit.getSegmentId())
+									.referringRefSets(hit.getReferringRefSets())
+									.referringMappingRefSets(hit.getReferringMappingRefSets());
+							
+							
+							if (correctInferredParents.containsKey(hit.getId())) {
+								LongSet newParents = PrimitiveSets.newLongOpenHashSetWithExpectedSize(correctInferredParents.get(hit.getId()).size());
+								correctInferredParents.get(hit.getId()).forEach(id -> newParents.add(Long.parseLong(id)));
+								doc.parents(newParents);
+							}
+							
+							if (correctInferredAncestors.containsKey(hit.getId())) {
+								LongSet newAncestors = PrimitiveSets.newLongOpenHashSetWithExpectedSize(correctInferredAncestors.get(hit.getId()).size());
+								correctInferredAncestors.get(hit.getId()).forEach(id -> newAncestors.add(Long.parseLong(id)));
+								doc.ancestors(newAncestors);
+							}
+							
+							if (correctStatedParents.containsKey(hit.getId())) {
+								LongSet newStatedParents = PrimitiveSets.newLongOpenHashSetWithExpectedSize(correctStatedParents.get(hit.getId()).size());
+								correctStatedParents.get(hit.getId()).forEach(id -> newStatedParents.add(Long.parseLong(id)));
+								doc.statedParents(newStatedParents);
+							}
+							
+							if (correctStatedAncestors.containsKey(hit.getId())) {
+								LongSet newStatedAncestors = PrimitiveSets.newLongOpenHashSetWithExpectedSize(correctStatedAncestors.get(hit.getId()).size());
+								correctStatedAncestors.get(hit.getId()).forEach(id -> newStatedAncestors.add(Long.parseLong(id)));
+								doc.statedAncestors(newStatedAncestors);
+							}
+							
+							writer.writer().put(hit._id(), doc.build());
+						}
+						
+						writer.writer().commit();
+						
+						return null;
 					}
 				});
-				
-				List<IndexWrite<Void>> indexWrites = Lists.newArrayList();
-				
-				int i = 0;
-				
-				for (Entry<Integer, Collection<InternalBranch>> entry : idToBranchesMap.asMap().entrySet()) {
-					
-					if (entry.getValue().size() > 1) {
-						
-						List<String> branchInfo = FluentIterable.from(entry.getValue()).transform(new Function<InternalBranch, String>() {
-							@Override
-							public String apply(InternalBranch input) {
-								return String.format("[%s] %s", input.headTimestamp(), input.path());
-							}
-						}).toList();
-						
-						if (entry.getValue().size() > 2) {
-							interpreter.println(String.format("More than one branch exists with the same id: %s %s", entry.getKey(), Joiner.on("; ").join(branchInfo)));
-							continue;
-						}
-						
-						InternalBranch first = Iterables.getFirst(entry.getValue(), null);
-						InternalBranch second = Iterables.getLast(entry.getValue(), null);
-						
-						if (first != null && second != null) {
-							
-							InternalBranch keep = null;
-							InternalBranch remove = null;
-							
-							if (first.name().startsWith(Branch.TEMP_PREFIX) && !second.name().startsWith(Branch.TEMP_PREFIX)) {
-								keep = second;
-								remove = first;
-							} else if (!first.name().startsWith(Branch.TEMP_PREFIX) && second.name().startsWith(Branch.TEMP_PREFIX)) {
-								keep = first;
-								remove = second;
-							} else {
-								interpreter.println(String.format("Inconsistent temporary branch name prefixes: %s %s", entry.getKey(), Joiner.on("; ").join(branchInfo)));
-								continue;
-							}
-							
-							if (!isBranchesStructurallyEqual((InternalCDOBasedBranch) keep, (InternalCDOBasedBranch) remove)) {
-								interpreter.println(String.format("Inconsistent temporary branches: %s %s", entry.getKey(), Joiner.on("; ").join(branchInfo)));
-								continue;
-							}
-							
-							if (remove.headTimestamp() > keep.headTimestamp()) {
-								
-								final InternalBranch finalKeep = keep.withHeadTimestamp(remove.headTimestamp());
-								
-								IndexWrite<Void> update = new IndexWrite<Void>() {
-									@Override
-									public Void execute(Writer index) throws IOException {
-										index.put(finalKeep.path(), finalKeep);
-										return null;
-									}
-								};
-								
-								indexWrites.add(update);
-								
-								interpreter.println(String.format("Using head timestamp of %s for %s: [%s] >> [%s]", remove.name(), keep.name(), remove.headTimestamp(), keep.headTimestamp()));
-								
-							}
-							
-							final InternalBranch finalRemove = remove;
-							
-							IndexWrite<Void> delete = new IndexWrite<Void>() {
-								@Override
-								public Void execute(Writer index) throws IOException {
-									index.remove(InternalBranch.class, finalRemove.path());
-									return null;
-								}
-							};
-							
-							indexWrites.add(delete);
-							
-							i++;
-							
-							interpreter.println(String.format("Removing temporary branch entry: %s", remove.name()));
-						}
-						
-					} else if (entry.getValue().size() == 1) {
-						
-						final InternalBranch singleBranch = Iterables.getOnlyElement(entry.getValue());
-						
-						if (singleBranch.name().startsWith(Branch.TEMP_PREFIX)) {
-							
-							IndexWrite<Void> delete = new IndexWrite<Void>() {
-								@Override
-								public Void execute(Writer index) throws IOException {
-									index.remove(InternalBranch.class, singleBranch.path());
-									return null;
-								}
-							};
-							
-							indexWrites.add(delete);
-							i++;
-							interpreter.println(String.format("Removing standalone temporary branch entry: %s", singleBranch.name()));
-						}
-					}
+
+				if (!conceptIds.isEmpty()) {
+					System.out.println(String.format("Fixed %s concept documents: [%s]", conceptIds.size(), Joiner.on(", ").join(conceptIds)));
 				}
 				
-				if (!indexWrites.isEmpty())	{
-					
-					BulkIndexWrite<Void> bulkIndexWrite = new BulkIndexWrite<>(indexWrites);
-					bulkIndexWrite.execute(writer);
-					
-					writer.commit();
-					
-					interpreter.println("Changes successfully committed to index.");
-					
-				}
-				
-				return i;
 			}
-		});
-		
-		if (numberOfAffectedBranches > 0) {
-			interpreter.println(String.format("%s temporary branches were fixed", numberOfAffectedBranches));
-		} else {
-			interpreter.println("None of the temporary branches are inconsistent");
+			
 		}
 	}
 	
-	private boolean isBranchesStructurallyEqual(InternalCDOBasedBranch keep, InternalCDOBasedBranch remove) {
-		return keep.baseTimestamp() == remove.baseTimestamp() &&
-				keep.parentPath().equals(remove.parentPath()) &&
-				keep.name().equals(Branch.BranchNameValidator.DEFAULT.getName(remove.name())) &&
-				keep.parentSegments().size() == remove.parentSegments().size() && keep.parentSegments().containsAll(remove.parentSegments()) &&
-				keep.segments().size() >= remove.segments().size() && keep.segments().containsAll(remove.segments());
+	private Multimap<String, String> checkParentIntegrity(String workingBranch, List<SnomedConcept> activeConcepts, List<SnomedRelationship> relationships, CharacteristicType characteristicType) {
+		
+		String label = characteristicType == CharacteristicType.INFERRED_RELATIONSHIP ? "inferred" : "stated";
+		
+		Multimap<String, String> parentMap = HashMultimap.<String, String>create();
+		
+		relationships.forEach(r -> {
+			parentMap.put(r.getSourceId(), r.getDestinationId());
+		});
+		
+		for (SnomedConcept concept : activeConcepts) {
+			String id = concept.getId();
+			
+			if (!parentMap.containsKey(id) && !Concepts.ROOT_CONCEPT.equals(id)){
+				System.out.println(String.format("[%s]: There is no %s ISA relationship for concept: %s", workingBranch, label, id));
+			}
+		}
+		
+		Multimap<String,String> conceptToParentMap = HashMultimap.<String, String>create();
+		
+		for (SnomedConcept concept : activeConcepts) {
+			
+			long[] parentIds = characteristicType == CharacteristicType.INFERRED_RELATIONSHIP ? concept.getParentIds() : concept.getStatedParentIds();
+			
+			Set<String> conceptParentIds = Arrays.stream(parentIds).mapToObj(String::valueOf).collect(toSet());
+			Set<String> computedParentIds = parentMap.get(concept.getId()).stream().collect(toSet());
+			
+			if (Concepts.ROOT_CONCEPT.equals(concept.getId())) {
+				computedParentIds.add(IComponent.ROOT_ID);
+			}
+			
+			if (!conceptParentIds.equals(computedParentIds)) {
+				System.out.println(String.format("[%s] Mismatching %s parents for: %s", workingBranch, label, concept.getId()));
+				System.out.println(String.format("\tIndex:\t\t%s", conceptParentIds));
+				System.out.println(String.format("\tCorrect:\t%s", computedParentIds));
+				conceptToParentMap.putAll(concept.getId(), computedParentIds);
+			}
+			
+			conceptParentIds.clear();
+			computedParentIds.clear();
+		}
+		
+		if (conceptToParentMap.isEmpty()) {
+			System.out.println(String.format("[%s] All %s parent arrays are correct", workingBranch, label));
+		} else {
+			System.out.println(String.format("[%s] There are %s concepts with incorrect %s parent arrays", workingBranch, conceptToParentMap.keySet().size(), label));
+		}
+		
+		parentMap.clear();
+		
+		return conceptToParentMap;
 	}
+
+	private Multimap<String, String> checkAncestorIntegrity(String workingBranch, List<SnomedConcept> activeConcepts, List<SnomedRelationship> relationships, CharacteristicType characteristicType) {
+		
+		String label = characteristicType == CharacteristicType.INFERRED_RELATIONSHIP ? "inferred" : "stated";
+		
+		Multimap<String, String> parentMap = HashMultimap.<String, String>create();
+		Multimap<String, String> ancestorMap = HashMultimap.<String, String>create();
+		
+		relationships.forEach(r -> {
+			parentMap.put(r.getSourceId(), r.getDestinationId());
+		});
+		
+		for (SnomedConcept concept : activeConcepts) {
+			
+			String id = concept.getId();
+			
+			if (parentMap.containsKey(id)) {
+				
+				Set<String> ancestorIds = newHashSet();
+				ancestorMap.putAll(id, getAncestors(parentMap, id, ancestorIds));
+				ancestorMap.put(id, IComponent.ROOT_ID);
+				parentMap.get(id).forEach(parent -> { // remove direct parents
+					ancestorMap.remove(id, parent);
+				});
+				
+			} else if (!Concepts.ROOT_CONCEPT.equals(id)){
+				System.out.println(String.format("[%s]: There is no %s ISA relationship for concept: %s", workingBranch, label, id));
+			}
+			
+		}
+		
+		Multimap<String,String> conceptToAncestorMap = HashMultimap.<String, String>create();
+		
+		for (SnomedConcept concept : activeConcepts) {
+			
+			long[] ancestorIds = characteristicType == CharacteristicType.INFERRED_RELATIONSHIP ? concept.getAncestorIds() : concept.getStatedAncestorIds();
+			
+			Set<String> conceptAncestorIds = Arrays.stream(ancestorIds).mapToObj(String::valueOf).collect(toSet());
+			Set<String> computedAncestorIds = ancestorMap.get(concept.getId()).stream().collect(toSet());
+			
+			if (!conceptAncestorIds.equals(computedAncestorIds)) {
+				System.out.println(String.format("[%s] Mismatching %s ancestors for: %s", workingBranch, label, concept.getId()));
+				System.out.println(String.format("\tIndex:\t\t%s", conceptAncestorIds));
+				System.out.println(String.format("\tCorrect:\t%s", computedAncestorIds));
+				conceptToAncestorMap.putAll(concept.getId(), computedAncestorIds);
+			}
+			
+			conceptAncestorIds.clear();
+			computedAncestorIds.clear();
+			
+		}
+		
+		if (conceptToAncestorMap.isEmpty()) {
+			System.out.println(String.format("[%s] All %s ancestor arrays are correct", workingBranch, label));
+		} else {
+			System.out.println(String.format("[%s] There are %s concepts with incorrect %s ancestor arrays", workingBranch, conceptToAncestorMap.keySet().size(), label));
+		}
+		
+		parentMap.clear();
+		ancestorMap.clear();
+		
+		return conceptToAncestorMap;
+	}
+
+	private Set<String> getAncestors(Multimap<String, String> parentMap, String id, Set<String> ancestorIds) {
+		
+		Collection<String> parents = parentMap.get(id);
+		
+		for (String parentId : parents) {
+			ancestorIds.add(parentId);
+			ancestorIds.addAll(getAncestors(parentMap, parentId, ancestorIds));
+		}
+		
+		return ancestorIds;
+	}
+
+	private void checkTaxonomy(CommandInterpreter interpreter) {
+		
+		String workingBranch = Branch.MAIN_PATH;
+		String repositoryId = SnomedDatastoreActivator.REPOSITORY_UUID;
+		
+		String branchPath = interpreter.nextArgument();
+		
+		if (!Strings.isNullOrEmpty(branchPath) && BranchPathUtils.exists(repositoryId, branchPath)) {
+			workingBranch = branchPath;
+		}
+		
+		checkTaxonomy(workingBranch);
+		
+	}
+
+	private void checkTaxonomy(String workingBranch) {
+		
+		System.out.println(String.format("[%s] Validating taxonomy...", workingBranch));
+		
+		final Set<String> activeConceptIds = SnomedRequests.prepareSearchConcept()
+			.all()
+			.filterByActive(true)
+			.setFields(SnomedConceptDocument.Fields.ID)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, workingBranch)
+			.execute(getBus())
+			.getSync()
+			.getItems().stream().map(SnomedConcept::getId)
+			.collect(toSet());
+		
+		LongSet activeConceptIdsLong = PrimitiveSets.newLongOpenHashSetWithExpectedSize(activeConceptIds.size());
+		activeConceptIds.forEach(id -> activeConceptIdsLong.add(Long.valueOf(id)));
+
+		checkTaxonomy(workingBranch, activeConceptIdsLong, CharacteristicType.INFERRED_RELATIONSHIP);
+		checkTaxonomy(workingBranch, activeConceptIdsLong, CharacteristicType.STATED_RELATIONSHIP);
+		
+		activeConceptIds.clear();
+		activeConceptIdsLong.clear();
+		
+	}
+
+	private void checkTaxonomy(String workingBranch, LongSet activeConceptIdsLong, CharacteristicType characteristicType) {
+		
+		String label = characteristicType == CharacteristicType.INFERRED_RELATIONSHIP ? "Inferred" : "Stated";
+		
+		final Set<StatementWithId> relationships = SnomedRequests.prepareSearchRelationship()
+			.all()
+			.filterByActive(true)
+			.filterByType(Concepts.IS_A)
+			.filterByCharacteristicType(characteristicType == CharacteristicType.INFERRED_RELATIONSHIP ? Concepts.INFERRED_RELATIONSHIP : Concepts.STATED_RELATIONSHIP)
+			.setFields(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID, SnomedRelationshipIndexEntry.Fields.DESTINATION_ID)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, workingBranch)
+			.execute(getBus())
+			.getSync()
+			.getItems().stream()
+			.map(r -> new SnomedRelationshipIndexEntry.Views.StatementWithId(r.getId(), r.getSourceId(), r.getDestinationId()))
+			.collect(toSet());
+		
+		final SnomedTaxonomyBuilder taxonomy = new SnomedTaxonomyBuilder(activeConceptIdsLong, relationships);
+		SnomedTaxonomyBuilderResult result = taxonomy.build();
+		
+		if (!result.getStatus().isOK()) {
+			System.out.println(String.format("[%s] %s taxonomy is inconsistent. There are %s invalid relationships.", workingBranch, label, result.getInvalidRelationships().size()));
+			result.getInvalidRelationships().forEach(r -> System.out.println("\t" + r));
+		} else {
+			System.out.println(String.format("[%s] %s taxonomy is OK.", workingBranch, label));
+		}
+		
+		taxonomy.clear();
+		relationships.clear();
+	}
+
 	
-	private static final String COLUMN_FORMAT = "|%-16s|%-16s|%-16s|";
 	
 	private void repositories(CommandInterpreter interpreter) {
 		final String repositoryId = interpreter.nextArgument();

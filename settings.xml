@@ -10,7 +10,7 @@
 			</activation>
 			<properties>
 				<!-- Nexus instance URL, example: http://example:8081/nexus -->
-				<nexus.url>url/to/local/nexus/instance</nexus.url>
+				<nexus.url>https://maven.ihtsdotools.org</nexus.url>
 				<nexus.snapshots.url>${nexus.url}/content/repositories/snapshots</nexus.snapshots.url>
 				<nexus.releases.url>${nexus.url}/content/repositories/releases</nexus.releases.url>
 			</properties>

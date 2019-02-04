@@ -41,8 +41,8 @@ public class SnomedDroolsConfiguration {
 	@JsonProperty(required = false)
 	private String resourcesPath;
 	
-	@JsonProperty(required = false, defaultValue = "/opt/termserver/resources/test-resources")
-	private String termValidationResourcesPath;
+	@JsonProperty(required = false)
+	private String termValidationResourcesPath = "/opt/termserver/resources/test-resources";
 	
 	/**
 	 * @return the rules directory

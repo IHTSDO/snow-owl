@@ -21,22 +21,19 @@
    <feature url="features/org.eclipse.emf.sdk_2.12.0.v20160526-0356.jar" id="org.eclipse.emf.sdk" version="2.12.0.v20160526-0356">
       <category name="Modeling"/>
    </feature>
-   <feature url="features/org.emfjson.feature_0.10.0.jar" id="org.emfjson.feature" version="0.10.0">
-      <category name="Modeling"/>
-   </feature>
    <feature url="features/org.eclipse.net4j_4.1.0.v20120612-0600.jar" id="org.eclipse.net4j" version="4.1.0.v20120612-0600">
       <category name="CDO"/>
    </feature>
    <feature url="features/org.eclipse.net4j.db_4.1.0.v20120609-0625.jar" id="org.eclipse.net4j.db" version="4.1.0.v20120609-0625">
       <category name="CDO"/>
    </feature>
-   <feature url="features/org.codehaus.groovy20.feature_2.9.1.xx-201411061342-e43j8-RELEASE.jar" id="org.codehaus.groovy20.feature" version="2.9.1.xx-201411061342-e43j8-RELEASE">
+   <feature url="features/org.codehaus.groovy20.feature_2.9.2.xx-201801060157-e43j8-RELEASE.jar" id="org.codehaus.groovy20.feature" version="2.9.2.xx-201801060157-e43j8-RELEASE">
       <category name="IDE Tools"/>
    </feature>
-   <feature url="features/org.codehaus.groovy.jdt.patch_2.9.1.xx-201411061342-e43j8-RELEASE.jar" id="org.codehaus.groovy.jdt.patch" version="2.9.1.xx-201411061342-e43j8-RELEASE" patch="true">
+   <feature url="features/org.codehaus.groovy.jdt.patch_2.9.2.xx-201801060157-e43j8-RELEASE.jar" id="org.codehaus.groovy.jdt.patch" version="2.9.2.xx-201801060157-e43j8-RELEASE" patch="true">
       <category name="IDE Tools"/>
    </feature>
-   <feature url="features/org.codehaus.groovy.headless.feature_2.9.1.xx-201411061342-e43j8-RELEASE.jar" id="org.codehaus.groovy.headless.feature" version="2.9.1.xx-201411061342-e43j8-RELEASE">
+   <feature url="features/org.codehaus.groovy.headless.feature_2.9.2.xx-201801060157-e43j8-RELEASE.jar" id="org.codehaus.groovy.headless.feature" version="2.9.2.xx-201801060157-e43j8-RELEASE">
       <category name="IDE Tools"/>
    </feature>
    <feature url="features/org.eclipse.jdt_3.9.2.v20140221-1700.jar" id="org.eclipse.jdt" version="3.9.2.v20140221-1700">
@@ -126,7 +123,7 @@
    <bundle id="org.apache.el" version="7.0.56.v201412180755"/>
    <bundle id="javax.xml" version="1.3.4.v201005080400"/>
    <bundle id="javax.xml.stream" version="1.0.1.v201004272200" />
-   <bundle id="org.ihtsdo.drools.snomed-drools-engine" version="1.10.0.SNAPSHOT" />
+   <bundle id="org.ihtsdo.drools.snomed-drools-engine" version="1.10.0" />
    <bundle id="org.snomed.otf.snomed-owl-toolkit" version="1.2.0" />
    <bundle id="org.semanticweb.owl.owlapi" version="3.4.4" />
    <bundle id="org.jboss.netty" version="3.10.5.Final" />

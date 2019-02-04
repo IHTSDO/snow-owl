@@ -148,38 +148,38 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 		}
 
 		final SnomedTaxonomyBuilderResult result;
-		if (isEmpty(invalidRelationships)) {
 			
-			for (int i = 0; i < conceptCount; i++) {
-	
-				ancestors[i] = new int[outgoingIsaHistogram[i]];
-				descendants[i] = new int[incomingIsaHistogram[i]];
-	
-			}
-	
-			// create index matrices for relationships
-			final int[] tailsSuperTypes = new int[conceptCount];
-			final int[] tailsSubTypes = new int[conceptCount];
-	
-			for (int i = 0; i < _conceptInternalIds.length; i++) {
-				
-				final int subjectId = _conceptInternalIds[i][0];
-				final int objectId = _conceptInternalIds[i][1];
-	
+		for (int i = 0; i < conceptCount; i++) {
+
+			ancestors[i] = new int[outgoingIsaHistogram[i]];
+			descendants[i] = new int[incomingIsaHistogram[i]];
+
+		}
+
+		// create index matrices for relationships
+		final int[] tailsSuperTypes = new int[conceptCount];
+		final int[] tailsSubTypes = new int[conceptCount];
+
+		for (int i = 0; i < _conceptInternalIds.length; i++) {
+			
+			final int subjectId = _conceptInternalIds[i][0];
+			final int objectId = _conceptInternalIds[i][1];
+
+			if (objectId != -1 && subjectId != -1) {
 				ancestors[subjectId][tailsSuperTypes[subjectId]++] = objectId;
 				descendants[objectId][tailsSubTypes[objectId]++] = subjectId;
-	
 			}
-			
+
+		}
+		
+		if (isEmpty(invalidRelationships)) {
 			result = new SnomedTaxonomyBuilderResult(Statuses.ok());
 		} else {
-			LOGGER.warn("Missing concepts from relationships");
-			//PGW Temporary code to report where issues appearing.  Whatever is calling this function does 
-			//not appear to be iterating through the result.
+			LOGGER.warn("Taxonomy builder encountered relationships referencing inactive / non-existent concepts");
 			for (InvalidRelationship r : invalidRelationships) {
-				LOGGER.warn("Invalid relationship: s " + r.getSourceId() + " d " + r.getDestinationId());
+				LOGGER.warn("Invalid relationship: " + r);
 			}
-			result = new SnomedTaxonomyBuilderResult(Statuses.error("Missing concepts from relationships."), invalidRelationships);
+			result = new SnomedTaxonomyBuilderResult(Statuses.error("Taxonomy builder encountered relationships referencing inactive / non-existent concepts"), invalidRelationships);
 		}
 
 		dirty = false;

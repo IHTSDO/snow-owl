@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -211,14 +211,13 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 			//XXX: ECL evaluation may fire sub requests that may be aimed at an already FULL event bus
 			// thus the need for allowing this request to time out to avoid deadlock. 
 			// set to 1 minute to match tomcat's time out
-			queryBuilder.filter(EclExpression.of(ecl).resolveToExpression(context).getSync(1, TimeUnit.MINUTES));
+			queryBuilder.filter(EclExpression.of(ecl, Trees.INFERRED_FORM).resolveToExpression(context).getSync(1, TimeUnit.MINUTES));
 		}
 		
 		if (containsKey(OptionKey.STATED_ECL)) {
 			final String statedEcl = getString(OptionKey.STATED_ECL);
 			
-			final EclExpression expression = EclExpression.of(statedEcl);
-			expression.setExpressionForm(Trees.STATED_FORM);
+			final EclExpression expression = EclExpression.of(statedEcl, Trees.STATED_FORM);
 			
 			queryBuilder.filter(expression.resolveToExpression(context).getSync(1, TimeUnit.MINUTES));
 		}
