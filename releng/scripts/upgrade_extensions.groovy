@@ -19,17 +19,18 @@ def bus = ApplicationContext.getServiceForClass(IEventBus)
 def repositoryId = SnomedDatastoreActivator.REPOSITORY_UUID
 
 // specify the path of the target version
-def targetVersionPath = "MAIN/2018-07-31"
+def targetVersionPath = "MAIN/2019-01-31"
 // specify the short name of the target version (used for metadata) 
-def targetVersionShortName = "20180731"
+def targetVersionShortName = "20190131"
 
 // specify the short name of the extension and the name of the related project branches here that need to be handled during the upgrade
 def extensionsAndProjects = ImmutableListMultimap.builder() 
-	.put("SNOMEDCT-US", "USSEPT18")
-//	.put("SNOMEDCT-DK", "DKSEP18")
-//	.put("SNOMEDCT-BE", "BESEPT18")
-//	.put("SNOMEDCT-SE", "SENOV18")
-//	.put("SNOMEDCT-NO", "NO18")
+	.put("SNOMEDCT-US", "USMARCH19")
+//	.put("SNOMEDCT-DK", "DKMAR19")
+//	.put("SNOMEDCT-BE", "BEMAR19")
+//	.put("SNOMEDCT-SE", "SEMAY19")
+//	.put("SNOMEDCT-NO", "NOAPR19")
+//	.put("SNOMEDCT-IE", "IEAPRIL19")
 	.build()
 
 def extensionsToCurrentBranchMap = [:]
