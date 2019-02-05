@@ -95,11 +95,10 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	SnomedBrowserApiTest.class,
 	SnomedClassificationApiTest.class,
 	SnomedExportApiTest.class,
-	//extension tests
-	SnomedExtensionCreationTest.class,
 	// Module dependecy test cases
 	SnomedModuleDependencyRefsetTest.class,
 	// Extension test cases
+	SnomedExtensionCreationTest.class,
 	SnomedExtensionUpgradeTest.class,
 	SnomedExtensionDowngradeTest.class,
 	SnomedExtensionVersioningTest.class,
