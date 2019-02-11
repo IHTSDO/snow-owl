@@ -100,7 +100,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 
 		for (final ISnomedBrowserConcept concept : concepts) {
 
-			final List<ISnomedBrowserAxiom> additionalAxioms = newArrayList();
+			final List<ISnomedBrowserAxiom> classAxioms = newArrayList();
 			final List<ISnomedBrowserAxiom> gciAxioms = newArrayList();
 
 			final Collection<SnomedReferenceSetMember> conceptAxiomMembers = membersByReferencedComponentId.get(concept.getId());
@@ -115,10 +115,10 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 						final Long conceptId = Long.valueOf(concept.getId());
 						final AxiomRepresentation axiomRepresentation = conversionService.convertAxiomToRelationships(conceptId, owlExpression);
 
-						if (axiomRepresentation != null) {// Will be null if the axiom is an Ontology Axiom for example a property chain or transitive axiom rather than an Additional Axiom or GCI.
+						if (axiomRepresentation != null) {// Will be null if the axiom is an Ontology Axiom for example a property chain or transitive axiom rather than a Class Axiom or GCI.
 							if (conceptId.equals(axiomRepresentation.getLeftHandSideNamedConcept())) {
-								// Concept ID on the left means it's an additional axiom
-								additionalAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getRightHandSideRelationships()));
+								// Concept ID on the left means it's a class axiom
+								classAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getRightHandSideRelationships()));
 							} else if (conceptId.equals(axiomRepresentation.getRightHandSideNamedConcept())) {
 								// Concept ID on the right means it's a GCI axiom
 								gciAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getLeftHandSideRelationships()));
@@ -132,9 +132,9 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 
 			}
 
-			if (!additionalAxioms.isEmpty()) {
-				((SnomedBrowserConcept) concept).setAdditionalAxioms(additionalAxioms);
-				additionalAxioms.stream()
+			if (!classAxioms.isEmpty()) {
+				((SnomedBrowserConcept) concept).setClassAxioms(classAxioms);
+				classAxioms.stream()
 					.map(axiom -> axiom.getRelationships())
 					.flatMap(List::stream)
 					.forEach(relationship -> {
@@ -172,7 +172,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 
 			for (final ISnomedBrowserConcept concept : concepts) {
 
-				concept.getAdditionalAxioms().stream()
+				concept.getClassAxioms().stream()
 					.map(axiom -> axiom.getRelationships())
 					.flatMap(List::stream)
 					.forEach( relationship -> updateRelationshipAttributes(relationship, idToConceptMap, branchPath));
