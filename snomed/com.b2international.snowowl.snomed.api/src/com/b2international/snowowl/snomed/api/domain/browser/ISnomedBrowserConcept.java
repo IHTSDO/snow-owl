@@ -36,7 +36,7 @@ public interface ISnomedBrowserConcept extends ISnomedBrowserComponentWithId, IC
 	/** @return the list of relationships associated with this concept */
 	List<ISnomedBrowserRelationship> getRelationships();
 	
-	List<ISnomedBrowserAxiom> getAdditionalAxioms();
+	List<ISnomedBrowserAxiom> getClassAxioms();
 	
 	List<ISnomedBrowserAxiom> getGciAxioms();
 	

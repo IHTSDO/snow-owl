@@ -46,7 +46,7 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 	private List<ISnomedBrowserRelationship> relationships = ImmutableList.of();
 
 	@JsonDeserialize(contentAs=SnomedBrowserAxiom.class)
-	private List<ISnomedBrowserAxiom> additionalAxioms = ImmutableList.of();
+	private List<ISnomedBrowserAxiom> classAxioms = ImmutableList.of();
 
 	@JsonDeserialize(contentAs=SnomedBrowserAxiom.class)
 	private List<ISnomedBrowserAxiom> gciAxioms = ImmutableList.of();
@@ -97,8 +97,8 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 	}
 	
 	@Override
-	public List<ISnomedBrowserAxiom> getAdditionalAxioms() {
-		return additionalAxioms;
+	public List<ISnomedBrowserAxiom> getClassAxioms() {
+		return classAxioms;
 	}
 	
 	@Override
@@ -140,8 +140,8 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 		this.relationships = relationships;
 	}
 	
-	public void setAdditionalAxioms(List<ISnomedBrowserAxiom> additionalAxioms) {
-		this.additionalAxioms = additionalAxioms;
+	public void setClassAxioms(List<ISnomedBrowserAxiom> classAxioms) {
+		this.classAxioms = classAxioms;
 	}
 	
 	public void setGciAxioms(List<ISnomedBrowserAxiom> gciAxioms) {
@@ -185,8 +185,8 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 		builder.append(descriptions);
 		builder.append(", relationships=");
 		builder.append(relationships);
-		builder.append(", additionalAxioms=");
-		builder.append(additionalAxioms);
+		builder.append(", classAxioms=");
+		builder.append(classAxioms);
 		builder.append(", gciAxioms=");
 		builder.append(gciAxioms);
 		builder.append(", inactivationIndicator=");
