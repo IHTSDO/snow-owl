@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.datastore.config;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
@@ -30,8 +31,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	
-	public static final String DEFAULT_LANGUAGE = "en-gb"; //$NON-NLS-1$
 	public static final String DEFAULT_NAMESPACE = ""; //$NON-NLS-1$
+	public static final String DEFAULT_MODULE = Concepts.MODULE_SCT_CORE;
 	
 	// Branch metadata property keys
 	public static final String BRANCH_DEFAULT_NAMESPACE_KEY = "defaultNamespace";
@@ -39,9 +40,6 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	public static final String BRANCH_DEFAULT_MODULE_ID_KEY = "defaultModuleId";
 	public static final String BRANCH_ASSERTION_GROUP_NAMES_KEY = "assertionGroupNames";
 	public static final String BRANCH_EXTENSION_SHORTNAME_KEY = "shortname";
-	
-	@NotEmpty
-	private String language = DEFAULT_LANGUAGE;
 	
 	@NotEmpty
 	private String concreteDomainTypeRefsetIdentifier = Concepts.REFSET_CONCRETE_DOMAIN_TYPE;
@@ -81,22 +79,12 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	
 	// enables the manual editing of inferred relationships and concrete data types
 	private boolean inferredEditingEnabled = false;
-		
-	/**
-	 * @return the language code currently used for SNOMED CT
-	 */
-	@JsonProperty
-	public String getLanguage() {
-		return language;
-	}
+
+	@NotNull
+	private String defaultNamespace = DEFAULT_NAMESPACE;
 	
-	/**
-	 * @param language the SNOMED CT language code to set
-	 */
-	@JsonProperty
-	public void setLanguage(String language) {
-		this.language = language;
-	}
+	@NotEmpty
+	private String defaultModule = DEFAULT_MODULE;
 	
 	@JsonProperty("concreteDomainSupport")
 	public boolean isConcreteDomainSupported() {
@@ -299,6 +287,32 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	@JsonProperty("datetimeDataTypeRefsetIdentifier")
 	public void setDatetimeDatatypeRefsetIdentifier(String datetimeDatatypeRefsetIdentifier) {
 		this.datetimeDatatypeRefsetIdentifier = datetimeDatatypeRefsetIdentifier;
+	}
+	
+	/**
+	 * @return the default module ID to use when not set in any other way
+	 */
+	@JsonProperty
+	public String getDefaultModule() {
+		return defaultModule;
+	}
+	
+	/**
+	 * @return the default namespace to use for ID generation when not set in any other way
+	 */
+	@JsonProperty
+	public String getDefaultNamespace() {
+		return defaultNamespace;
+	}
+	
+	@JsonProperty
+	public void setDefaultModule(String defaultModule) {
+		this.defaultModule = defaultModule;
+	}
+	
+	@JsonProperty
+	public void setDefaultNamespace(String defaultNamespace) {
+		this.defaultNamespace = defaultNamespace;
 	}
 	
 }

@@ -247,6 +247,7 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 			.setReleaseType(export.getType())
 			.setCodeSystem(export.getCodeSystemShortName())
 			.setExtensionOnly(export.isExtensionOnly())
+			.setLocales(export.getLocales())
 			.setIncludePreReleaseContent(includeUnpublished)
 			.setModules(export.getModuleIds())
 			.setCountryNamespaceElement(export.getNamespaceId())

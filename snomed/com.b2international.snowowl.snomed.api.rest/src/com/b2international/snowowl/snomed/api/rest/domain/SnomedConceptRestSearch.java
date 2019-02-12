@@ -28,6 +28,7 @@ public class SnomedConceptRestSearch {
 	private Boolean descriptionActiveFilter = null;
 	private String eclFilter;
 	private String statedEclFilter;
+	private String queryFilter;
 	private Set<String> conceptIds;
 	private String expand;
 	private String scrollKeepAlive;
@@ -59,6 +60,14 @@ public class SnomedConceptRestSearch {
 		this.statedEclFilter = statedEclFilter;
 	}
 
+	public String getQueryFilter() {
+		return queryFilter;
+	}
+	
+	public void setQueryFilter(String queryFilter) {
+		this.queryFilter = queryFilter;
+	}
+	
 	public Set<String> getConceptIds() {
 		return conceptIds;
 	}

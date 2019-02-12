@@ -1,6 +1,33 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 6.12.0  
+
+### Added
+- SNOMED CT Query Language feature (#298)
+  * The initial version of the language supports the full `ECL v1.3` and description `term` filters
+  * `filterByQuery` method has been added to `SNOMED CT Concept Java API` 
+  * `query` parameter has been added to `GET /:path/concepts` API
+- Customizable SNOMED CT RF2 export bash script has been added to automate RF2 export tasks (#299)  
+- Support RF2 packages where the OWLExpression files names are using the new file naming convention (c3de2d0)  
+- Environment variable substitution is now supported in `snowowl_config.yml` configuration file via ${...} expressions
+- Support ECL expression in filterBy `languageRefSet`, `preferredIn` and `acceptableIn` description filters. (7709d5a)
+- `locales` parameter to history API (04cb537)
+
+### Changes
+- Apply classification changes from 7.x (#300)
+
+### Removed
+- `snomed.language` configuration key has been removed. APIs, commands now accept a list of locales in preference order to compute display names/labels/etc. (2ef2a4a)
+- Deprecated `Export RefSet to Excel` functionality has been removed (ac9927d)
+- Deprecated `RF1` and `RF2` exporter implementations (46d22e1)
+
+### Bugs
+- Fixed hot backup file path bug (23f896a, 2fff0f6)
+- Fix relationship affected component label bug in SNOMED CT validation (d69b56f)
+- Fix a few bugs in SNOMED CT Reference Set DSV export (94ccf64)
+- Improve performance of RF2 import by reducing the amount of loaded available components during init (2772cb2) 
+
 ## 6.11.0
 
 ### Breaking changes
@@ -18,7 +45,7 @@ Property groups now can contain concrete domain properties as well, not just rel
   * _NOTE: TCP connection to a cluster does not yet support authentication_
 - Java API methods to simplify synchronous execution of requests (8d0e15d)
 - Support for `childOf` HierarchyInclusionType in MRCM rules (#287)
-- Support for `dependencies` between two code system. A Code System now declare another as a dependency,  (#286)
+- Support for `dependencies` between two code system. A Code System now declare another as a dependency (#286)
 - New Concept and Description inactivation indicators (102b127) 
 
 ### Changes

@@ -866,7 +866,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.getSync();
 	}
 
-	protected SnomedBrowserRelationshipTarget getSnomedBrowserRelationshipTarget(SnomedConcept destinationConcept, String branch, List<ExtendedLocale> locales) {
+	@Override
+	public SnomedBrowserRelationshipTarget getSnomedBrowserRelationshipTarget(SnomedConcept destinationConcept, String branch, List<ExtendedLocale> locales) {
 		final DescriptionService descriptionService = new DescriptionService(getBus(), branch);
 		final SnomedBrowserRelationshipTarget target = new SnomedBrowserRelationshipTarget(destinationConcept.getId());
 

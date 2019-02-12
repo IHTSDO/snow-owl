@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -65,9 +64,6 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 
 	private static final String STATED_FORM = "stated";
 	private static final String INFERRED_FORM = "inferred";
-	
-	@Autowired
-	protected SnomedResourceExpander resourceExpander;
 	
 	@ApiOperation(
 			value="Retrieve descriptions of a concept", 

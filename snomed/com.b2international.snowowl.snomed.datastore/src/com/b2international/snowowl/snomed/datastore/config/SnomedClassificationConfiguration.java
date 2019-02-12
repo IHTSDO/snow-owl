@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.datastore.config;
 
+import java.util.concurrent.TimeUnit;
+
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -35,6 +37,8 @@ public class SnomedClassificationConfiguration {
 	public static final int DEFAULT_MAXIMUM_REASONER_COUNT = 2;
 	public static final int DEFAULT_MAXIMUM_REASONER_RESULTS = 10;
 	public static final int DEFAULT_MAXIMUM_REASONER_RUNS = 1000;
+	
+	public static final long DEFAULT_CLEANUP_INTERVAL = TimeUnit.MINUTES.toMillis(5);
 	
 	@NotEmpty
 	@JsonProperty(value = "defaultReasoner", required = false)
@@ -58,6 +62,10 @@ public class SnomedClassificationConfiguration {
 	@JsonProperty(value = "maxReasonerRuns", required = false)
 	private int maxReasonerRuns = DEFAULT_MAXIMUM_REASONER_RUNS;
 
+	@Min(1)
+	@JsonProperty(value = "cleanupInterval", required = false)
+	private long cleanupInterval = DEFAULT_CLEANUP_INTERVAL; 
+	
 	@Valid
 	@JsonProperty(value = "externalService", required = false)
 	private SnomedClassificationServiceConfiguration externalService;
@@ -129,6 +137,14 @@ public class SnomedClassificationConfiguration {
 		this.maxReasonerRuns = maxReasonerRuns;
 	}
 
+	public long getCleanupInterval() {
+		return cleanupInterval;
+	}
+	
+	public void setCleanupInterval(long cleanupInterval) {
+		this.cleanupInterval = cleanupInterval;
+	}
+	
 	/**
 	 * @return the externalService
 	 */

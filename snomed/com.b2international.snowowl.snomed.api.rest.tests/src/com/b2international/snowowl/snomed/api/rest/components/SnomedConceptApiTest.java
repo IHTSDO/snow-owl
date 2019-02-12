@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRefSet;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRelationshipRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
@@ -39,6 +40,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.res
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Maps.newHashMap;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -79,6 +81,7 @@ import com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
@@ -419,10 +422,53 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.put("inactivationIndicator", InactivationIndicator.PENDING_MOVE)
 				.put("commitComment", "Add a pending move indicator to an active concept")
 				.build();
-		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, updateReq);
+		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, updateReq)
+			.statusCode(204);
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "inactivationProperties()")
 			.statusCode(200)
 			.body("inactivationIndicator", equalTo(InactivationIndicator.PENDING_MOVE.toString()));
+	}
+	
+	@Test
+	public void updateInactivationIndicatorOnActiveConceptWithAssociationTargets() throws Exception {
+		String conceptId = createNewConcept(branchPath);
+		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_POSSIBLY_EQUIVALENT_TO_ASSOCIATION, conceptId)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_TARGET_COMPONENT, Concepts.ROOT_CONCEPT)
+						.build())
+				.put("commitComment", "Created new reference set member")
+				.build();
+
+		final String associationMemberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		// ensure that the concept does not have any indicator set before the update
+		SnomedReferenceSetMembers currentMembers = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "inactivationProperties(),members()")
+			.statusCode(200)
+			.body("inactivationIndicator", nullValue())
+			.body("associationTargets", equalTo(ImmutableMap.of(AssociationType.POSSIBLY_EQUIVALENT_TO.name(), ImmutableList.of(Concepts.ROOT_CONCEPT))))
+			.extract()
+			.jsonPath().getObject("members", SnomedReferenceSetMembers.class);
+		
+		Map<?, ?> updateReq = ImmutableMap.<String, Object>builder()
+				.put("inactivationIndicator", InactivationIndicator.PENDING_MOVE)
+				// XXX also pass the current members to the update, without the fix this would cause duplicate association members
+				.put("members", currentMembers)
+				.put("commitComment", "Add a pending move indicator to an active concept")
+				.build();
+		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, updateReq)
+			.statusCode(204);
+		List<String> memberIds = getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, "inactivationProperties(),members()")
+			.statusCode(200)
+			.body("inactivationIndicator", equalTo(InactivationIndicator.PENDING_MOVE.toString()))
+			.body("associationTargets", equalTo(ImmutableMap.of(AssociationType.POSSIBLY_EQUIVALENT_TO.name(), ImmutableList.of(Concepts.ROOT_CONCEPT))))
+			.extract().path("members.items.id");
+		
+		assertThat(memberIds.remove(associationMemberId)).isTrue();
+		assertThat(memberIds.remove(associationMemberId)).isFalse();
+		// the remaining member is the inactivation indicator
+		assertThat(memberIds).hasSize(1);
 	}
 	
 	@Test

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,15 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.b2international.commons.http.AcceptHeader;
+import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.eventbus.IEventBus;
 
 /**
@@ -26,12 +32,18 @@ import com.b2international.snowowl.eventbus.IEventBus;
  * @since 1.0
  */
 public abstract class AbstractSnomedRestService extends AbstractRestService {
-
-	@Autowired
-	@Value("${repositoryId}")
-	protected String repositoryId;
 	
 	@Autowired
 	protected IEventBus bus;
 
+	protected final List<ExtendedLocale> getExtendedLocales(final String acceptLanguage) {
+		try {
+			return AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+	}
+	
 }

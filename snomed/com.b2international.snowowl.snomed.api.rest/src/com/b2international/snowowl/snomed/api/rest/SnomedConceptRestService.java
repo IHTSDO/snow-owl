@@ -17,8 +17,6 @@ package com.b2international.snowowl.snomed.api.rest;
 
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
-import java.io.IOException;
-import java.io.StringReader;
 import java.net.URI;
 import java.security.Principal;
 import java.util.List;
@@ -41,10 +39,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.StringUtils;
-import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
-import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.request.SearchResourceRequest.SortField;
 import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpression;
@@ -138,6 +134,10 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="conceptIds", required=false) 
 			final Set<String> conceptIds,
 			
+			@ApiParam(value="The SNOMED CT Query expression to match")
+			@RequestParam(value="query", required=false) 
+			final String queryFilter,
+			
 			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
 			@RequestParam(value="scrollKeepAlive", required=false) 
 			final String scrollKeepAlive,
@@ -176,6 +176,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				descriptionActiveFilter,
 				eclFilter,
 				statedEclFilter,
+				queryFilter,
 				conceptIds,
 				scrollKeepAlive,
 				scrollId,
@@ -228,6 +229,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				body.getDescriptionActiveFilter(),
 				body.getEclFilter(),
 				body.getStatedEclFilter(),
+				body.getQueryFilter(),
 				body.getConceptIds(),
 				body.getScrollKeepAlive(),
 				body.getScrollId(),
@@ -249,6 +251,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final Boolean descriptionActiveFilter,
 			final String eclFilter,
 			final String statedEclFilter,
+			final String queryFilter,
 			final Set<String> conceptIds,
 			final String scrollKeepAlive,
 			final String scrollId,
@@ -258,7 +261,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final String acceptLanguage,
 			final String contentType) {
 		
-		final List<ExtendedLocale> extendedLocales;
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
 		
 		String expand = expandParams;
 		
@@ -266,14 +269,6 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			if (!Strings.isNullOrEmpty(expand) && expand.contains("pt") && !expand.contains("descriptions()")) {
 				expand = String.format("%s,descriptions()", expand);
 			}
-		}
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
 		}
 		
 		final SortField sortField = StringUtils.isEmpty(termFilter) 
@@ -297,6 +292,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.filterByDescriptionActive(descriptionActiveFilter)
 					.filterByEcl(eclFilter)
 					.filterByStatedEcl(statedEclFilter)
+					.filterByQuery(queryFilter)
 					.filterByDescriptionLanguageRefSet(extendedLocales)
 					.setExpand(expand)
 					.setLocales(extendedLocales)
@@ -337,16 +333,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestHeader(value=HttpHeaders.ACCEPT_LANGUAGE, defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		final List<ExtendedLocale> extendedLocales;
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
 		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareGetConcept(conceptId)
@@ -378,16 +366,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestHeader(value=HttpHeaders.ACCEPT_LANGUAGE, defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		final List<ExtendedLocale> extendedLocales;
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
 		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-
 		return expressionService.getConceptAuthoringForm(conceptId, branchPath, extendedLocales);
 	}
 

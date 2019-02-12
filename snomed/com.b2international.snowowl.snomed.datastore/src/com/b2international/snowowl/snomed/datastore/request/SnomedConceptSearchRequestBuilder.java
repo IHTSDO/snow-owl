@@ -121,6 +121,16 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedComponentSear
 	public final SnomedConceptSearchRequestBuilder filterByStatedEcl(String expression) {
 		return addOption(SnomedConceptSearchRequest.OptionKey.STATED_ECL, expression);
 	}
+	
+	/**
+	 * Filter matches by the specified Snomed Query Language (QL) expression.
+	 * 
+	 * @param expression QL expression
+	 * @return SnomedConceptSearchRequestBuilder
+	 */
+	public final SnomedConceptSearchRequestBuilder filterByQuery(String expression) {
+		return addOption(SnomedConceptSearchRequest.OptionKey.QUERY, expression);
+	}
 
 	/**
 	 * Filter that matches the specified parent identifier amongst the <b>direct</b> inferred super types.

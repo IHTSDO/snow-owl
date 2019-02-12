@@ -82,7 +82,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				.addAll(concept.getAncestors())
 				.build();
 		
-		final TerminologyTree tree = Trees.newInferredTree()
+		final TerminologyTree tree = Trees.newInferredTree(extendedLocales)
 				.withTopLevelConcepts(Collections.emptySet())
 				.build(branchPath, SnomedConceptDocument.fromConcepts(conceptAndAncestors));
 		

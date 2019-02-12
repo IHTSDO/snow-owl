@@ -27,8 +27,10 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChild
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionResults;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 
 /**
  * The interface for the IHTSDO SNOMED CT Browser service.
@@ -119,4 +121,6 @@ public interface ISnomedBrowserService {
 
 	ISnomedBrowserBulkChangeRun getBulkChange(String branchPath, String bulkChangeId, List<ExtendedLocale> extendedLocales, Options expand);
 
+	ISnomedBrowserRelationshipTarget getSnomedBrowserRelationshipTarget(SnomedConcept destinationConcept, String branch, List<ExtendedLocale> locales);
+	
 }

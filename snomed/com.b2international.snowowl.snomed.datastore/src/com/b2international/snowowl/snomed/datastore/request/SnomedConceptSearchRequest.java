@@ -25,7 +25,6 @@ import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -38,10 +37,10 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.ecl.EclExpression;
+import com.b2international.snowowl.snomed.core.ql.SnomedQueryExpression;
 import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
@@ -88,6 +87,11 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		 * ECL expression to match in the stated tree
 		 */
 		STATED_ECL,
+		
+		/**
+		 * Snomed CT Query expression to match
+		 */
+		QUERY,
 		
 		/**
 		 * The definition status to match
@@ -192,6 +196,11 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 			final EclExpression expression = EclExpression.of(statedEcl, Trees.STATED_FORM);
 			
 			queryBuilder.filter(expression.resolveToExpression(context).getSync(1, TimeUnit.MINUTES));
+		}
+		
+		if (containsKey(OptionKey.QUERY)) {
+			final String ql = getString(OptionKey.QUERY);
+			queryBuilder.filter(SnomedQueryExpression.of(ql).resolveToExpression(context).getSync());
 		}
 		
 		Expression searchProfileQuery = null;

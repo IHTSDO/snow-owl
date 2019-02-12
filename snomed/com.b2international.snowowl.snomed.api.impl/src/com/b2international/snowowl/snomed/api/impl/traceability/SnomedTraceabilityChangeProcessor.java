@@ -77,7 +77,6 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
-import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedDescriptionLookupService;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
@@ -93,6 +92,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -103,6 +103,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 
 	private static final Logger TRACE_LOGGER = LoggerFactory.getLogger("traceability");
 	private static final Logger SYS_LOGGER = LoggerFactory.getLogger(SnomedTraceabilityChangeProcessor.class);
+	private static final List<ExtendedLocale> LOCALES = ImmutableList.of(ExtendedLocale.valueOf("en-gb"));
 
 	private static final String OWL_AXIOM = "OwlAxiom";
 
@@ -228,7 +229,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 						Collection<? extends ISnomedBrowserConcept> resultsConcepts;
 						
 						if (!convertedConcepts.isEmpty()) { // Lookup and expand axioms
-							resultsConcepts = getAxiomService().expandAxioms(convertedConcepts, branchPath.getPath(), getLocales());
+							resultsConcepts = getAxiomService().expandAxioms(convertedConcepts, branchPath.getPath(), LOCALES);
 						} else {
 							resultsConcepts = convertedConcepts;
 						}
@@ -500,10 +501,6 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 
 	private IEventBus getBus() {
 		return ApplicationContext.getServiceForClass(IEventBus.class);
-	}
-
-	private List<ExtendedLocale> getLocales() {
-		return ApplicationContext.getInstance().getService(LanguageSetting.class).getLanguagePreference();
 	}
 
 }
