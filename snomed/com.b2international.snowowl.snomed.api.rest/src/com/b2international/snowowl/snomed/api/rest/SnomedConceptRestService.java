@@ -292,7 +292,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.filterByEffectiveTime(effectiveTimeFilter)
 					.filterByDefinitionStatus(definitionStatusFilter)
 					.filterByNamespace(namespaceFilter)
-					.filterByTerm(termFilter)
+					.filterByTerm(Strings.emptyToNull(termFilter))
 					.filterByIds(conceptIds)
 					.filterByDescriptionActive(descriptionActiveFilter)
 					.filterByEcl(eclFilter)

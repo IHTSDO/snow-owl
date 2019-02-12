@@ -37,7 +37,8 @@ public interface SnomedExternalClassificationServiceClient {
 	@POST("classification-service/classifications")
 	@ExtractHeaderProperty("location")
 	Promise<String> sendResults(
-			@Part("previousRelease") RequestBody previousRelease,
+			@Part("previousPackage") RequestBody previousPackage,
+			@Part("dependencyPackage") RequestBody dependencyPackage,
 			@Part MultipartBody.Part rf2Delta,
 			@Part("branch") RequestBody branch,
 			@Part("reasonerId") RequestBody reasonerId);

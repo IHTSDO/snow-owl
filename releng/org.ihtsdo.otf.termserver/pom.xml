@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>org.ihtsdo.otf</groupId>
+	<artifactId>termserver</artifactId>
+	<name>IHTSDO Terminology Server</name>
+	<version>6.11.1-SNAPSHOT</version>
+	<description>IHTSDO Terminology Server</description>
+	<url>https://www.snomed.org/</url>
+	
+	<parent>
+		<groupId>com.b2international.snowowl</groupId>
+		<artifactId>releng-parent</artifactId>
+		<version>6.11.1-SNAPSHOT</version>
+	</parent>
+
+	<properties>
+		<unzip.location>unzipLocation</unzip.location>
+	</properties>
+	
+	<packaging>pom</packaging>
+
+	<build>
+		<plugins>
+
+			<!-- Get necessary artifacts -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>2.10</version>
+				<executions>
+					<execution>
+						<id>get-server-archive</id>
+						<phase>initialize</phase>
+						<goals>
+							<goal>unpack</goal>
+						</goals>
+						<configuration>
+							<artifactItems>
+								<artifactItem>
+									<groupId>com.b2international.snowowl</groupId>
+									<artifactId>distribution</artifactId>
+									<version>${project.version}</version>
+									<type>zip</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>${project.build.directory}/${unzip.location}</outputDirectory>
+								</artifactItem>
+							</artifactItems>
+						</configuration>
+					</execution>
+					<execution>
+						<id>get-snorocket</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy</goal>
+						</goals>
+						<configuration>
+							<artifactItems>
+								<artifactItem>
+									<groupId>au.csiro.snorocket</groupId>
+									<artifactId>snorocket-protege-plugin</artifactId>
+									<version>2.5.5</version>
+									<type>jar</type>
+								</artifactItem>
+							</artifactItems>
+							<outputDirectory>${project.basedir}/target/server/repository/usr</outputDirectory>
+							<overWriteReleases>false</overWriteReleases>
+							<overWriteSnapshots>true</overWriteSnapshots>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.8</version>
+				<executions>
+					<execution>
+						<id>find-server-paths</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<exportAntProperties>true</exportAntProperties>
+							<target name="find folder">
+								<path id="snowowl.files.path">
+									<first>
+										<fileset dir="${project.build.directory}/${unzip.location}" includes="**/snowowl_config.yml" />
+									</first>
+								</path>
+								<pathconvert property="snowowl.path.output" refid="snowowl.files.path" />
+								<echo message="snowowl.path.output = ${snowowl.path.output}" />
+								<dirname property="snowowl.server.dir" file="${snowowl.path.output}" />
+								<echo message="snowowl.server.dir = ${snowowl.server.dir}" />
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Copy server to target -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>2.6</version>
+				<executions>
+					<execution>
+						<id>copy-server-to-target</id>
+						<phase>process-sources</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.basedir}/target/server</outputDirectory>
+							<includeEmptyDirs>true</includeEmptyDirs>
+							<resources>
+								<resource>
+									<directory>${snowowl.server.dir}</directory>
+									<filtering>false</filtering>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- append OSGi plan with -->
+			<plugin>
+				<groupId>com.google.code.maven-replacer-plugin</groupId>
+				<artifactId>replacer</artifactId>
+				<version>1.5.3</version>
+				<executions>
+					<execution>
+						<id>append-osgi-plan</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>replace</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<file>${project.basedir}/target/server/pickup/osgi_server.plan</file>
+					<replacements>
+						<replacement>
+							<token>&lt;artifact type="bundle" name="org.semanticweb.elk" version="0.0.0"/&gt;</token>
+							<value>&lt;artifact type="bundle" name="org.semanticweb.elk" version="0.0.0"/&gt;
+        &lt;artifact type="bundle" name="au.csiro.snorocket.owlapi3" version="0.0.0"/&gt;</value>
+						</replacement>
+					</replacements>
+				</configuration>
+			</plugin>
+
+			<!-- create deb -->
+			<plugin>
+				<groupId>org.vafer</groupId>
+				<artifactId>jdeb</artifactId>
+				<version>1.7</version>
+				<executions>
+					<execution>
+						<id>build-deb-file</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jdeb</goal>
+						</goals>
+						<configuration>
+							<deb>${project.build.directory}/termserver-${project.version}-all.deb</deb>
+							<controlDir>${project.basedir}/deb/control</controlDir>
+							<snapshotExpand>true</snapshotExpand>
+							<snapshotEnv>BUILD_NUMBER</snapshotEnv>
+							<verbose>true</verbose>
+							<classifier>all</classifier>
+							<signPackage>false</signPackage>
+							<skipPOMs>false</skipPOMs>
+							<dataSet>
+								<data>
+									<src>${project.basedir}/target/server</src>
+									<type>directory</type>
+									<mapper>
+										<type>perm</type>
+										<prefix>/opt/termserver</prefix>
+									</mapper>
+								</data>
+								<data>
+									<src>${project.basedir}/deb/supervisor.conf</src>
+									<dst>/etc/supervisor/conf.d/termserver.conf</dst>
+									<type>file</type>
+									<conffile>true</conffile>
+								</data>
+							</dataSet>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

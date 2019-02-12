@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.impl.domain.browser;
 
+import java.util.Collection;
 import java.util.Map;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
@@ -23,6 +24,9 @@ import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import com.google.common.collect.Multimap;
 
 public class SnomedBrowserDescription extends SnomedBrowserComponent implements ISnomedBrowserDescription {
@@ -115,10 +119,17 @@ public class SnomedBrowserDescription extends SnomedBrowserComponent implements 
 	}
 	
 	@Override
+	@JsonIgnore
 	public Multimap<AssociationType, String> getAssociationTargets() {
 		return associationTargets;
 	}
 
+	@JsonGetter("associationTargets")
+	public Map<AssociationType, Collection<String>> getAssociationTargetsAsMap() {
+		return associationTargets == null ? null : associationTargets.asMap();
+	}
+
+	@JsonSetter("associationTargets")
 	public void setAssociationTargets(Multimap<AssociationType, String> associationTargets) {
 		this.associationTargets = associationTargets;
 	}

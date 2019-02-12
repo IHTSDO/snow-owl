@@ -58,6 +58,7 @@
 			</activation>
 			<modules>
 				<module>distribution</module>
+				<module>org.ihtsdo.otf.termserver</module>
 			</modules>
 		</profile>
 		<profile>

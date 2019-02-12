@@ -22,6 +22,8 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.jobs.MultiRule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.status.Statuses;
 import com.b2international.snowowl.core.Repository;
@@ -39,6 +41,8 @@ import com.b2international.snowowl.datastore.server.remotejobs.BranchExclusiveRu
  */
 public abstract class AbstractBranchChangeRemoteJob extends Job {
 
+	private static final Logger LOG = LoggerFactory.getLogger(AbstractBranchChangeRemoteJob.class);
+	
 	public static AbstractBranchChangeRemoteJob create(Repository repository, UUID id, String source, String target, String userId, String commitMessage, String reviewId, String parentLockContext) {
 		final IBranchPath sourcePath = BranchPathUtils.createPath(source);
 		final IBranchPath targetPath = BranchPathUtils.createPath(target);
@@ -88,6 +92,7 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 		} catch (ApiException e) {
 			merge.getAndUpdate(m -> m.failed(e.toApiError()));
 		} catch (RuntimeException e) {
+			LOG.error(e.getMessage(), e);
 			merge.getAndUpdate(m -> m.failed(ApiError.Builder.of(e.getMessage()).build()));
 		} finally {
 			// Send a notification event with the final state to the global event bus

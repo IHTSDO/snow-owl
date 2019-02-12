@@ -30,7 +30,6 @@ import static com.google.common.collect.Lists.newArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import com.b2international.commons.CompareUtils;
 import com.b2international.index.Hits;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
@@ -77,7 +76,7 @@ final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<
 	
 	@Override
 	protected Expression prepareQuery(BranchContext context) {
-		if (containsKey(OptionKey.TERM) && getString(OptionKey.TERM).length() == 1) { // XXX allow empty term filter
+		if (containsKey(OptionKey.TERM) && getString(OptionKey.TERM).length() < 2) {
 			throw new BadRequestException("Description term must be at least 2 characters long.");
 		}
 
@@ -114,12 +113,10 @@ final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<
 		
 		if (containsKey(OptionKey.TERM)) {
 			final String searchTerm = getString(OptionKey.TERM);
-			if (!CompareUtils.isEmpty(searchTerm)) {
-				if (!containsKey(OptionKey.USE_FUZZY)) {
-					queryBuilder.must(toDescriptionTermQuery(searchTerm));
-				} else {
-					queryBuilder.must(fuzzy(searchTerm));
-				}
+			if (!containsKey(OptionKey.USE_FUZZY)) {
+				queryBuilder.must(toDescriptionTermQuery(searchTerm));
+			} else {
+				queryBuilder.must(fuzzy(searchTerm));
 			}
 		}
 		
