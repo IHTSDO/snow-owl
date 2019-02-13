@@ -56,7 +56,6 @@ import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.Relationship;
-import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserAxiomService;
@@ -87,7 +86,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptio
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedAnnotationRefSetMember;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedOWLExpressionRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -105,6 +104,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	private static final Logger SYS_LOGGER = LoggerFactory.getLogger(SnomedTraceabilityChangeProcessor.class);
 
 	private static final String OWL_AXIOM = "OwlAxiom";
+	private static final String OWL_ONTOLOGY = "OwlOntology";
 
 	private static final Set<EClass> MRCM_REFSET_MEMBER_TYPES = ImmutableSet.<EClass>of(
 			SnomedRefSetPackage.Literals.SNOMED_MRCM_DOMAIN_REF_SET_MEMBER,
@@ -113,7 +113,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 			SnomedRefSetPackage.Literals.SNOMED_MRCM_MODULE_SCOPE_REF_SET_MEMBER);
 	
 	private static final Set<EClass> DETACHED_REFSET_MEMBER_TYPES = ImmutableSet.<EClass>of(
-			SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER,
+			SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER,
 			SnomedRefSetPackage.Literals.SNOMED_LANGUAGE_REF_SET_MEMBER,
 			SnomedRefSetPackage.Literals.SNOMED_ASSOCIATION_REF_SET_MEMBER,
 			SnomedRefSetPackage.Literals.SNOMED_ATTRIBUTE_VALUE_REF_SET_MEMBER,
@@ -281,10 +281,14 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 			} else if (SnomedPackage.Literals.RELATIONSHIP.equals(eClass)) {
 				final Relationship newRelationship = (Relationship) newComponent;
 				entry.registerChange(newRelationship.getSource().getId(), new TraceabilityChange(eClass, newRelationship.getId(), ChangeType.CREATE));
-			} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
-				SnomedAnnotationRefSetMember member = (SnomedAnnotationRefSetMember) newComponent;
-				if (member.getRefSetIdentifierId().equals(Concepts.REFSET_OWL_AXIOM) && SnomedIdentifiers.isConceptIdentifier(member.getReferencedComponentId())) {
-					entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.CREATE));
+			} else if (SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER.equals(eClass)) {
+				SnomedOWLExpressionRefSetMember member = (SnomedOWLExpressionRefSetMember) newComponent;
+				if (SnomedIdentifiers.isConceptIdentifier(member.getReferencedComponentId())) {
+					if (member.getRefSetIdentifierId().equals(Concepts.REFSET_OWL_AXIOM)) {
+						entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.CREATE));
+					} else if (member.getRefSetIdentifierId().equals(Concepts.REFSET_OWL_ONTOLOGY)) {
+						entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_ONTOLOGY, member.getUuid(), ChangeType.CREATE));
+					}
 				}
 			} else if (MRCM_REFSET_MEMBER_TYPES.contains(eClass)) {
 				SnomedRefSetMember member = (SnomedRefSetMember) newComponent;
@@ -328,9 +332,11 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					
 					if (SnomedRefSetPackage.Literals.SNOMED_ASSOCIATION_REF_SET_MEMBER.equals(eClass) || SnomedRefSetPackage.Literals.SNOMED_ATTRIBUTE_VALUE_REF_SET_MEMBER.equals(eClass)) {
 						entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(SnomedPackage.Literals.CONCEPT, member.getReferencedComponentId(), ChangeType.UPDATE));
-					} else if (SnomedRefSetPackage.Literals.SNOMED_ANNOTATION_REF_SET_MEMBER.equals(eClass)) {
-						if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(member.getRefSetIdentifierId())) {
+					} else if (SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER.equals(eClass)) {
+						if (Concepts.REFSET_OWL_AXIOM.equals(member.getRefSetIdentifierId())) {
 							entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, member.getUuid(), ChangeType.UPDATE));
+						} else if (Concepts.REFSET_OWL_ONTOLOGY.equals(member.getRefSetIdentifierId())) {
+							entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(OWL_ONTOLOGY, member.getUuid(), ChangeType.UPDATE));
 						}
 					} else if (MRCM_REFSET_MEMBER_TYPES.contains(eClass)) {
 						entry.registerChange(member.getReferencedComponentId(), new TraceabilityChange(eClass, member.getUuid(), ChangeType.UPDATE));
@@ -397,8 +403,10 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				for (EClass eClass : DETACHED_REFSET_MEMBER_TYPES) {
 					Set<Long> detachedMemberStorageKeys = newHashSet(CDOIDUtils.createCdoIdToLong(commitChangeSet.getDetachedComponents(eClass)));
 					for (SnomedRefSetMemberIndexEntry detachedRefsetMember : searcher.get(SnomedRefSetMemberIndexEntry.class, detachedMemberStorageKeys)) {					
-						if (SnomedConstants.Concepts.REFSET_OWL_AXIOM.equals(detachedRefsetMember.getReferenceSetId())) {
+						if (Concepts.REFSET_OWL_AXIOM.equals(detachedRefsetMember.getReferenceSetId())) {
 							entry.registerChange(detachedRefsetMember.getReferencedComponentId(), new TraceabilityChange(OWL_AXIOM, detachedRefsetMember.getId(), ChangeType.DELETE));
+						} else if (Concepts.REFSET_OWL_ONTOLOGY.equals(detachedRefsetMember.getReferenceSetId())) {
+							entry.registerChange(detachedRefsetMember.getReferencedComponentId(), new TraceabilityChange(OWL_ONTOLOGY, detachedRefsetMember.getId(), ChangeType.DELETE));
 						} else {
 							entry.registerChange(detachedRefsetMember.getReferencedComponentId(), new TraceabilityChange(eClass, detachedRefsetMember.getId(), ChangeType.DELETE));
 						}
