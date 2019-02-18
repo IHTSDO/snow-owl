@@ -1,80 +1,143 @@
 package com.b2international.snowowl.snomed.api.rest.domain;
 
-import com.b2international.snowowl.snomed.core.domain.classification.RelationshipChange;
+import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.b2international.snowowl.snomed.reasoner.domain.ChangeNature;
+import com.b2international.snowowl.snomed.reasoner.domain.ReasonerRelationship;
+import com.b2international.snowowl.snomed.reasoner.domain.RelationshipChange;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.google.common.base.Strings;
 
 
 @JsonPropertyOrder({ "changeNature", "sourceId", "sourceFsn", "typeId", "typeFsn", "destinationId",
 		"destinationFsn", "destinationNegated", "characteristicTypeId", "group","id", "unionGroup", "modifier" })
 public class ExpandableRelationshipChange extends RelationshipChange {
 
-	private SnomedConceptMini source;
-	private SnomedConceptMini type;
-	private SnomedConceptMini destination;
-
+	private String id;
+	private String sourceId;
+	private String typeId;
+	private String destinationId;
+	private boolean destinationNegated;
+	private String characteristicTypeId;
+	private int group;
+	private int unionGroup;
+	private RelationshipModifier modifier;
+	
 	public ExpandableRelationshipChange(RelationshipChange change) {
-		setId(change.getId());
+		setId(change.getChangeNature() == ChangeNature.REDUNDANT ? change.getRelationship().getOriginId() : "");
 		setChangeNature(change.getChangeNature());
-		setSourceId(change.getSourceId());
-		setTypeId(change.getTypeId());
-		setDestinationId(change.getDestinationId());
-		setDestinationNegated(change.isDestinationNegated());
-		setCharacteristicTypeId(change.getCharacteristicTypeId());
-		setGroup(change.getGroup());
-		setUnionGroup(change.getUnionGroup());
-		setModifier(change.getModifier());
+		setSourceId(change.getRelationship().getSourceId());
+		setTypeId(change.getRelationship().getTypeId());
+		setDestinationId(change.getRelationship().getDestinationId());
+		setDestinationNegated(change.getRelationship().isDestinationNegated());
+		setCharacteristicTypeId(change.getRelationship().getCharacteristicType().getConceptId());
+		setGroup(change.getRelationship().getGroup());
+		setUnionGroup(change.getRelationship().getUnionGroup());
+		setModifier(change.getRelationship().getModifier());
+		setRelationship(change.getRelationship());
 	}
 	
 	@JsonIgnore
-	public String getMiniSourceId() {
-		return this.source.getId();
+	@Override
+	public ReasonerRelationship getRelationship() {
+		return super.getRelationship();
 	}
-	
+
+	public String getId() {
+		return id;
+	}
+
+	public String getSourceId() {
+		return sourceId;
+	}
+
+	public String getTypeId() {
+		return typeId;
+	}
+
+	public String getDestinationId() {
+		return destinationId;
+	}
+
+	public boolean isDestinationNegated() {
+		return destinationNegated;
+	}
+
+	public String getCharacteristicTypeId() {
+		return characteristicTypeId;
+	}
+
+	public int getGroup() {
+		return group;
+	}
+
+	public int getUnionGroup() {
+		return unionGroup;
+	}
+
+	public RelationshipModifier getModifier() {
+		return modifier;
+	}
+
 	@JsonProperty("sourceFsn")
 	public String getSourceFsn() {
-		if(getSourceId().equals(source.getId())) {
-			return this.source.getFsn();
-		} else {
-			return "";
+		if (getRelationship().getSource() != null && getRelationship().getSource().getFsn() != null) {
+			return Strings.nullToEmpty(getRelationship().getSource().getFsn().getTerm());
 		}
-	}
-	
-	@JsonIgnore
-	public String getMiniTypeId() {
-		return this.type.getId();
+		return "";
 	}
 	
 	@JsonProperty("typeFsn")
 	public String getTypeFsn() {
-		if(getTypeId().equals(type.getId())) {
-			return this.type.getFsn();
-		} else {
-			return "";
+		if (getRelationship().getType() != null && getRelationship().getType().getFsn() != null) {
+			return Strings.nullToEmpty(getRelationship().getType().getFsn().getTerm());
 		}
-	}
-	
-	@JsonIgnore
-	public String getMiniDestinationId() {
-		return this.destination.getId();
+		return "";
 	}
 	
 	@JsonProperty("destinationFsn")
 	public String getDestinationFsn() {
-		return this.destination.getFsn();
+		if (getRelationship().getDestination() != null && getRelationship().getDestination().getFsn() != null) {
+			return Strings.nullToEmpty(getRelationship().getDestination().getFsn().getTerm());
+		}
+		return "";
 	}
 	
-	public void setSource(SnomedConceptMini source) {
-		this.source = source;
+	public void setId(String id) {
+		this.id = id;
 	}
 
-	public void setType(SnomedConceptMini type) {
-		this.type = type;
+	public void setSourceId(String sourceId) {
+		this.sourceId = sourceId;
 	}
 
-	public void setDestination(SnomedConceptMini destination) {
-		this.destination = destination;
+	public void setTypeId(String typeId) {
+		this.typeId = typeId;
+	}
+
+	public void setDestinationId(String destinationId) {
+		this.destinationId = destinationId;
+	}
+
+	public void setDestinationNegated(boolean destinationNegated) {
+		this.destinationNegated = destinationNegated;
+	}
+
+	public void setCharacteristicTypeId(String characteristicTypeId) {
+		this.characteristicTypeId = characteristicTypeId;
+	}
+
+	public void setGroup(int group) {
+		this.group = group;
+	}
+
+	public void setUnionGroup(int unionGroup) {
+		this.unionGroup = unionGroup;
+	}
+
+	public void setModifier(RelationshipModifier modifier) {
+		this.modifier = modifier;
 	}
 
 }

@@ -34,7 +34,7 @@ public class SnomedClassificationConfiguration {
 	public static final String ELK_REASONER_ID = "org.semanticweb.elk.elk.reasoner.factory"; //$NON-NLS-1$
 	public static final String DEFAULT_REASONER = ELK_REASONER_ID;
 	
-	public static final int DEFAULT_MAXIMUM_REASONER_COUNT = 2;
+	public static final int DEFAULT_MAXIMUM_REASONER_COUNT = 1;
 	public static final int DEFAULT_MAXIMUM_REASONER_RESULTS = 10;
 	public static final int DEFAULT_MAXIMUM_REASONER_RUNS = 1000;
 	

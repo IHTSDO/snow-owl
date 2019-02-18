@@ -29,9 +29,6 @@ public class ClassificationRestInput {
 
 	private boolean useExternalService = false;
 	
-	@NotEmpty
-	private String branch;
-
 	public String getReasonerId() {
 		return reasonerId;
 	}
@@ -48,14 +45,6 @@ public class ClassificationRestInput {
 		this.useExternalService = useExternalService;
 	}
 
-	public String getBranch() {
-		return branch;
-	}
-
-	public void setBranch(final String branch) {
-		this.branch = branch;
-	}
-
 	@Override
 	public String toString() {
 		final StringBuilder builder = new StringBuilder();
@@ -63,8 +52,6 @@ public class ClassificationRestInput {
 		builder.append(reasonerId);
 		builder.append(", useExternalService=");
 		builder.append(useExternalService);
-		builder.append(", branch=");
-		builder.append(branch);
 		builder.append("]");
 		return builder.toString();
 	}

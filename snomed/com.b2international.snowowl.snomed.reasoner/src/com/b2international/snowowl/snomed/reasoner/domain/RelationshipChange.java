@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 /**
  * @since 7.0
  */
-public final class RelationshipChange implements Serializable {
+public class RelationshipChange implements Serializable {
 
 	/**
 	 * Enumerates expandable property keys.

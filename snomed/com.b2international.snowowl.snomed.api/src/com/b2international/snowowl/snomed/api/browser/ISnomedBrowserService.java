@@ -28,6 +28,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConce
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationshipTarget;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationshipType;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionResults;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
@@ -122,5 +123,9 @@ public interface ISnomedBrowserService {
 	ISnomedBrowserBulkChangeRun getBulkChange(String branchPath, String bulkChangeId, List<ExtendedLocale> extendedLocales, Options expand);
 
 	ISnomedBrowserRelationshipTarget getSnomedBrowserRelationshipTarget(SnomedConcept destinationConcept, String branch, List<ExtendedLocale> locales);
+	
+	ISnomedBrowserRelationshipType convertBrowserRelationshipType(SnomedConcept concept);
+	
+	ISnomedBrowserRelationshipTarget convertBrowserRelationshipTarget(SnomedConcept concept);
 	
 }

@@ -829,7 +829,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return convertedRelationshipBuilder.build();
 	}
 	
-	/* package */ SnomedBrowserRelationshipType convertBrowserRelationshipType(SnomedConcept concept) {
+	@Override
+	public SnomedBrowserRelationshipType convertBrowserRelationshipType(SnomedConcept concept) {
 		final SnomedBrowserRelationshipType result = new SnomedBrowserRelationshipType(concept.getId());
 		
 		if (concept.getFsn() != null) {
@@ -841,7 +842,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return result;
 	}
 
-	/* package */ SnomedBrowserRelationshipTarget convertBrowserRelationshipTarget(SnomedConcept concept) {
+	@Override
+	public SnomedBrowserRelationshipTarget convertBrowserRelationshipTarget(SnomedConcept concept) {
 		final SnomedBrowserRelationshipTarget result = new SnomedBrowserRelationshipTarget(concept.getId());
 		
 		result.setActive(concept.isActive());
