@@ -37,6 +37,7 @@ public final class ClassificationCreateRequestBuilder
 	private String classificationId = UUID.randomUUID().toString();
 	private String reasonerId;
 	private String userId;
+	private boolean useExternalService;
 	private final List<SnomedConcept> additionalConcepts = newArrayList();
 	private String parentLockContext = DatastoreLockContextDescriptions.ROOT;
 
@@ -57,6 +58,11 @@ public final class ClassificationCreateRequestBuilder
 		return getSelf();
 	}
 
+	public ClassificationCreateRequestBuilder setUseExternalService(final boolean useExternalService) {
+		this.useExternalService = useExternalService;
+		return getSelf();
+	}
+	
 	public ClassificationCreateRequestBuilder addConcept(final SnomedConcept additionalConcept) {
 		this.additionalConcepts.add(additionalConcept);
 		return getSelf();
@@ -78,6 +84,7 @@ public final class ClassificationCreateRequestBuilder
 		request.setClassificationId(classificationId);
 		request.setReasonerId(reasonerId);
 		request.setUserId(userId);
+		request.setUseExternalService(useExternalService);
 		request.setAdditionalConcepts(additionalConcepts);
 		request.setParentLockContext(parentLockContext);
 		return request;

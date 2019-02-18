@@ -27,6 +27,7 @@ import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationTracker;
+import com.b2international.snowowl.snomed.reasoner.external.SnomedExternalClassificationService;
 
 /**
  * @since 7.0
@@ -49,6 +50,11 @@ public final class SnomedReasonerBootstrap extends DefaultBootstrapFragment {
 					classificationConfig.getMaxReasonerRuns(), classificationConfig.getCleanupInterval());
 			
 			env.services().registerService(ClassificationTracker.class, classificationTracker);
+			
+			if (classificationConfig.isExternalClassificationServiceConfigured()) {
+				SnomedExternalClassificationService externalClassificationService = new SnomedExternalClassificationService(classificationConfig);
+				env.services().registerService(SnomedExternalClassificationService.class, externalClassificationService);
+			}
 			
 		}
 	}

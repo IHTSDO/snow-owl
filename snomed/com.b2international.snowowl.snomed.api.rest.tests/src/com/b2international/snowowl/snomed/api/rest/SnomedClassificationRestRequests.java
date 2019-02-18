@@ -47,14 +47,12 @@ public abstract class SnomedClassificationRestRequests {
 			ClassificationStatus.SAVE_FAILED.name());
 
 	public static ValidatableResponse beginClassification(IBranchPath branchPath) {
-		Map<String, Object> requestBody = ImmutableMap.of(
-				"reasonerId", SnomedClassificationConfiguration.ELK_REASONER_ID,
-				"branch", branchPath.getPath());
+		Map<String, Object> requestBody = ImmutableMap.<String, Object>of("reasonerId", SnomedClassificationConfiguration.ELK_REASONER_ID);
 
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.contentType(ContentType.JSON)
 				.body(requestBody)
-				.post("/classifications")
+				.post("/{path}/classifications", branchPath.getPath())
 				.then();
 	}
 
@@ -66,21 +64,20 @@ public abstract class SnomedClassificationRestRequests {
 
 	public static ValidatableResponse getClassification(IBranchPath branchPath, String classificationId) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.get("/classifications/{id}", classificationId)
+				.get("/{path}/classifications/{id}", branchPath.getPath(), classificationId)
 				.then();
 	}
 
 	public static ValidatableResponse getRelationshipChanges(IBranchPath branchPath, String classificationId) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.queryParam("limit", 2000)
-				.queryParam("expand", "relationship()")
-				.get("/classifications/{id}/relationship-changes", classificationId)
+				.get("/{path}/classifications/{id}/relationship-changes", branchPath.getPath(), classificationId)
 				.then();
 	}
 	
 	public static ValidatableResponse getEquivalentConceptSets(IBranchPath branchPath, String classificationId) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.get("/classifications/{id}/equivalent-concepts", classificationId)
+				.get("/{path}/classifications/{id}/equivalent-concepts", branchPath.getPath(), classificationId)
 				.then();
 	}
 
@@ -94,7 +91,7 @@ public abstract class SnomedClassificationRestRequests {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.contentType(ContentType.JSON)
 				.body(requestBody)
-				.put("/classifications/{id}", classificationId)
+				.put("/{path}/classifications/{id}", branchPath.getPath(), classificationId)
 				.then();
 	}
 

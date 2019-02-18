@@ -77,11 +77,11 @@ public abstract class OntologyChangeProcessor<T extends Serializable> {
 		}
 	}
 
-	protected void handleRemovedSubject(final String conceptId, final T removedSubject) {
+	public void handleRemovedSubject(final String conceptId, final T removedSubject) {
 		// Subclasses should override		
 	}
 
-	protected void handleAddedSubject(final String conceptId, final T addedSubject) {
+	public void handleAddedSubject(final String conceptId, final T addedSubject) {
 		// Subclasses should override
 	}
 }

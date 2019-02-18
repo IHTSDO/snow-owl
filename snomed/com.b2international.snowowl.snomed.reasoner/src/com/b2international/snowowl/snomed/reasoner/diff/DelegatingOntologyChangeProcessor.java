@@ -29,12 +29,12 @@ public abstract class DelegatingOntologyChangeProcessor<T extends Serializable> 
 	}
 
 	@Override
-	protected void handleAddedSubject(final String conceptId, final T addedSubject) {
+	public void handleAddedSubject(final String conceptId, final T addedSubject) {
 		delegate.handleAddedSubject(conceptId, addedSubject);
 	}
 	
 	@Override
-	protected void handleRemovedSubject(final String conceptId, final T removedSubject) {
+	public void handleRemovedSubject(final String conceptId, final T removedSubject) {
 		delegate.handleRemovedSubject(conceptId, removedSubject);
 	}
 }

@@ -57,6 +57,8 @@ final class ClassificationCreateRequest implements Request<BranchContext, String
 
 	@NotNull
 	private String parentLockContext;
+	
+	private boolean useExternalService;
 
 	ClassificationCreateRequest() {}
 
@@ -80,6 +82,10 @@ final class ClassificationCreateRequest implements Request<BranchContext, String
 		this.parentLockContext = parentLockContext;
 	}
 
+	void setUseExternalService(final boolean useExternalService) {
+		this.useExternalService = useExternalService;
+	}
+	
 	@Override
 	public String execute(final BranchContext context) {
 		final String repositoryId = context.id();
@@ -89,11 +95,23 @@ final class ClassificationCreateRequest implements Request<BranchContext, String
 
 		tracker.classificationScheduled(classificationId, reasonerId, userId, branch.path());
 
-		final AsyncRequest<Boolean> jobRequest = new ClassificationJobRequestBuilder()
+		AsyncRequest<Boolean> jobRequest;
+		
+		if (useExternalService) {
+			
+			jobRequest = new ExternalClassificationJobRequestBuilder()
+					.setReasonerId(reasonerId)
+					.build(repositoryId, branch.path());
+			
+		} else {
+			
+			jobRequest = new ClassificationJobRequestBuilder()
 				.setReasonerId(reasonerId)
 				.setParentLockContext(parentLockContext)
 				.addAllConcepts(additionalConcepts)
 				.build(repositoryId, branch.path());
+			
+		}
 		
 		final ClassificationSchedulingRule rule = ClassificationSchedulingRule.create(
 				config.getMaxReasonerCount(), 
@@ -104,7 +122,7 @@ final class ClassificationCreateRequest implements Request<BranchContext, String
 				.setId(classificationId)
 				.setUser(userId)
 				.setRequest(jobRequest)
-				.setDescription(String.format("Classifying the ontology on %s", branch.path()))
+				.setDescription(String.format("Classifying the ontology on %s%s", branch.path(), useExternalService ? " using external service" : ""))
 				.setSchedulingRule(rule)
 				.buildAsync()
 				.get(SCHEDULE_TIMEOUT_MILLIS);
