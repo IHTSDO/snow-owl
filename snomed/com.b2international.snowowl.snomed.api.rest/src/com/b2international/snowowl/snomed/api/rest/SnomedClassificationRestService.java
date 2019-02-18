@@ -439,6 +439,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			ClassificationRequests.prepareSaveClassification()
 					.setClassificationId(classificationId)
 					.setUserId(principal.getName())
+					// module and namespace settings could be opened up here
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 					.execute(bus)
 					.getSync();

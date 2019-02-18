@@ -263,7 +263,7 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 				if (ChangeNature.INFERRED.equals(change.getChangeNature())) {
 					addComponent(bulkRequestBuilder, namespaceAndModuleAssigner, relationship);
 				} else {
-					removeOrDeactivate(bulkRequestBuilder, relationship);
+					removeOrDeactivate(bulkRequestBuilder, namespaceAndModuleAssigner, relationship);
 				}
 			}
 		}
@@ -295,7 +295,8 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 		bulkRequestBuilder.add(createRequest);
 	}
 
-	private void removeOrDeactivate(final BulkRequestBuilder<TransactionContext> bulkRequestBuilder, 
+	private void removeOrDeactivate(final BulkRequestBuilder<TransactionContext> bulkRequestBuilder,
+			final SnomedNamespaceAndModuleAssigner namespaceAndModuleAssigner,
 			final ReasonerRelationship relationship) {
 
 		final Request<TransactionContext, Boolean> request;
@@ -303,6 +304,7 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 		if (relationship.isReleased()) {
 			request = SnomedRequests
 					.prepareUpdateRelationship(relationship.getOriginId())
+					.setModuleId(namespaceAndModuleAssigner.getRelationshipModuleId(relationship.getSourceId()))
 					.setActive(false)
 					.build();
 		} else {
