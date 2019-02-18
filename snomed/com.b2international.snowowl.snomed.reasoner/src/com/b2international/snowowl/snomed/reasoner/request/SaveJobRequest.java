@@ -37,6 +37,8 @@ import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.ft.Features;
 import com.b2international.snowowl.core.request.SearchResourceRequestIterator;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
@@ -46,6 +48,7 @@ import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.assigner.DefaultNamespaceAndModuleAssigner;
 import com.b2international.snowowl.snomed.datastore.id.assigner.SnomedNamespaceAndModuleAssigner;
@@ -147,8 +150,11 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 		final IProgressMonitor monitor = context.service(IProgressMonitor.class);
 		final Branch branch = context.branch();
 		final ClassificationTracker tracker = context.service(ClassificationTracker.class);
-
+		final FeatureToggles featureToggles = context.service(FeatureToggles.class);
+		final String classifyFeatureToggle = Features.getClassifyFeatureToggle(SnomedDatastoreActivator.REPOSITORY_UUID, branch.path());
+		
 		try (Locks locks = new Locks(context, userId, DatastoreLockContextDescriptions.SAVE_CLASSIFICATION_RESULTS, parentLockContext, branch)) {
+			featureToggles.enable(classifyFeatureToggle);
 			return persistChanges(context, monitor);
 		} catch (final OperationLockException e) {
 			tracker.classificationFailed(classificationId);
@@ -160,6 +166,7 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 			tracker.classificationSaveFailed(classificationId);
 			throw new ReasonerApiException("Error while persisting classification changes on '%s'.", context.branchPath(), e);
 		} finally {
+			featureToggles.disable(classifyFeatureToggle);
 			monitor.done();
 		}
 	}
