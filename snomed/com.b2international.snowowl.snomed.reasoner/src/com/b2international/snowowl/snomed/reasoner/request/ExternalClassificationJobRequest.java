@@ -17,6 +17,8 @@ package com.b2international.snowowl.snomed.reasoner.request;
 
 import static java.util.Collections.emptyList;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
@@ -62,6 +64,8 @@ public class ExternalClassificationJobRequest implements Request<BranchContext, 
 
 		tracker.classificationRunning(classificationId, headTimestamp);
 
+		Path result = null;
+		
 		try {
 			
 			SnomedExternalClassificationService classificationService = context.service(SnomedExternalClassificationService.class);
@@ -69,7 +73,7 @@ public class ExternalClassificationJobRequest implements Request<BranchContext, 
 			// send external request
 			String externalClassificationRequestId = classificationService.sendExternalRequest(branch, reasonerId, userId);
 			
-			Path result = classificationService.getExternalResults(externalClassificationRequestId);
+			result = classificationService.getExternalResults(externalClassificationRequestId);
 			Map<String, Path> filePaths = classificationService.getRequiredFilePaths(result, classificationId);
 			
 			IReasonerTaxonomy inferredTaxonomy;
@@ -104,6 +108,16 @@ public class ExternalClassificationJobRequest implements Request<BranchContext, 
 		} catch (final Exception e) {
 			tracker.classificationFailed(classificationId);
 			throw new ReasonerApiException("Exception caught while running external classification.", e);
+		} finally {
+			
+			try {
+				if (result != null) {
+					Files.deleteIfExists(result);
+				}
+			} catch (IOException ignore) {
+				// ignore
+			}
+			
 		}
 
 		return Boolean.TRUE;
