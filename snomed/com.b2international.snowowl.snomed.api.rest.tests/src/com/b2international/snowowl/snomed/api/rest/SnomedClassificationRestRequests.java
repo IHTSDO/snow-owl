@@ -47,7 +47,15 @@ public abstract class SnomedClassificationRestRequests {
 			ClassificationStatus.SAVE_FAILED.name());
 
 	public static ValidatableResponse beginClassification(IBranchPath branchPath) {
-		Map<String, Object> requestBody = ImmutableMap.<String, Object>of("reasonerId", SnomedClassificationConfiguration.ELK_REASONER_ID);
+		return beginClassification(branchPath, SnomedClassificationConfiguration.ELK_REASONER_ID, false);
+	}
+	
+	public static ValidatableResponse beginClassification(IBranchPath branchPath, String reasonerId, boolean useExternalService) {
+		
+		Map<String, Object> requestBody = ImmutableMap.<String, Object>builder()
+				.put("reasonerId", reasonerId)
+				.put("useExternalService", useExternalService)
+				.build();
 
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.contentType(ContentType.JSON)

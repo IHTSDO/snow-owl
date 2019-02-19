@@ -42,9 +42,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.server.internal.JsonSupport;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
@@ -55,6 +57,7 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.reasoner.domain.ChangeNature;
 import com.b2international.snowowl.snomed.reasoner.domain.ClassificationStatus;
@@ -86,6 +89,9 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	private static final String ASSOCIATED_FINDING = "246090004";
 	private static final String POST_PROCESSING = "260931002";
 	private static final String PROVOCATION_TECHNIQUE = "246506007";
+
+	private static final boolean USE_EXTERNAL_SERVICE = false;
+	private static String REASONER_ID = SnomedClassificationConfiguration.ELK_REASONER_ID;
 	
 	private static int getPersistedInferredRelationshipCount(IBranchPath conceptPath, String conceptId) {
 		List<Map<String, Object>> relationships = getComponent(conceptPath, SnomedComponentType.CONCEPT, conceptId, 
@@ -97,6 +103,18 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 
 		return relationships.size();
 	}
+	
+	@BeforeClass
+	public static void before() {
+		if (USE_EXTERNAL_SERVICE) {
+			REASONER_ID = "org.semanticweb.elk.owlapi.ElkReasonerFactory"; // IHTSDO default 
+			SnomedBranchingRestRequests.updateBranch(BranchPathUtils.createMainPath(), ImmutableMap.<String, Object>builder()
+					// include snapshot export of the test dataset here
+					.put("previousPackage", "snomed_export_20190218_162720.zip")
+					.put("previousRelease", "20180131")
+					.build());
+		}
+	}
 
 	@Test
 	public void persistInferredRelationship() throws Exception {
@@ -106,7 +124,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 
 		createNewRelationship(branchPath, parentConceptId, Concepts.MORPHOLOGY, targetConceptId);
 
-		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId)
 		.statusCode(200)
 		.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
@@ -157,11 +175,6 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		assertEquals(2, getPersistedInferredRelationshipCount(branchPath, parentConceptId));
 		assertEquals(2, getPersistedInferredRelationshipCount(branchPath, childConceptId));
 		
-		// assert that classification results are removed from the taxonomy result registry
-		// TODO
-//		SnomedInternalReasonerService snomedReasonerService = ApplicationContext.getServiceForClass(SnomedInternalReasonerService.class);
-//		GetResultResponse response = snomedReasonerService.getResult(classificationId);
-//		assertEquals(Type.NOT_AVAILABLE, response.getType()); 
 	}
 
 	@Test
@@ -176,10 +189,10 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		// Add redundant information that should be removed
 		createNewRelationship(branchPath, childConceptId, Concepts.IS_A, Concepts.ROOT_CONCEPT, CharacteristicType.INFERRED_RELATIONSHIP);
 
-		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId)
-		.statusCode(200)
-		.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
 
 		RelationshipChanges changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
 				.extract()
@@ -194,8 +207,8 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 
 		beginClassificationSave(branchPath, classificationId);
 		waitForClassificationSaveJob(branchPath, classificationId)
-		.statusCode(200)
-		.body("status", equalTo(ClassificationStatus.SAVED.name()));
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.SAVED.name()));
 
 		assertEquals(1, getPersistedInferredRelationshipCount(branchPath, parentConceptId));
 		assertEquals(1, getPersistedInferredRelationshipCount(branchPath, childConceptId));
@@ -230,7 +243,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		String effectiveDate = getNextAvailableEffectiveDateAsString(codeSystemShortName);
 		createVersion(codeSystemShortName, "v1", effectiveDate).statusCode(201);
 		
-		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId)
 			.statusCode(200)
 			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
@@ -282,10 +295,10 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		// Add the same relationship with a different group to the new concept as inferred
 		createNewRelationship(branchPath, conceptId, Concepts.PART_OF, Concepts.NAMESPACE_ROOT, CharacteristicType.INFERRED_RELATIONSHIP, 5);
 
-		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId)
-		.statusCode(200)
-		.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
 
 		/* 
 		 * Expecting lots of changes; all concepts receive the "Part of" relationship because it was added to the root concept, however, the original inferred relationship 
@@ -336,7 +349,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		createNewRelationship(branchPath, conceptId, ACCESS, BLADDER_FILLING_TECHNIQUE, CharacteristicType.INFERRED_RELATIONSHIP, 2);
 		createNewRelationship(branchPath, conceptId, ASSOCIATED_FINDING, POST_PROCESSING, CharacteristicType.INFERRED_RELATIONSHIP, 2);
 		
-		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId)
 			.statusCode(200)
 			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
@@ -353,7 +366,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 			.statusCode(200)
 			.body("active", equalTo(false));
 		
-		String secondClassificationId = getClassificationJobId(beginClassification(branchPath));
+		String secondClassificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, secondClassificationId)
 			.statusCode(200)
 			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
@@ -379,11 +392,11 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		String equivalentConceptId = createNewConcept(branchPath, parentConceptId);
 
 		changeToDefining(branchPath, equivalentConceptId);
-
-		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		
+		String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId)
-		.statusCode(200)
-		.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
 
 		/* 
 		 * Expecting that childConceptId will get two inferred IS A-s pointing to parentConceptId and equivalentConceptId, respectively, 
@@ -395,13 +408,27 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 
 		FluentIterable<RelationshipChange> changesIterable = FluentIterable.from(changes.getItems());
 		
-		assertEquals(4, changes.getTotal());
-		assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.INFERRED.equals(relationshipChange.getChangeNature())));
-		
-		assertInferredIsAExists(changesIterable, childConceptId, parentConceptId);
-		assertInferredIsAExists(changesIterable, childConceptId, equivalentConceptId);
-		assertInferredIsAExists(changesIterable, parentConceptId, Concepts.ROOT_CONCEPT);
-		assertInferredIsAExists(changesIterable, equivalentConceptId, Concepts.ROOT_CONCEPT);
+		// inference of IS A relationships when equivalent concepts are present differs between internal and external service
+		if (USE_EXTERNAL_SERVICE) {
+			
+			assertEquals(3, changes.getTotal());
+			assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.INFERRED.equals(relationshipChange.getChangeNature())));
+			
+			assertInferredIsAExists(changesIterable, childConceptId, equivalentConceptId);
+			assertInferredIsAExists(changesIterable, parentConceptId, equivalentConceptId);
+			assertInferredIsAExists(changesIterable, equivalentConceptId, Concepts.ROOT_CONCEPT);
+			
+		} else {
+			
+			assertEquals(4, changes.getTotal());
+			assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.INFERRED.equals(relationshipChange.getChangeNature())));
+			
+			assertInferredIsAExists(changesIterable, childConceptId, parentConceptId);
+			assertInferredIsAExists(changesIterable, childConceptId, equivalentConceptId);
+			assertInferredIsAExists(changesIterable, parentConceptId, Concepts.ROOT_CONCEPT);
+			assertInferredIsAExists(changesIterable, equivalentConceptId, Concepts.ROOT_CONCEPT);
+			
+		}
 		
 		EquivalentConceptSets equivalentConceptSets = MAPPER.readValue(getEquivalentConceptSets(branchPath, classificationId).statusCode(200)
 				.extract()
@@ -419,7 +446,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void testRelationshipChangesGetResponse() throws Exception {
-		String classificationId1 = getClassificationJobId(beginClassification(branchPath));
+		String classificationId1 = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId1)
 			.statusCode(200)
 			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
@@ -431,7 +458,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		
 		String sourceConcept = createNewConcept(branchPath);
 		
-		String classificationId2 = getClassificationJobId(beginClassification(branchPath));
+		String classificationId2 = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId2)
 			.statusCode(200)
 			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
