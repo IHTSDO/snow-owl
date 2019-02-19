@@ -38,6 +38,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.time.TimeUtil;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.IDisposableService;
@@ -65,6 +66,7 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
 import okhttp3.Credentials;
@@ -86,6 +88,8 @@ public class SnomedExternalClassificationService implements IDisposableService {
 	
 	private static final String PREVIOUS_PACKAGE_METADATA_KEY = "previousPackage";
 	private static final String DEPENDENCY_PACKAGE_METADATA_KEY = "dependencyPackage";
+	
+	private static final List<ExtendedLocale> LOCALES = ImmutableList.of(ExtendedLocale.valueOf("en-gb"), ExtendedLocale.valueOf("en-us"));
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedExternalClassificationService.class);
 	private static final Splitter TAB_SPLITTER = Splitter.on('\t');
@@ -146,6 +150,7 @@ public class SnomedExternalClassificationService implements IDisposableService {
         			.setReferenceBranch(branch.path())
         			.setRefSetExportLayout(Rf2RefSetExportLayout.COMBINED)
         			.setCountryNamespaceElement(countryAndNamespaceElement)
+        			.setLocales(LOCALES)
         			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
         			.execute(getEventBus())
         			.getSync();
@@ -283,10 +288,12 @@ public class SnomedExternalClassificationService implements IDisposableService {
 	}
 
 	public Collection<List<String>> getLinesFromFile(Path archivePath, Path filePath) throws IOException {
-		return Files.lines(archivePath.resolve(filePath))
-			.skip(1) // header
-			.map( line -> TAB_SPLITTER.splitToList(line))
-			.collect(toList());
+		try (FileSystem zipfs = FileSystems.newFileSystem(archivePath, null)) {
+			return Files.lines(zipfs.getPath(filePath.toString()))
+					.skip(1) // header
+					.map( line -> TAB_SPLITTER.splitToList(line))
+					.collect(toList());
+		}
 	}
 	
 	private static IEventBus getEventBus() {
