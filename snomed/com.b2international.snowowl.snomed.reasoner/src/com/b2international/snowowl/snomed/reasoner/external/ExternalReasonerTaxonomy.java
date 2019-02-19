@@ -15,8 +15,11 @@
  */
 package com.b2international.snowowl.snomed.reasoner.external;
 
+import static com.google.common.collect.Maps.newHashMap;
+
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import com.b2international.snowowl.snomed.datastore.index.taxonomy.IInternalSctIdMultimap;
 import com.b2international.snowowl.snomed.datastore.index.taxonomy.IInternalSctIdSet;
@@ -42,13 +45,18 @@ public class ExternalReasonerTaxonomy implements IReasonerTaxonomy {
 	private Multimap<String, String> processEquivalentConceptLines(Collection<List<String>> equivalentConceptLines) {
 		
 		ArrayListMultimap<String, String> equivalentConcepts = ArrayListMultimap.create();
+		Map<String, String> knownEquivalentSetIds = newHashMap();
 		
 		equivalentConceptLines.forEach(elements -> {
 			
 			String referencedComponent = elements.get(5); // equivalent concept
 			String mapTarget = elements.get(6); // id of equivalent set
 			
-			equivalentConcepts.put(mapTarget, referencedComponent);
+			if (knownEquivalentSetIds.containsKey(mapTarget)) {
+				equivalentConcepts.put(knownEquivalentSetIds.get(mapTarget), referencedComponent);
+			} else {
+				knownEquivalentSetIds.put(mapTarget, referencedComponent);
+			}
 			
 		});
 		
