@@ -68,7 +68,7 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			final String branchPath,
 
 			@ApiParam(value="The identifiers of the parent concepts")
-			@RequestParam(required = true)
+			@RequestParam(required = false)
 			List<String> parentIds,
 			
 			@ApiParam(value="The parts of the response information to expand.")
