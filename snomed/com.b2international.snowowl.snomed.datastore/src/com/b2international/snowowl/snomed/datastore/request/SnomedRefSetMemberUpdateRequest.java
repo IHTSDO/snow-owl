@@ -29,14 +29,22 @@ import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedAssociationRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.google.common.base.Strings;
 
 /**
  * @since 4.5
  */
 public final class SnomedRefSetMemberUpdateRequest implements Request<TransactionContext, Boolean> {
+	
+	private static final String[] EMPTY_ARRAY = new String[] {};
 
 	@NotEmpty
 	private final String memberId;
@@ -106,8 +114,25 @@ public final class SnomedRefSetMemberUpdateRequest implements Request<Transactio
 			SnomedRefSetMemberUpdateDelegate delegate = getDelegate(type);
 			changed |= delegate.execute(member, context);
 
-			if (changed && !isEffectiveTimeUpdate()) {
-				member.unsetEffectiveTime();
+			if (changed) {
+				if (!isEffectiveTimeUpdate() && member.isSetEffectiveTime()) {
+					member.unsetEffectiveTime();
+				} else {
+					if (member.isReleased()) {
+						final String branchPath = SnomedComponentUpdateRequest.getLatestReleaseBranch(context);
+						if (!Strings.isNullOrEmpty(branchPath)) {
+							final SnomedReferenceSetMember releasedMember = SnomedRequests.prepareGetMember(getMemberId())
+								.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+								.execute(context.service(IEventBus.class))
+								.getSync();
+							if (releasedMember == null) {
+								throw new ComponentNotFoundException(ComponentCategory.SET_MEMBER, getMemberId());
+							} else if (!isDifferentToPreviousRelease(member, releasedMember, type)) {
+								member.setEffectiveTime(releasedMember.getEffectiveTime());
+							}
+						}
+					}
+				}
 			}
 
 			return changed;
@@ -115,6 +140,21 @@ public final class SnomedRefSetMemberUpdateRequest implements Request<Transactio
 		} catch (ComponentNotFoundException e) {
 			throw e.toBadRequestException();
 		}
+	}
+	
+	private boolean isDifferentToPreviousRelease(SnomedRefSetMember member, SnomedReferenceSetMember releasedMember, SnomedRefSetType type) {
+		if (releasedMember.isActive() != member.isActive()) return true;
+		if (!releasedMember.getModuleId().equals(member.getModuleId())) return true;
+		final String[] mutableHeadersByType = getMutableHeadersByType(type);
+		boolean hasPropertyChange = false;
+		for (String header : mutableHeadersByType) {
+			if (member instanceof SnomedAssociationRefSetMember) {
+				final SnomedAssociationRefSetMember associationRefSetMember = (SnomedAssociationRefSetMember) member;
+				final Object releasedProperty = releasedMember.getProperties().get(header);
+			}
+			
+		}
+		return hasPropertyChange;
 	}
 	
 	private SnomedRefSetMemberUpdateDelegate getDelegate(SnomedRefSetType referenceSetType) {
@@ -156,6 +196,73 @@ public final class SnomedRefSetMemberUpdateRequest implements Request<Transactio
 				return new SnomedMRCMModuleScopeMemberUpdateDelegate(this);
 			default: 
 				throw new IllegalStateException("Unexpected reference set type '" + referenceSetType + "'.");
+		}
+	}
+	
+	private String[] getMutableHeadersByType(SnomedRefSetType referenceSetType) {
+		switch (referenceSetType) {
+		case ASSOCIATION:
+			return new String[] { SnomedRf2Headers.FIELD_TARGET_COMPONENT_ID };
+		case ATTRIBUTE_VALUE:
+			return new String[] { SnomedRf2Headers.FIELD_VALUE_ID };
+		case COMPLEX_MAP:
+			return new String[] { 
+					SnomedRf2Headers.FIELD_MAP_GROUP, SnomedRf2Headers.FIELD_MAP_PRIORITY,
+					SnomedRf2Headers.FIELD_MAP_RULE, SnomedRf2Headers.FIELD_MAP_ADVICE,
+					SnomedRf2Headers.FIELD_MAP_TARGET, SnomedRf2Headers.FIELD_CORRELATION_ID 
+					};
+		case EXTENDED_MAP:
+			return new String[] { 
+					SnomedRf2Headers.FIELD_MAP_GROUP, SnomedRf2Headers.FIELD_MAP_PRIORITY,
+					SnomedRf2Headers.FIELD_MAP_RULE, SnomedRf2Headers.FIELD_MAP_ADVICE,
+					SnomedRf2Headers.FIELD_MAP_TARGET, SnomedRf2Headers.FIELD_CORRELATION_ID,
+					SnomedRf2Headers.FIELD_MAP_CATEGORY_ID
+					};
+		case CONCRETE_DATA_TYPE:
+			return new String[] {
+					SnomedRf2Headers.FIELD_UNIT_ID, 
+					SnomedRf2Headers.FIELD_OPERATOR_ID, 
+					SnomedRf2Headers.FIELD_VALUE
+			};
+		case DESCRIPTION_TYPE:
+			return new String[] { SnomedRf2Headers.FIELD_DESCRIPTION_FORMAT, SnomedRf2Headers.FIELD_DESCRIPTION_LENGTH };
+		case LANGUAGE:
+			return new String[] { SnomedRf2Headers.FIELD_ACCEPTABILITY_ID };
+		case MODULE_DEPENDENCY:
+			return new String[] { SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME, SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME };
+		case QUERY:
+			return new String[] { SnomedRf2Headers.FIELD_QUERY };
+		case SIMPLE: 
+			return EMPTY_ARRAY;
+		case SIMPLE_MAP:
+			return new String[] { SnomedRf2Headers.FIELD_MAP_TARGET };
+		case SIMPLE_MAP_WITH_DESCRIPTION:
+			return new String[] { SnomedRf2Headers.FIELD_MAP_TARGET, SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION };
+		case OWL_AXIOM: //$FALL-THROUGH$
+		case OWL_ONTOLOGY:
+			return new String[] { SnomedRf2Headers.FIELD_OWL_EXPRESSION };
+		case MRCM_DOMAIN:
+			return new String[] { 
+					SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, 
+					SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, 
+					SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, 
+					SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE};
+		case MRCM_ATTRIBUTE_DOMAIN:
+			return new String[] {
+					SnomedRf2Headers.FIELD_MRCM_GROUPED, SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY,
+					SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID,
+					SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID
+			};
+		case MRCM_ATTRIBUTE_RANGE:
+			return new String[] {
+					SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE,
+					SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID,
+			};
+		case MRCM_MODULE_SCOPE:
+			return EMPTY_ARRAY;
+			
+		default: 
+			throw new IllegalStateException("Unexpected reference set type '" + referenceSetType + "'.");
 		}
 	}
 	
