@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 
@@ -31,8 +32,8 @@ final class SnomedLanguageMemberUpdateDelegate extends SnomedRefSetMemberUpdateD
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
-		SnomedLanguageRefSetMember languageMember = (SnomedLanguageRefSetMember) member;
-		String newAcceptabilityId = getComponentId(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID);
+		final SnomedLanguageRefSetMember languageMember = (SnomedLanguageRefSetMember) member;
+		final String newAcceptabilityId = getComponentId(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID);
 
 		if (newAcceptabilityId != null && !newAcceptabilityId.equals(languageMember.getAcceptabilityId())) {
 			languageMember.setAcceptabilityId(newAcceptabilityId);
@@ -40,6 +41,15 @@ final class SnomedLanguageMemberUpdateDelegate extends SnomedRefSetMemberUpdateD
 		} else {
 			return false;
 		}
+	}
+
+	@Override
+	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedLanguageRefSetMember currentLanguageMember = (SnomedLanguageRefSetMember) currentMember;
+		
+		final String releasedAcceptabilityId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID);
+		
+		return releasedAcceptabilityId != null && !releasedAcceptabilityId.equals(currentLanguageMember.getAcceptabilityId());
 	}
 
 }

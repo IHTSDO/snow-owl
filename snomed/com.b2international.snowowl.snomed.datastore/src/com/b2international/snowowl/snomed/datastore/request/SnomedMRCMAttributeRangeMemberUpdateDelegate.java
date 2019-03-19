@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMAttributeRangeRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.google.common.base.Strings;
@@ -32,7 +33,6 @@ public class SnomedMRCMAttributeRangeMemberUpdateDelegate extends SnomedRefSetMe
 
 	@Override
 	boolean execute(final SnomedRefSetMember member, final TransactionContext context) {
-
 		final SnomedMRCMAttributeRangeRefSetMember attributeRangeMember = (SnomedMRCMAttributeRangeRefSetMember) member;
 
 		final String rangeConstraint = getProperty(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT);
@@ -63,6 +63,34 @@ public class SnomedMRCMAttributeRangeMemberUpdateDelegate extends SnomedRefSetMe
 		}
 
 		return changed;
+	}
+
+	@Override
+	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedMRCMAttributeRangeRefSetMember currentAttributeRangeMember = (SnomedMRCMAttributeRangeRefSetMember) currentMember;
+		
+		final String releasedRangedConstraint = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT);
+		final String releasedAttributeRule = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE);
+		final String releasedRuleStrengthId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID);
+		final String releasedContentTypeId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID);
+		
+		if (releasedRangedConstraint != null && !releasedRangedConstraint.equals(currentAttributeRangeMember.getRangeConstraint())) {
+			return true;
+		}
+		
+		if (releasedAttributeRule != null && !releasedAttributeRule.equals(currentAttributeRangeMember.getAttributeRule())) {
+			return true;
+		}
+		
+		if (releasedRuleStrengthId != null && !releasedRuleStrengthId.equals(currentAttributeRangeMember.getRuleStrengthId())) {
+			return true;
+		}
+		
+		if (releasedContentTypeId != null && !releasedContentTypeId.equals(currentAttributeRangeMember.getContentTypeId())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 }

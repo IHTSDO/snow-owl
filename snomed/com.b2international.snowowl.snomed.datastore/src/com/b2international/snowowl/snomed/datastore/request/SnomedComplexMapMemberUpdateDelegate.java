@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
+
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedComplexMapRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 
@@ -31,13 +33,13 @@ final class SnomedComplexMapMemberUpdateDelegate extends SnomedRefSetMemberUpdat
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
-		SnomedComplexMapRefSetMember complexMapMember = (SnomedComplexMapRefSetMember) member;
-		String newMapTargetId = getComponentId(SnomedRf2Headers.FIELD_MAP_TARGET);
-		Integer newGroup = getProperty(SnomedRf2Headers.FIELD_MAP_GROUP, Integer.class);
-		Integer newPriority = getProperty(SnomedRf2Headers.FIELD_MAP_PRIORITY, Integer.class);
-		String newMapRule = getProperty(SnomedRf2Headers.FIELD_MAP_RULE);
-		String newMapAdvice = getProperty(SnomedRf2Headers.FIELD_MAP_ADVICE);
-		String newCorrelationId = getComponentId(SnomedRf2Headers.FIELD_CORRELATION_ID);
+		final SnomedComplexMapRefSetMember complexMapMember = (SnomedComplexMapRefSetMember) member;
+		final String newMapTargetId = getComponentId(SnomedRf2Headers.FIELD_MAP_TARGET);
+		final Integer newGroup = getProperty(SnomedRf2Headers.FIELD_MAP_GROUP, Integer.class);
+		final Integer newPriority = getProperty(SnomedRf2Headers.FIELD_MAP_PRIORITY, Integer.class);
+		final String newMapRule = getProperty(SnomedRf2Headers.FIELD_MAP_RULE);
+		final String newMapAdvice = getProperty(SnomedRf2Headers.FIELD_MAP_ADVICE);
+		final String newCorrelationId = getComponentId(SnomedRf2Headers.FIELD_CORRELATION_ID);
 
 		boolean changed = false;
 
@@ -72,6 +74,44 @@ final class SnomedComplexMapMemberUpdateDelegate extends SnomedRefSetMemberUpdat
 		}
 
 		return changed;
+	}
+
+	@Override
+	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedComplexMapRefSetMember currentComplexMapMember = (SnomedComplexMapRefSetMember) currentMember;
+		
+		final String releasedMapTargetId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_TARGET);
+		final Integer releasedMapGroup = (Integer) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_GROUP);
+		final Integer releasedMapPriority = (Integer) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_PRIORITY);
+		final String releasedMapRule = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_RULE);
+		final String releasedMapAdvice = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_ADVICE);
+		final String releasedCorrelationId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_CORRELATION_ID);
+		
+		if (releasedMapTargetId != null && !releasedMapTargetId.equals(currentComplexMapMember.getMapTargetComponentId())) {
+			return true;
+		}
+		
+		if (releasedMapGroup != null && releasedMapGroup.intValue() != currentComplexMapMember.getMapGroup()) {
+			return true;
+		}
+		
+		if (releasedMapPriority != null && releasedMapPriority.intValue() != currentComplexMapMember.getMapPriority()) {
+			return true;
+		}
+		
+		if (releasedMapRule != null && !releasedMapRule.equals(currentComplexMapMember.getMapRule())) {
+			return true;
+		}
+		
+		if (releasedMapAdvice != null && !releasedMapAdvice.equals(currentComplexMapMember.getMapAdvice())) {
+			return true;
+		}
+		
+		if (releasedCorrelationId != null && !releasedCorrelationId.equals(currentComplexMapMember.getCorrelationId())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 }

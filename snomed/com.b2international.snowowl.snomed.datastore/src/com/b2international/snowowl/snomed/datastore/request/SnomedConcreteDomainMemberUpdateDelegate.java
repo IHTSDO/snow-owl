@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 
@@ -31,12 +32,12 @@ final class SnomedConcreteDomainMemberUpdateDelegate extends SnomedRefSetMemberU
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
-		SnomedConcreteDataTypeRefSetMember concreteDomainMember = (SnomedConcreteDataTypeRefSetMember) member;
-		String newAttributeName = getComponentId(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME);
-		String newCharacteristicTypeId = getComponentId(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID);
-		String newValue = getProperty(SnomedRf2Headers.FIELD_VALUE);
-		String newOperatorId = getComponentId(SnomedRf2Headers.FIELD_OPERATOR_ID);
-		String newUnitId = getComponentId(SnomedRf2Headers.FIELD_UNIT_ID);
+		final SnomedConcreteDataTypeRefSetMember concreteDomainMember = (SnomedConcreteDataTypeRefSetMember) member;
+		final String newAttributeName = getComponentId(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME);
+		final String newCharacteristicTypeId = getComponentId(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID);
+		final String newValue = getProperty(SnomedRf2Headers.FIELD_VALUE);
+		final String newOperatorId = getComponentId(SnomedRf2Headers.FIELD_OPERATOR_ID);
+		final String newUnitId = getComponentId(SnomedRf2Headers.FIELD_UNIT_ID);
 
 		boolean changed = false;
 
@@ -66,6 +67,40 @@ final class SnomedConcreteDomainMemberUpdateDelegate extends SnomedRefSetMemberU
 		}
 
 		return changed;
+	}
+
+	@Override
+	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedConcreteDataTypeRefSetMember currentConcreteDomainMember = (SnomedConcreteDataTypeRefSetMember) currentMember;
+		
+		final String releasedAttributeName = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME);
+		final String releasedCharTypeId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID);
+		final String releasedValue = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_VALUE);
+		final String releasedOperatorId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_OPERATOR_ID);
+		final String releasedUnitId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_UNIT_ID);
+		
+		
+		if (releasedAttributeName != null && !releasedAttributeName.equals(currentConcreteDomainMember.getLabel())) {
+			return true;
+		}
+		
+		if (releasedCharTypeId != null && !releasedCharTypeId.equals(currentConcreteDomainMember.getCharacteristicTypeId())) {
+			return true;
+		}
+		
+		if (releasedValue != null && !releasedValue.equals(currentConcreteDomainMember.getSerializedValue())) {
+			return true;
+		}
+		
+		if (releasedOperatorId != null && !releasedOperatorId.equals(currentConcreteDomainMember.getOperatorComponentId())) {
+			return true;
+		}
+		
+		if (releasedUnitId != null && !releasedUnitId.equals(currentConcreteDomainMember.getUomComponentId())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 }

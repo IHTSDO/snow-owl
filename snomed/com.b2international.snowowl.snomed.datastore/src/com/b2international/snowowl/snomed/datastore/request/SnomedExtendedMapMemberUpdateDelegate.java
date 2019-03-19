@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedComplexMapRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 
@@ -31,53 +32,96 @@ final class SnomedExtendedMapMemberUpdateDelegate extends SnomedRefSetMemberUpda
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
-		SnomedComplexMapRefSetMember concreteDomainMember = (SnomedComplexMapRefSetMember) member;
-		String newMapTargetId = getComponentId(SnomedRf2Headers.FIELD_MAP_TARGET);
-		Integer newGroup = getProperty(SnomedRf2Headers.FIELD_MAP_GROUP, Integer.class);
-		Integer newPriority = getProperty(SnomedRf2Headers.FIELD_MAP_PRIORITY, Integer.class);
-		String newMapRule = getProperty(SnomedRf2Headers.FIELD_MAP_RULE);
-		String newMapAdvice = getProperty(SnomedRf2Headers.FIELD_MAP_ADVICE);
-		String newCorrelationId = getComponentId(SnomedRf2Headers.FIELD_CORRELATION_ID);
-		String newMapCategoryId = getComponentId(SnomedRf2Headers.FIELD_MAP_CATEGORY_ID);
+		final SnomedComplexMapRefSetMember extendedMapMember = (SnomedComplexMapRefSetMember) member;
+		final String newMapTargetId = getComponentId(SnomedRf2Headers.FIELD_MAP_TARGET);
+		final Integer newGroup = getProperty(SnomedRf2Headers.FIELD_MAP_GROUP, Integer.class);
+		final Integer newPriority = getProperty(SnomedRf2Headers.FIELD_MAP_PRIORITY, Integer.class);
+		final String newMapRule = getProperty(SnomedRf2Headers.FIELD_MAP_RULE);
+		final String newMapAdvice = getProperty(SnomedRf2Headers.FIELD_MAP_ADVICE);
+		final String newCorrelationId = getComponentId(SnomedRf2Headers.FIELD_CORRELATION_ID);
+		final String newMapCategoryId = getComponentId(SnomedRf2Headers.FIELD_MAP_CATEGORY_ID);
 
 		boolean changed = false;
 
-		if (newMapTargetId != null && !newMapTargetId.equals(concreteDomainMember.getMapTargetComponentId())) {
-			concreteDomainMember.setMapTargetComponentId(newMapTargetId);
+		if (newMapTargetId != null && !newMapTargetId.equals(extendedMapMember.getMapTargetComponentId())) {
+			extendedMapMember.setMapTargetComponentId(newMapTargetId);
 			changed |= true;
 		}
 
-		if (newGroup != null && newGroup.intValue() != concreteDomainMember.getMapGroup()) {
-			concreteDomainMember.setMapGroup(newGroup);
+		if (newGroup != null && newGroup.intValue() != extendedMapMember.getMapGroup()) {
+			extendedMapMember.setMapGroup(newGroup);
 			changed |= true;
 		}
 
-		if (newPriority != null && newPriority.intValue() != concreteDomainMember.getMapPriority()) {
-			concreteDomainMember.setMapPriority(newPriority);
+		if (newPriority != null && newPriority.intValue() != extendedMapMember.getMapPriority()) {
+			extendedMapMember.setMapPriority(newPriority);
 			changed |= true;
 		}
 
-		if (newMapRule != null && !newMapRule.equals(concreteDomainMember.getMapRule())) {
-			concreteDomainMember.setMapRule(newMapRule);
+		if (newMapRule != null && !newMapRule.equals(extendedMapMember.getMapRule())) {
+			extendedMapMember.setMapRule(newMapRule);
 			changed |= true;
 		}
 
-		if (newMapAdvice != null && !newMapAdvice.equals(concreteDomainMember.getMapAdvice())) {
-			concreteDomainMember.setMapAdvice(newMapAdvice);
+		if (newMapAdvice != null && !newMapAdvice.equals(extendedMapMember.getMapAdvice())) {
+			extendedMapMember.setMapAdvice(newMapAdvice);
 			changed |= true;
 		}
 
-		if (newCorrelationId != null && !newCorrelationId.equals(concreteDomainMember.getCorrelationId())) {
-			concreteDomainMember.setCorrelationId(newCorrelationId);
+		if (newCorrelationId != null && !newCorrelationId.equals(extendedMapMember.getCorrelationId())) {
+			extendedMapMember.setCorrelationId(newCorrelationId);
 			changed |= true;
 		}
 
-		if (newMapCategoryId != null && !newMapCategoryId.equals(concreteDomainMember.getMapCategoryId())) {
-			concreteDomainMember.setMapCategoryId(newMapCategoryId);
+		if (newMapCategoryId != null && !newMapCategoryId.equals(extendedMapMember.getMapCategoryId())) {
+			extendedMapMember.setMapCategoryId(newMapCategoryId);
 			changed |= true;
 		}
 
 		return changed;
+	}
+
+	@Override
+	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedComplexMapRefSetMember currentExtendedMapMember = (SnomedComplexMapRefSetMember) currentMember;
+
+		final String releasedMapTargetId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_TARGET);
+		final Integer releasedMapGroup = (Integer) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_GROUP);
+		final Integer releasedMapPriority = (Integer) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_PRIORITY);
+		final String releasedMapRule = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_RULE);
+		final String releasedMapAdvice = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_ADVICE);
+		final String releasedCorrelationId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_CORRELATION_ID);
+		final String releasedMapCategoryId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_CATEGORY_ID);
+		
+		if (releasedMapTargetId != null && !releasedMapTargetId.equals(currentExtendedMapMember.getMapTargetComponentId())) {
+			return true;
+		}
+		
+		if (releasedMapGroup != null && releasedMapGroup.intValue() != currentExtendedMapMember.getMapGroup()) {
+			return true;
+		}
+		
+		if (releasedMapPriority != null && releasedMapPriority.intValue() != currentExtendedMapMember.getMapPriority()) {
+			return true;
+		}
+		
+		if (releasedMapRule != null && !releasedMapRule.equals(currentExtendedMapMember.getMapRule())) {
+			return true;
+		}
+		
+		if (releasedMapAdvice != null && !releasedMapAdvice.equals(currentExtendedMapMember.getMapAdvice())) {
+			return true;
+		}
+		
+		if (releasedCorrelationId != null && !releasedCorrelationId.equals(currentExtendedMapMember.getCorrelationId())) {
+			return true;
+		}
+		
+		if (releasedMapCategoryId != null && !releasedMapCategoryId.equals(currentExtendedMapMember.getMapCategoryId())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
+import com.b2international.commons.ClassUtils;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMAttributeDomainRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.google.common.base.Strings;
@@ -32,7 +34,6 @@ public class SnomedMRCMAttributeDomainMemberUpdateDelegate extends SnomedRefSetM
 
 	@Override
 	boolean execute(final SnomedRefSetMember member, final TransactionContext context) {
-
 		final SnomedMRCMAttributeDomainRefSetMember domainMember = (SnomedMRCMAttributeDomainRefSetMember) member;
 
 		final String domainId = getProperty(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID);
@@ -75,6 +76,44 @@ public class SnomedMRCMAttributeDomainMemberUpdateDelegate extends SnomedRefSetM
 		}
 
 		return changed;
+	}
+
+	@Override
+	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedMRCMAttributeDomainRefSetMember currentDomainMember = (SnomedMRCMAttributeDomainRefSetMember) currentMember;
+		
+		final String releasedDomainId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID);
+		final Boolean releasedGrouped = ClassUtils.checkAndCast(releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_GROUPED), Boolean.class);		
+		final String releasedAttributeCardinality = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY);
+		final String releasedAtributeInGroupCardinality = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY);
+		final String releasedRuleStrengthId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID);
+		final String releasedContentTypeId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID);
+		
+		if (releasedDomainId != null && !releasedDomainId.equals(currentDomainMember.getDomainId())) {
+			return true;
+		}
+		
+		if (releasedGrouped != null && releasedGrouped.booleanValue() ^ currentDomainMember.isGrouped()) {
+			return true;
+		}
+		
+		if (releasedAttributeCardinality != null && !releasedAttributeCardinality.equals(currentDomainMember.getAttributeCardinality())) {
+			return true;
+		}
+		
+		if (releasedAtributeInGroupCardinality != null && !releasedAtributeInGroupCardinality.equals(currentDomainMember.getAttributeInGroupCardinality())) {
+			return true;
+		}
+		
+		if (releasedRuleStrengthId != null && !releasedRuleStrengthId.equals(currentDomainMember.getRuleStrengthId())) {
+			return true;
+		}
+		
+		if (releasedContentTypeId != null && !releasedContentTypeId.equals(currentDomainMember.getContentTypeId())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 }

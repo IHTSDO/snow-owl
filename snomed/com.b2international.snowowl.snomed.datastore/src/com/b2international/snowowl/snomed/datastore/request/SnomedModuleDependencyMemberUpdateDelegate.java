@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedModuleDependencyRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.google.common.base.Objects;
@@ -37,13 +38,13 @@ final class SnomedModuleDependencyMemberUpdateDelegate extends SnomedRefSetMembe
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
-		SnomedModuleDependencyRefSetMember moduleDependencyMember = (SnomedModuleDependencyRefSetMember) member;
+		final SnomedModuleDependencyRefSetMember moduleDependencyMember = (SnomedModuleDependencyRefSetMember) member;
 
 		boolean changed = false;
 
 		if (hasProperty(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME)) {
-			String sourceEffectiveTime = getProperty(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME);
-			Date newSourceEffectiveTime = Strings.isNullOrEmpty(sourceEffectiveTime) ? null : EffectiveTimes.parse(sourceEffectiveTime, DateFormats.SHORT);
+			final String sourceEffectiveTime = getProperty(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME);
+			final Date newSourceEffectiveTime = Strings.isNullOrEmpty(sourceEffectiveTime) ? null : EffectiveTimes.parse(sourceEffectiveTime, DateFormats.SHORT);
 			if (!Objects.equal(newSourceEffectiveTime, moduleDependencyMember.getSourceEffectiveTime())) {
 				moduleDependencyMember.setSourceEffectiveTime(newSourceEffectiveTime);
 				changed |= true;
@@ -51,8 +52,8 @@ final class SnomedModuleDependencyMemberUpdateDelegate extends SnomedRefSetMembe
 		}
 
 		if (hasProperty(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME)) {
-			String targetEffectiveTime = getProperty(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME);
-			Date newTargetEffectiveTime = Strings.isNullOrEmpty(targetEffectiveTime) ? null : EffectiveTimes.parse(targetEffectiveTime, DateFormats.SHORT);
+			final String targetEffectiveTime = getProperty(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME);
+			final Date newTargetEffectiveTime = Strings.isNullOrEmpty(targetEffectiveTime) ? null : EffectiveTimes.parse(targetEffectiveTime, DateFormats.SHORT);
 			if (!Objects.equal(newTargetEffectiveTime, moduleDependencyMember.getTargetEffectiveTime())) {
 				moduleDependencyMember.setTargetEffectiveTime(newTargetEffectiveTime);
 				changed |= true;
@@ -60,6 +61,31 @@ final class SnomedModuleDependencyMemberUpdateDelegate extends SnomedRefSetMembe
 		}
 
 		return changed;
+	}
+
+	@Override
+	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedModuleDependencyRefSetMember currentModuleDependencyMember = (SnomedModuleDependencyRefSetMember) currentMember;
+		
+		if (releasedMember.getProperties().containsKey(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME)) {
+			final String releasedSourceEffectiveTime = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME);
+			final Date releasedSourceDate = Strings.isNullOrEmpty(releasedSourceEffectiveTime) ? null : EffectiveTimes.parse(releasedSourceEffectiveTime, DateFormats.SHORT);
+			
+			if (!Objects.equal(releasedSourceDate, currentModuleDependencyMember.getSourceEffectiveTime())) {
+				return true;
+			}
+		}
+		
+		if (releasedMember.getProperties().containsKey(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME)) {
+			final String releasedTargetEffectiveTime = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME);
+			final Date releasedTargetDate = Strings.isNullOrEmpty(releasedTargetEffectiveTime) ? null : EffectiveTimes.parse(releasedTargetEffectiveTime, DateFormats.SHORT);
+			
+			if (!Objects.equal(releasedTargetDate, currentModuleDependencyMember.getTargetEffectiveTime())) {
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 }
