@@ -66,7 +66,7 @@ public class SnomedMRCMAttributeRangeMemberUpdateDelegate extends SnomedRefSetMe
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedMRCMAttributeRangeRefSetMember currentAttributeRangeMember = (SnomedMRCMAttributeRangeRefSetMember) currentMember;
 		
 		final String releasedRangedConstraint = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT);

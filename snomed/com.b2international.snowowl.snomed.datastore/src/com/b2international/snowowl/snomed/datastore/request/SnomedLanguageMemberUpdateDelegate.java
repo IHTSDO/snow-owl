@@ -44,7 +44,7 @@ final class SnomedLanguageMemberUpdateDelegate extends SnomedRefSetMemberUpdateD
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedLanguageRefSetMember currentLanguageMember = (SnomedLanguageRefSetMember) currentMember;
 		
 		final String releasedAcceptabilityId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID);

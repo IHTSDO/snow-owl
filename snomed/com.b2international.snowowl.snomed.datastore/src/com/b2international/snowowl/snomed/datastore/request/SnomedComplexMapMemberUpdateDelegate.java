@@ -77,7 +77,7 @@ final class SnomedComplexMapMemberUpdateDelegate extends SnomedRefSetMemberUpdat
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedComplexMapRefSetMember currentComplexMapMember = (SnomedComplexMapRefSetMember) currentMember;
 		
 		final String releasedMapTargetId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_TARGET);

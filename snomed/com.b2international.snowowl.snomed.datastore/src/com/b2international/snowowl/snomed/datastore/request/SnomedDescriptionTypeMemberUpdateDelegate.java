@@ -52,7 +52,7 @@ final class SnomedDescriptionTypeMemberUpdateDelegate extends SnomedRefSetMember
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedDescriptionTypeRefSetMember currentDescriptionTypeMember = (SnomedDescriptionTypeRefSetMember) currentMember;
 		
 		final String releasedDescriptionFormat = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_DESCRIPTION_FORMAT);

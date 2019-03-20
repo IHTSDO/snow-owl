@@ -70,7 +70,7 @@ final class SnomedConcreteDomainMemberUpdateDelegate extends SnomedRefSetMemberU
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedConcreteDataTypeRefSetMember currentConcreteDomainMember = (SnomedConcreteDataTypeRefSetMember) currentMember;
 		
 		final String releasedAttributeName = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME);

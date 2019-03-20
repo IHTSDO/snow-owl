@@ -57,9 +57,9 @@ abstract class SnomedRefSetMemberUpdateDelegate {
 		basePropertiesChanged |= releasedMember.isActive() != currentMember.isActive();
 		basePropertiesChanged |= !releasedMember.getModuleId().equals(currentMember.getModuleId());
 		
-		return !basePropertiesChanged && !hasMutablePropertieschanged(currentMember, releasedMember);
+		return !basePropertiesChanged && !hasMutablePropertyChange(currentMember, releasedMember);
 	}
 	
-	abstract boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember);
+	abstract boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember);
 	
 }

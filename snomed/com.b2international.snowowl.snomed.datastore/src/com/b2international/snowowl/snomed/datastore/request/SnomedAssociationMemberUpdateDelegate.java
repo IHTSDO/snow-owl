@@ -44,7 +44,7 @@ final class SnomedAssociationMemberUpdateDelegate extends SnomedRefSetMemberUpda
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedAssociationRefSetMember currentAssociationMember = (SnomedAssociationRefSetMember) currentMember;
 		final String releasedMemberTargetComponentId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_TARGET_COMPONENT_ID);
 		

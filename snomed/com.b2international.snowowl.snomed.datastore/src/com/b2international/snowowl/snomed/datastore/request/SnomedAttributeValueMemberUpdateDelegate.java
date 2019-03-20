@@ -44,7 +44,7 @@ final class SnomedAttributeValueMemberUpdateDelegate extends SnomedRefSetMemberU
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedAttributeValueRefSetMember currentAttributeValueMember = (SnomedAttributeValueRefSetMember) currentMember;
 		final String releasedValueId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_VALUE_ID);
 		

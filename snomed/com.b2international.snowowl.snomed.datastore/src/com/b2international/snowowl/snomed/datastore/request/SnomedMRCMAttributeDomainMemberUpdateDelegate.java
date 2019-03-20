@@ -79,7 +79,7 @@ public class SnomedMRCMAttributeDomainMemberUpdateDelegate extends SnomedRefSetM
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedMRCMAttributeDomainRefSetMember currentDomainMember = (SnomedMRCMAttributeDomainRefSetMember) currentMember;
 		
 		final String releasedDomainId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_DOMAIN_ID);

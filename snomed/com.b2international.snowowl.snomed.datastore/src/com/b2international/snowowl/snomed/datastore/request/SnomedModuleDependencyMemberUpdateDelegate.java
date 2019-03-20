@@ -64,7 +64,7 @@ final class SnomedModuleDependencyMemberUpdateDelegate extends SnomedRefSetMembe
 	}
 
 	@Override
-	boolean hasMutablePropertieschanged(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		final SnomedModuleDependencyRefSetMember currentModuleDependencyMember = (SnomedModuleDependencyRefSetMember) currentMember;
 		
 		if (releasedMember.getProperties().containsKey(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME)) {
