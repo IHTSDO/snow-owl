@@ -76,11 +76,14 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -275,6 +278,20 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			"members"
 		};
 	
+	/**
+	 * Checked fields: moduleId, effectiveTime, active, owlExpression
+	 */
+	private static final String[] IGNORED_MEMBER_FIELDS = new String[] {
+			"class",
+			"score",
+			"iconId",
+			"storageKey",
+			
+			"id",
+			"referenceSetId",
+			"referencedComponentId",
+		};
+	
 	private static final Set<String> NON_INFERRED_CHARACTERISTIC_TYPES = ImmutableSet.of(
 			Concepts.STATED_RELATIONSHIP,
 			Concepts.ADDITIONAL_RELATIONSHIP,
@@ -283,6 +300,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	private static final String FAKE_ID = "FAKE_ID"; 
 	private static final SnomedDescription FAKE_DESCRIPTION = new SnomedDescription(FAKE_ID);
 	private static final SnomedRelationship FAKE_RELATIONSHIP = new SnomedRelationship(FAKE_ID);
+	private static final SnomedReferenceSetMember FAKE_MEMBER = new SnomedReferenceSetMember();
 	
 	/**
 	 * Special value indicating that the concept should not be added to the review, because it did not change (ignoring
@@ -395,6 +413,10 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			}
 			
 			if (hasNonInferredRelationshipChanges(baseConcept, sourceConcept, targetConcept, basePath)) {
+				return onSuccess();
+			}
+			
+			if (hasAxiomMemberChanges(baseConcept, sourceConcept, targetConcept, basePath)) {
 				return onSuccess();
 			}
 			
@@ -518,6 +540,71 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				final SnomedDescription targetDescription = targetMap.containsKey(id) ? targetMap.get(id) : FAKE_DESCRIPTION;
 				
 				if (hasSinglePropertyChanges(baseDescription, sourceDescription, targetDescription, IGNORED_DESCRIPTION_FIELDS)) {
+					return true;
+				}
+			}
+			
+			return false;
+		}
+		
+		private SnomedReferenceSetMembers getAxiomMembers(final String branchPath, final String conceptId) {
+			return SnomedRequests.prepareSearchMember()
+				.all()
+				.filterByReferencedComponent(conceptId)
+				.filterByRefSet(ImmutableList.of(Concepts.REFSET_OWL_AXIOM, Concepts.REFSET_OWL_ONTOLOGY))
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(getBus())
+				.getSync();
+		}
+		
+		private boolean hasAxiomMemberChanges(SnomedConcept baseConcept, SnomedConcept sourceConcept, SnomedConcept targetConcept, String basePath) {
+			boolean sourceChangedActiveStatus = baseConcept.isActive() ^ sourceConcept.isActive();
+			boolean targetChangedActiveStatus = baseConcept.isActive() ^ targetConcept.isActive();
+			boolean activeStatusDiffers = sourceConcept.isActive() ^ targetConcept.isActive();
+			
+			final SnomedReferenceSetMembers baseAxiomMembers = getAxiomMembers(basePath, conceptId);
+			final SnomedReferenceSetMembers sourceAxiomMembers = getAxiomMembers(parameters.getSourcePath(), conceptId);
+			final SnomedReferenceSetMembers targetAxiomMembers = getAxiomMembers(parameters.getTargetPath(), conceptId);
+			
+			final Map<String, SnomedReferenceSetMember> baseMap = Maps.uniqueIndex(baseAxiomMembers, input -> input.getId());
+			final Map<String, SnomedReferenceSetMember> sourceMap = Maps.uniqueIndex(sourceAxiomMembers, input -> input.getId());
+			final Map<String, SnomedReferenceSetMember> targetMap = Maps.uniqueIndex(targetAxiomMembers, input -> input.getId());
+
+			final Set<String> newSourceAxiomMemberIds = Sets.difference(sourceMap.keySet(), baseMap.keySet());
+			final Set<String> newTargetAxiomMemberIds = Sets.difference(targetMap.keySet(), baseMap.keySet());
+			
+			// if there are additions on both sides
+			if (!newSourceAxiomMemberIds.isEmpty() && !newTargetAxiomMemberIds.isEmpty()) {
+				if (!Sets.difference(newSourceAxiomMemberIds, newTargetAxiomMemberIds).isEmpty() || 
+						!Sets.difference(newTargetAxiomMemberIds, newSourceAxiomMemberIds).isEmpty()) { // if the are differing additions on both sides
+					return true; // always show merge screen when there are additions on both sides
+				}
+			}
+			
+			// if there were additions while the other side was inactivated
+			if (activeStatusDiffers) {
+				if (targetChangedActiveStatus && !newSourceAxiomMemberIds.isEmpty()) {
+					return true;
+				} else if (sourceChangedActiveStatus && !newTargetAxiomMemberIds.isEmpty()) {
+					return true;
+				}
+			}
+			
+			final Set<String> allMemberIds = Sets.union(baseMap.keySet(), Sets.union(sourceMap.keySet(), targetMap.keySet()));
+			
+			for (final String id : allMemberIds) {
+				
+				if (!baseMap.containsKey(id) && (sourceMap.containsKey(id) ^ targetMap.containsKey(id))) {
+					continue; // this must be an addition
+				} else if (baseMap.containsKey(id) && !sourceMap.containsKey(id) && !targetMap.containsKey(id)) {
+					continue; // this must the same deletion on both sides;
+				}
+				
+				final SnomedReferenceSetMember baseAxiomMember = baseMap.containsKey(id) ? baseMap.get(id) : FAKE_MEMBER;
+				final SnomedReferenceSetMember sourceAxiomMember = sourceMap.containsKey(id) ? sourceMap.get(id) : FAKE_MEMBER;
+				final SnomedReferenceSetMember targetAxiomMember = targetMap.containsKey(id) ? targetMap.get(id) : FAKE_MEMBER;
+				
+				if (hasSinglePropertyChanges(baseAxiomMember, sourceAxiomMember, targetAxiomMember, IGNORED_MEMBER_FIELDS)) {
 					return true;
 				}
 			}
