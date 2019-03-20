@@ -68,19 +68,17 @@ final class SnomedModuleDependencyMemberUpdateDelegate extends SnomedRefSetMembe
 		final SnomedModuleDependencyRefSetMember currentModuleDependencyMember = (SnomedModuleDependencyRefSetMember) currentMember;
 		
 		if (releasedMember.getProperties().containsKey(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME)) {
-			final String releasedSourceEffectiveTime = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME);
-			final Date releasedSourceDate = Strings.isNullOrEmpty(releasedSourceEffectiveTime) ? null : EffectiveTimes.parse(releasedSourceEffectiveTime, DateFormats.SHORT);
+			final Date releasedSourceEffectiveDate = (Date) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME);
 			
-			if (!Objects.equal(releasedSourceDate, currentModuleDependencyMember.getSourceEffectiveTime())) {
+			if (!Objects.equal(releasedSourceEffectiveDate, currentModuleDependencyMember.getSourceEffectiveTime())) {
 				return true;
 			}
 		}
 		
 		if (releasedMember.getProperties().containsKey(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME)) {
-			final String releasedTargetEffectiveTime = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME);
-			final Date releasedTargetDate = Strings.isNullOrEmpty(releasedTargetEffectiveTime) ? null : EffectiveTimes.parse(releasedTargetEffectiveTime, DateFormats.SHORT);
+			final Date releasedTargetEffectiveDate = (Date) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME);
 			
-			if (!Objects.equal(releasedTargetDate, currentModuleDependencyMember.getTargetEffectiveTime())) {
+			if (!Objects.equal(releasedTargetEffectiveDate, currentModuleDependencyMember.getTargetEffectiveTime())) {
 				return true;
 			}
 		}
