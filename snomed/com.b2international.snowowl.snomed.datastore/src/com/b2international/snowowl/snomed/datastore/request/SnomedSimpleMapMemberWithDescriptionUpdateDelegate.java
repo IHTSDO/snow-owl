@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedSimpleMapRefSetMember;
 
@@ -31,9 +32,9 @@ final class SnomedSimpleMapMemberWithDescriptionUpdateDelegate extends SnomedRef
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
-		SnomedSimpleMapRefSetMember mapMember = (SnomedSimpleMapRefSetMember) member;
-		String newMapTargetId = getComponentId(SnomedRf2Headers.FIELD_MAP_TARGET);
-		String newMapTargetDescription = getProperty(SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION);
+		final SnomedSimpleMapRefSetMember mapMember = (SnomedSimpleMapRefSetMember) member;
+		final String newMapTargetId = getComponentId(SnomedRf2Headers.FIELD_MAP_TARGET);
+		final String newMapTargetDescription = getProperty(SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION);
 
 		boolean changed = false;
 
@@ -48,6 +49,23 @@ final class SnomedSimpleMapMemberWithDescriptionUpdateDelegate extends SnomedRef
 		}
 
 		return changed;
+	}
+
+	@Override
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedSimpleMapRefSetMember currentMapMember = (SnomedSimpleMapRefSetMember) currentMember;
+		final String releasedMapTargetId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_TARGET);
+		final String releasedMapTargetDescription = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION);
+		
+		if (releasedMapTargetId != null && !releasedMapTargetId.equals(currentMapMember.getMapTargetComponentId())) {
+			return true;
+		}
+		
+		if (releasedMapTargetDescription != null && !releasedMapTargetDescription.equals(currentMapMember.getMapTargetComponentDescription())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 }

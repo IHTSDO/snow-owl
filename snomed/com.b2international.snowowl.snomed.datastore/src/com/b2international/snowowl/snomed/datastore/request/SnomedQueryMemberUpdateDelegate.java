@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedQueryRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 
@@ -31,15 +32,23 @@ final class SnomedQueryMemberUpdateDelegate extends SnomedRefSetMemberUpdateDele
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
-		SnomedQueryRefSetMember queryMember = (SnomedQueryRefSetMember) member;
-		String newQuery = getProperty(SnomedRf2Headers.FIELD_QUERY);
+		final SnomedQueryRefSetMember queryMember = (SnomedQueryRefSetMember) member;
+		final String newQuery = getProperty(SnomedRf2Headers.FIELD_QUERY);
 
 		if (newQuery != null && !newQuery.equals(queryMember.getQuery())) {
 			queryMember.setQuery(newQuery);
 			return true;
-		} else {
-			return false;
 		}
+		
+		return false;
+	}
+
+	@Override
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedQueryRefSetMember currentQueryMember = (SnomedQueryRefSetMember) currentMember;
+		final String releasedQuery = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_QUERY);
+		
+		return releasedQuery != null && !releasedQuery.equals(currentQueryMember.getQuery());
 	}
 
 }

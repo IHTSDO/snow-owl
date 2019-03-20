@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedOWLExpressionRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.google.common.base.Strings;
@@ -41,6 +42,14 @@ public class SnomedOWLExpressionMemberUpdateDelegate extends SnomedRefSetMemberU
 		}
 
 		return false;
+	}
+
+	@Override
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedOWLExpressionRefSetMember currentOwlExpressionMember = (SnomedOWLExpressionRefSetMember) currentMember;
+		final String releasedOwlExpression = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION);
+		
+		return releasedOwlExpression != null && !releasedOwlExpression.equals(currentOwlExpressionMember.getOwlExpression());
 	}
 
 }

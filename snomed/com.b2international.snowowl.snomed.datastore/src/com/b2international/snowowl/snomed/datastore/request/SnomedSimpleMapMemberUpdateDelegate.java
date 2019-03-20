@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedSimpleMapRefSetMember;
 
@@ -31,17 +32,23 @@ final class SnomedSimpleMapMemberUpdateDelegate extends SnomedRefSetMemberUpdate
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
-		SnomedSimpleMapRefSetMember mapMember = (SnomedSimpleMapRefSetMember) member;
-		String newMapTargetId = getComponentId(SnomedRf2Headers.FIELD_MAP_TARGET);
+		final SnomedSimpleMapRefSetMember simpleMapMember = (SnomedSimpleMapRefSetMember) member;
+		final String newMapTargetId = getComponentId(SnomedRf2Headers.FIELD_MAP_TARGET);
 
-		boolean changed = false;
-
-		if (newMapTargetId != null && !newMapTargetId.equals(mapMember.getMapTargetComponentId())) {
-			mapMember.setMapTargetComponentId(newMapTargetId);
-			changed |= true;
+		if (newMapTargetId != null && !newMapTargetId.equals(simpleMapMember.getMapTargetComponentId())) {
+			simpleMapMember.setMapTargetComponentId(newMapTargetId);
+			return true;
 		}
 
-		return changed;
+		return false;
+	}
+
+	@Override
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedSimpleMapRefSetMember currentSimpleMapMember = (SnomedSimpleMapRefSetMember) currentMember;
+		final String releasedMapTargetId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_TARGET);
+		
+		return releasedMapTargetId != null && !releasedMapTargetId.equals(currentSimpleMapMember.getMapTargetComponentId());
 	}
 
 }

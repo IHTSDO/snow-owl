@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 
 /**
@@ -29,6 +30,11 @@ final class SnomedSimpleMemberUpdateDelegate extends SnomedRefSetMemberUpdateDel
 
 	@Override
 	boolean execute(SnomedRefSetMember member, TransactionContext context) {
+		return false;
+	}
+
+	@Override
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		return false;
 	}
 

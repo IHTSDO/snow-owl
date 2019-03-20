@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedMRCMModuleScopeRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.google.common.base.Strings;
@@ -32,7 +33,6 @@ public class SnomedMRCMModuleScopeMemberUpdateDelegate extends SnomedRefSetMembe
 
 	@Override
 	boolean execute(final SnomedRefSetMember member, final TransactionContext context) {
-
 		final SnomedMRCMModuleScopeRefSetMember moduleMember = (SnomedMRCMModuleScopeRefSetMember) member;
 		final String mrcmRuleRefsetId = getProperty(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID);
 
@@ -42,6 +42,14 @@ public class SnomedMRCMModuleScopeMemberUpdateDelegate extends SnomedRefSetMembe
 		}
 
 		return false;
+	}
+
+	@Override
+	boolean hasMutablePropertyChange(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
+		final SnomedMRCMModuleScopeRefSetMember currentModuleMember = (SnomedMRCMModuleScopeRefSetMember) currentMember;
+		final String releasedMrcmRuleRefsetId = (String) releasedMember.getProperties().get(SnomedRf2Headers.FIELD_MRCM_RULE_REFSET_ID);
+		
+		return releasedMrcmRuleRefsetId != null && !releasedMrcmRuleRefsetId.equals(currentModuleMember.getMrcmRuleRefsetId());
 	}
 
 }

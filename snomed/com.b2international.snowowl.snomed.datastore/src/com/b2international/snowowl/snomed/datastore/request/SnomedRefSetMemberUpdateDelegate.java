@@ -54,8 +54,15 @@ abstract class SnomedRefSetMemberUpdateDelegate {
 	
 	public boolean canRestore(SnomedRefSetMember currentMember, SnomedReferenceSetMember releasedMember) {
 		boolean basePropertiesChanged = false;
-		basePropertiesChanged |= releasedMember.isActive() != currentMember.isActive();
-		basePropertiesChanged |= !releasedMember.getModuleId().equals(currentMember.getModuleId());
+
+		if (releasedMember.isActive() != currentMember.isActive()) {
+			basePropertiesChanged |= true;	
+		}
+		
+		if (!releasedMember.getModuleId().equals(currentMember.getModuleId())) {
+			basePropertiesChanged |= true;
+		}
+		
 		
 		return !basePropertiesChanged && !hasMutablePropertyChange(currentMember, releasedMember);
 	}
