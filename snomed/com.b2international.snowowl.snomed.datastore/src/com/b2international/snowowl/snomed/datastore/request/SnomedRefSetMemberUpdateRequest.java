@@ -117,7 +117,7 @@ public final class SnomedRefSetMemberUpdateRequest implements Request<Transactio
 				if (!isEffectiveTimeUpdate() && member.isSetEffectiveTime()) {
 					member.unsetEffectiveTime();
 				} else {
-					if (member.isReleased()) {
+					if (member.isReleased() && !isEffectiveTimeUpdate()) {
 						final String branchPath = SnomedComponentUpdateRequest.getLatestReleaseBranch(context);
 						if (!Strings.isNullOrEmpty(branchPath)) {
 							final SnomedReferenceSetMember releasedMember = SnomedRequests.prepareGetMember(getMemberId())
@@ -183,73 +183,6 @@ public final class SnomedRefSetMemberUpdateRequest implements Request<Transactio
 				throw new IllegalStateException("Unexpected reference set type '" + referenceSetType + "'.");
 		}
 	}
-	
-//	private String[] getMutableHeadersByType(SnomedRefSetType referenceSetType) {
-//		switch (referenceSetType) {
-//		case ASSOCIATION:
-//			return new String[] { SnomedRf2Headers.FIELD_TARGET_COMPONENT_ID };
-//		case ATTRIBUTE_VALUE:
-//			return new String[] { SnomedRf2Headers.FIELD_VALUE_ID };
-//		case COMPLEX_MAP:
-//			return new String[] { 
-//					SnomedRf2Headers.FIELD_MAP_GROUP, SnomedRf2Headers.FIELD_MAP_PRIORITY,
-//					SnomedRf2Headers.FIELD_MAP_RULE, SnomedRf2Headers.FIELD_MAP_ADVICE,
-//					SnomedRf2Headers.FIELD_MAP_TARGET, SnomedRf2Headers.FIELD_CORRELATION_ID 
-//					};
-//		case EXTENDED_MAP:
-//			return new String[] { 
-//					SnomedRf2Headers.FIELD_MAP_GROUP, SnomedRf2Headers.FIELD_MAP_PRIORITY,
-//					SnomedRf2Headers.FIELD_MAP_RULE, SnomedRf2Headers.FIELD_MAP_ADVICE,
-//					SnomedRf2Headers.FIELD_MAP_TARGET, SnomedRf2Headers.FIELD_CORRELATION_ID,
-//					SnomedRf2Headers.FIELD_MAP_CATEGORY_ID
-//					};
-//		case CONCRETE_DATA_TYPE:
-//			return new String[] {
-//					SnomedRf2Headers.FIELD_UNIT_ID, 
-//					SnomedRf2Headers.FIELD_OPERATOR_ID, 
-//					SnomedRf2Headers.FIELD_VALUE
-//			};
-//		case DESCRIPTION_TYPE:
-//			return new String[] { SnomedRf2Headers.FIELD_DESCRIPTION_FORMAT, SnomedRf2Headers.FIELD_DESCRIPTION_LENGTH };
-//		case LANGUAGE:
-//			return new String[] { SnomedRf2Headers.FIELD_ACCEPTABILITY_ID };
-//		case MODULE_DEPENDENCY:
-//			return new String[] { SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME, SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME };
-//		case QUERY:
-//			return new String[] { SnomedRf2Headers.FIELD_QUERY };
-//		case SIMPLE: 
-//			return EMPTY_ARRAY;
-//		case SIMPLE_MAP:
-//			return new String[] { SnomedRf2Headers.FIELD_MAP_TARGET };
-//		case SIMPLE_MAP_WITH_DESCRIPTION:
-//			return new String[] { SnomedRf2Headers.FIELD_MAP_TARGET, SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION };
-//		case OWL_AXIOM: //$FALL-THROUGH$
-//		case OWL_ONTOLOGY:
-//			return new String[] { SnomedRf2Headers.FIELD_OWL_EXPRESSION };
-//		case MRCM_DOMAIN:
-//			return new String[] { 
-//					SnomedRf2Headers.FIELD_MRCM_DOMAIN_CONSTRAINT, SnomedRf2Headers.FIELD_MRCM_PARENT_DOMAIN, 
-//					SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_CONSTRAINT, SnomedRf2Headers.FIELD_MRCM_PROXIMAL_PRIMITIVE_REFINEMENT, 
-//					SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_PRECOORDINATION, SnomedRf2Headers.FIELD_MRCM_DOMAIN_TEMPLATE_FOR_POSTCOORDINATION, 
-//					SnomedRf2Headers.FIELD_MRCM_EDITORIAL_GUIDE_REFERENCE};
-//		case MRCM_ATTRIBUTE_DOMAIN:
-//			return new String[] {
-//					SnomedRf2Headers.FIELD_MRCM_GROUPED, SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_CARDINALITY,
-//					SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_IN_GROUP_CARDINALITY, SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID,
-//					SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID
-//			};
-//		case MRCM_ATTRIBUTE_RANGE:
-//			return new String[] {
-//					SnomedRf2Headers.FIELD_MRCM_RANGE_CONSTRAINT, SnomedRf2Headers.FIELD_MRCM_ATTRIBUTE_RULE,
-//					SnomedRf2Headers.FIELD_MRCM_RULE_STRENGTH_ID, SnomedRf2Headers.FIELD_MRCM_CONTENT_TYPE_ID,
-//			};
-//		case MRCM_MODULE_SCOPE:
-//			return EMPTY_ARRAY;
-//			
-//		default: 
-//			throw new IllegalStateException("Unexpected reference set type '" + referenceSetType + "'.");
-//		}
-//	}
 	
 	private boolean updateStatus(SnomedRefSetMember member) {
 		Boolean newStatus = getProperty(SnomedRf2Headers.FIELD_ACTIVE, Boolean.class);
