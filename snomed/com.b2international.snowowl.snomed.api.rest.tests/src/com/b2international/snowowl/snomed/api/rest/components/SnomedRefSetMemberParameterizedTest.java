@@ -15,9 +15,41 @@
  */
 package com.b2international.snowowl.snomed.api.rest.components;
 
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests.createCodeSystem;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.createVersion;
 import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.getNextAvailableEffectiveDate;
 import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString;
-import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.*;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ATTRIBUTE_CARDINALITY;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ATTRIBUTE_CARDINALITY_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ATTRIBUTE_IN_GROUP_CARDINALITY;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ATTRIBUTE_IN_GROUP_CARDINALITY_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ATTRIBUTE_RULE;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ATTRIBUTE_RULE_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.CONTENT_TYPE_ID;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.CONTENT_TYPE_ID_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.DOMAIN_CONSTRAINT;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.DOMAIN_CONSTRAINT_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.DOMAIN_ID;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.DOMAIN_ID_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.DOMAIN_TEMPLATE_FOR_POSTCOORDINATION;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.DOMAIN_TEMPLATE_FOR_POSTCOORDINATION_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.DOMAIN_TEMPLATE_FOR_PRECOORDINATION;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.DOMAIN_TEMPLATE_FOR_PRECOORDINATION_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.EDITORIAL_GUIDE_REFERENCE;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.OWL_AXIOM_1;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.OWL_AXIOM_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.OWL_ONTOLOGY_1;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.OWL_ONTOLOGY_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PARENT_DOMAIN;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PROXIMAL_PRIMITIVE_CONSTRAINT;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PROXIMAL_PRIMITIVE_CONSTRAINT_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PROXIMAL_PRIMITIVE_REFINEMENT;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.RANGE_CONSTRAINT;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.RANGE_CONSTRAINT_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.RULE_REFSET_ID;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.RULE_REFSET_ID_2;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.RULE_STRENGTH_ID;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.RULE_STRENGTH_ID_2;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.createComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.deleteComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.getComponent;
@@ -294,24 +326,79 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 		deleteComponent(branchPath, SnomedComponentType.MEMBER, memberId, true).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(404);
 	}
+	
+	@Test
+	public void testRestorationOfEffectiveTimeOnMutablePropertyChange() {
+		Assume.assumeFalse(SnomedRefSetType.SIMPLE.equals(refSetType));
+		
+		final String memberId = createRefSetMember();
+		
+		int randomId = (int)(Math.random() * 1000 + 1);
+		final String shortName = String.format("SNOMEDCT-REFM-%d", randomId);
+		final String effectiveTime = getNextAvailableEffectiveDateAsString(shortName);
+
+		createCodeSystem(branchPath, shortName).statusCode(201);
+		createVersion(shortName, "v1", effectiveTime).statusCode(201);
+		
+		// After versioning the member should be released and have an effective time
+		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
+			.body("released", equalTo(true))
+			.body("effectiveTime", equalTo(effectiveTime));
+		
+		final Map<?, ?> updateRequest = ImmutableMap.builder()
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getUpdateProperties())
+						.build())
+				.put("commitComment", "Updated reference set member")
+				.build();
+
+		updateRefSetComponent(branchPath, SnomedComponentType.MEMBER, memberId, updateRequest, false).statusCode(204);
+
+		// Updating a member's properties should unset the effective time
+		final ValidatableResponse updateResponse = getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
+				.body("released", equalTo(true))
+				.body("effectiveTime", equalTo(null));
+		
+		for (Entry<String, Object> updateProperty : getUpdateProperties().entrySet()) {
+			updateResponse.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + updateProperty.getKey(), equalTo(updateProperty.getValue()));
+		}
+		
+		final Map<?, ?> revertUpdateRequest = ImmutableMap.builder()
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getValidProperties())
+						.build())
+				.put("commitComment", "Reverted previous update of reference set member")
+				.build();
+		
+		updateRefSetComponent(branchPath, SnomedComponentType.MEMBER, memberId, revertUpdateRequest, false).statusCode(204);
+		
+		// Getting the member back to its originally released state should restore the effective time
+		ValidatableResponse revertResponse = getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
+			.body("released", equalTo(true))
+			.body("effectiveTime", equalTo(effectiveTime));
+		
+		for (Entry<String, Object> validProperty : getValidProperties().entrySet()) {
+			revertResponse.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + validProperty.getKey(), equalTo(validProperty.getValue()));
+		}
+		
+	}
 
 	private String createRefSetMember() {
-		String refSetId = createNewRefSet(branchPath, refSetType);
-		String componentId = createNewComponent(branchPath, getFirstAllowedReferencedComponentType(refSetType));
+		final String refSetId = createNewRefSet(branchPath, refSetType);
+		final String componentId = createNewComponent(branchPath, getFirstAllowedReferencedComponentType(refSetType));
 
-		Map<?, ?> requestBody = createRefSetMemberRequestBody(refSetId, componentId)
+		final Map<?, ?> requestBody = createRefSetMemberRequestBody(refSetId, componentId)
 				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
 						.putAll(getValidProperties())
 						.build())
 				.put("commitComment", "Created new reference set member")
 				.build();
 
-		ValidatableResponse response = createComponent(branchPath, SnomedComponentType.MEMBER, requestBody).statusCode(201);
-
+		final ValidatableResponse response = createComponent(branchPath, SnomedComponentType.MEMBER, requestBody).statusCode(201);
 
 		return lastPathSegment(response.extract().header("Location"));
 	}
-
+	
 	private Map<String, Object> getValidProperties() {
 		switch (refSetType) {
 		case ASSOCIATION:
@@ -593,4 +680,5 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 			throw new IllegalStateException("Unexpected reference set type '" + refSetType + "'.");
 		}
 	}
+	
 }

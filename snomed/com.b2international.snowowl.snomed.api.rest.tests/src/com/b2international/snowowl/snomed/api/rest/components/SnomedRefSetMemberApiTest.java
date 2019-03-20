@@ -15,6 +15,9 @@
  */
 package com.b2international.snowowl.snomed.api.rest.components;
 
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests.createCodeSystem;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.createVersion;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.createComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.deleteComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.getComponent;
@@ -914,7 +917,58 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		// Check that member 2 still exists
 		getComponent(branchPath, SnomedComponentType.MEMBER, member2Id).statusCode(200);
 	}
+	
+	@Test
+	public void testRestorationOfRefsetMemberBaseProperty() {
+		final String simpleTypeRefsetId = createNewRefSet(branchPath);
+		
+		final Map<?, ?> memberRequest = ImmutableMap.<String, Object>builder()
+				.put(SnomedRf2Headers.FIELD_MODULE_ID, Concepts.MODULE_SCT_CORE)
+				.put("referenceSetId", simpleTypeRefsetId)
+				.put(SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID, Concepts.FULLY_SPECIFIED_NAME)
+				.put("commitComment", "Created new simple reference set member")
+				.build();
+		
+		final String memberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, memberRequest)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		final String shortName = "SNOMEDCT-REFM-1";
+		createCodeSystem(branchPath, shortName).statusCode(201);
+		final String effectiveDate = getNextAvailableEffectiveDateAsString(shortName);
+		createVersion(shortName, "v1", effectiveDate).statusCode(201);
+		
+		// After versioning the member should be released and have an effective time
+		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
+			.body("released", equalTo(true))
+			.body("effectiveTime", equalTo(effectiveDate));
+		
+		Map<?, ?> inactivateRequest = ImmutableMap.builder()
+				.put("active", false)
+				.put("commitComment", "Inactivated reference set member")
+				.build();
 
+		updateRefSetComponent(branchPath, SnomedComponentType.MEMBER, memberId, inactivateRequest, false).statusCode(204);
+		
+		// Inactivation should unset the effective time field
+		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
+			.body("released", equalTo(true))
+			.body("effectiveTime", equalTo(null));
+		
+		Map<?, ?> reactivateRequest = ImmutableMap.builder()
+				.put("active", true)
+				.put("commitComment", "Reactivated reference set member")
+				.build();
+		
+		updateRefSetComponent(branchPath, SnomedComponentType.MEMBER, memberId, reactivateRequest, false).statusCode(204);
+		
+		// Getting the member back to its originally released state should restore the effective time
+		getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200)
+			.body("released", equalTo(true))
+			.body("effectiveTime", equalTo(effectiveDate));
+		
+	}
+	
 	private void executeSyncAction(final String memberId) {
 		final Map<?, ?> syncActionRequest = ImmutableMap.<String, Object>builder()
 				.put("action", "sync")
