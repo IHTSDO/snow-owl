@@ -279,7 +279,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		};
 	
 	/**
-	 * Checked fields: moduleId, effectiveTime, active, owlExpression
+	 * Checked fields: moduleId, effectiveTime, active, properties
 	 */
 	private static final String[] IGNORED_MEMBER_FIELDS = new String[] {
 			"class",
@@ -300,7 +300,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	private static final String FAKE_ID = "FAKE_ID"; 
 	private static final SnomedDescription FAKE_DESCRIPTION = new SnomedDescription(FAKE_ID);
 	private static final SnomedRelationship FAKE_RELATIONSHIP = new SnomedRelationship(FAKE_ID);
-	private static final SnomedReferenceSetMember FAKE_MEMBER = new SnomedReferenceSetMember();
+	private static final SnomedReferenceSetMember FAKE_MEMBER = new SnomedReferenceSetMember(FAKE_ID);
 	
 	/**
 	 * Special value indicating that the concept should not be added to the review, because it did not change (ignoring
@@ -604,7 +604,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				final SnomedReferenceSetMember sourceAxiomMember = sourceMap.containsKey(id) ? sourceMap.get(id) : FAKE_MEMBER;
 				final SnomedReferenceSetMember targetAxiomMember = targetMap.containsKey(id) ? targetMap.get(id) : FAKE_MEMBER;
 				
-				if (hasSinglePropertyChanges(baseAxiomMember, sourceAxiomMember, targetAxiomMember, IGNORED_MEMBER_FIELDS)) {
+				final boolean hasSinglePropertyChanges = hasSinglePropertyChanges(baseAxiomMember, sourceAxiomMember, targetAxiomMember, IGNORED_MEMBER_FIELDS);
+				if ((activeStatusDiffers && hasSinglePropertyChanges) || hasSinglePropertyChanges) {
 					return true;
 				}
 			}
