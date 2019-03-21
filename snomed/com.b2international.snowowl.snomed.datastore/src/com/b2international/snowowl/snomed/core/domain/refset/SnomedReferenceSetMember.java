@@ -76,6 +76,12 @@ public final class SnomedReferenceSetMember extends SnomedComponent {
 	private String referenceSetId;
 	private Map<String, Object> properties = newHashMap();
 
+	public SnomedReferenceSetMember() {}
+	
+	public SnomedReferenceSetMember(String id) {
+		setId(id);
+	}
+	
 	@Override
 	public short getTerminologyComponentId() {
 		return SnomedTerminologyComponentConstants.REFSET_MEMBER_NUMBER;
