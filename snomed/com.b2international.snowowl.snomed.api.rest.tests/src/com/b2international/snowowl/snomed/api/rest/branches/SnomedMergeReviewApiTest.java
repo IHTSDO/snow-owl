@@ -934,7 +934,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void testRaisingMergeScreenOnAxiomAdditionWithConceptInactivation() {
-	SnomedBranchingRestRequests.createBranch(branchPath); // project branch
+		SnomedBranchingRestRequests.createBranch(branchPath); // project branch
 		
 		// First task changes
 		final IBranchPath firstTaskPath = BranchPathUtils.createPath(branchPath, "1");
@@ -1010,5 +1010,74 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		assertTrue(reviewDetails.isArray());
 		assertEquals(1, reviewDetails.size());
 	}
+	
+	@Test
+	public void testRaisingMergeScreenOnAxiomAndDescriptionAddition() {
+		SnomedBranchingRestRequests.createBranch(branchPath); // project branch
+		
+		// First task changes
+		final IBranchPath firstTaskPath = BranchPathUtils.createPath(branchPath, "1");
+		SnomedBranchingRestRequests.createBranch(firstTaskPath);
+
+		final String conceptId = SnomedRestFixtures.createNewConcept(firstTaskPath);
+		final String firstTaskOwlSubclassOfExpression = String.format("SubClassOf(:%s :%s)", Concepts.FULLY_SPECIFIED_NAME, conceptId);
+		
+		final Map<?, ?> firstTaskMemberRequest = ImmutableMap.<String, Object>builder()
+				.put(SnomedRf2Headers.FIELD_MODULE_ID, Concepts.MODULE_SCT_CORE)
+				.put("referenceSetId", Concepts.REFSET_OWL_AXIOM)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, firstTaskOwlSubclassOfExpression))
+				.put(SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID, conceptId)
+				.put("commitComment", "Created new axiom reference set member with sublclassOfExpression")
+				.build();
+		
+		final String firstTaskOwlMemberId = lastPathSegment(createComponent(firstTaskPath, SnomedComponentType.MEMBER, firstTaskMemberRequest)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		SnomedRestFixtures.merge(firstTaskPath, firstTaskPath.getParent(), "Merging first task into project");
+		
+		// Second task changes
+		final IBranchPath secondTaskPath = BranchPathUtils.createPath(branchPath, "2");
+		SnomedBranchingRestRequests.createBranch(secondTaskPath);
+		
+		final String secondTaskDescriptionId = SnomedRestFixtures.createNewDescription(secondTaskPath, conceptId, SYNONYM, SnomedApiTestConstants.UK_PREFERRED_MAP);
+		
+		SnomedComponentRestRequests.getComponent(secondTaskPath, SnomedComponentType.DESCRIPTION, secondTaskDescriptionId).statusCode(200);
+		
+		// Third task changes
+		final IBranchPath thirdTaskPath = BranchPathUtils.createPath(branchPath, "3");
+		SnomedBranchingRestRequests.createBranch(thirdTaskPath);
+		
+		final String thirdTaskOwlSubclassOfExpression = String.format("SubClassOf(:%s :%s)", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS);
+		
+		final Map<?, ?> thirdTaskMemberRequest = ImmutableMap.<String, Object>builder()
+				.put(SnomedRf2Headers.FIELD_MODULE_ID, Concepts.MODULE_SCT_CORE)
+				.put("referenceSetId", Concepts.REFSET_OWL_AXIOM)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, thirdTaskOwlSubclassOfExpression))
+				.put(SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID, conceptId)
+				.put("commitComment", "Created new axiom reference set member with sublclassOfExpression")
+				.build();
+		
+		final String thirdTaskOwlMemberId = lastPathSegment(createComponent(thirdTaskPath, SnomedComponentType.MEMBER, thirdTaskMemberRequest)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		SnomedRestFixtures.merge(thirdTaskPath, thirdTaskPath.getParent(), "Merging new member on third task into project");
+		
+		// Project should have the description on the second task yet
+		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.DESCRIPTION, secondTaskDescriptionId).statusCode(404);
+		
+		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.MEMBER, firstTaskOwlMemberId).statusCode(200);
+		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.MEMBER, thirdTaskOwlMemberId).statusCode(200);
+		
+		// Merging new description should raise a 
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), secondTaskPath.getPath()));
+		assertReviewCurrent(reviewId);
+		
+		final JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);  
+		
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());
+	}	
 	
 }
