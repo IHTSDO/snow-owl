@@ -33,6 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
@@ -573,7 +574,18 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			final Set<String> newSourceAxiomMemberIds = Sets.difference(sourceMap.keySet(), baseMap.keySet());
 			final Set<String> newTargetAxiomMemberIds = Sets.difference(targetMap.keySet(), baseMap.keySet());
 			
-			// if there are additions on both sides
+			final SnomedDescriptions baseDescriptions = getDescriptions(basePath, conceptId);
+			final SnomedDescriptions sourceDescriptions = getDescriptions(parameters.getSourcePath(), conceptId);
+			final SnomedDescriptions targetDescriptions = getDescriptions(parameters.getTargetPath(), conceptId);
+			
+			final Set<String> baseDesccriptionIds = baseDescriptions.stream().map(SnomedDescription::getId).collect(Collectors.toSet());
+			final Set<String> sourceDescriptionIds = sourceDescriptions.stream().map(SnomedDescription::getId).collect(Collectors.toSet());
+			final Set<String> targetDescriptionIds = targetDescriptions.stream().map(SnomedDescription::getId).collect(Collectors.toSet());
+			
+			final Set<String> newSourceDescriptionIds = Sets.difference(sourceDescriptionIds, baseDesccriptionIds);
+			final Set<String> newTargetDescriptionIds = Sets.difference(targetDescriptionIds, baseDesccriptionIds);
+			
+			// If there are additions on both sides
 			if (!newSourceAxiomMemberIds.isEmpty() && !newTargetAxiomMemberIds.isEmpty()) {
 				if (!Sets.difference(newSourceAxiomMemberIds, newTargetAxiomMemberIds).isEmpty() || 
 						!Sets.difference(newTargetAxiomMemberIds, newSourceAxiomMemberIds).isEmpty()) { // if the are differing additions on both sides
@@ -581,7 +593,13 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				}
 			}
 			
-			// if there were additions while the other side was inactivated
+			final boolean hasDescriptionAddition = !newSourceDescriptionIds.isEmpty() || !newTargetDescriptionIds.isEmpty();
+			// If there are additions on either side with description additions
+			if (!newSourceAxiomMemberIds.isEmpty() && hasDescriptionAddition || !newTargetAxiomMemberIds.isEmpty() && hasDescriptionAddition) {
+				return true; // Show merge screen
+			}
+			
+			// If there were additions while the other side was inactivated
 			if (activeStatusDiffers) {
 				if (targetChangedActiveStatus && !newSourceAxiomMemberIds.isEmpty()) {
 					return true;
@@ -595,19 +613,32 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			for (final String id : allMemberIds) {
 				
 				if (!baseMap.containsKey(id) && (sourceMap.containsKey(id) ^ targetMap.containsKey(id))) {
-					continue; // this must be an addition
+					continue; // This must be an addition
 				} else if (baseMap.containsKey(id) && !sourceMap.containsKey(id) && !targetMap.containsKey(id)) {
-					continue; // this must the same deletion on both sides;
+					continue; // This must the same deletion on both sides;
 				}
-				
+
 				final SnomedReferenceSetMember baseAxiomMember = baseMap.containsKey(id) ? baseMap.get(id) : FAKE_MEMBER;
 				final SnomedReferenceSetMember sourceAxiomMember = sourceMap.containsKey(id) ? sourceMap.get(id) : FAKE_MEMBER;
 				final SnomedReferenceSetMember targetAxiomMember = targetMap.containsKey(id) ? targetMap.get(id) : FAKE_MEMBER;
-				
-				final boolean hasSinglePropertyChanges = hasSinglePropertyChanges(baseAxiomMember, sourceAxiomMember, targetAxiomMember, IGNORED_MEMBER_FIELDS);
-				if ((activeStatusDiffers && hasSinglePropertyChanges) || hasSinglePropertyChanges) {
-					return true;
-				}
+
+				if (baseAxiomMember != null) {
+
+					if (sourceAxiomMember != null && targetAxiomMember != null) {
+
+						// Compare against base
+						boolean hasSingleSourcePropertyChanges = hasSinglePropertyChanges(FAKE_MEMBER, baseAxiomMember, sourceAxiomMember, IGNORED_MEMBER_FIELDS);
+						if (hasSingleSourcePropertyChanges) {
+							return true; 
+						}
+
+						// Compare against base
+						boolean hasSingleTargetPropertyChanges = hasSinglePropertyChanges(FAKE_MEMBER, baseAxiomMember, targetAxiomMember, IGNORED_MEMBER_FIELDS);
+						if (hasSingleTargetPropertyChanges) {
+							return true;
+						}
+					}
+				} 
 			}
 			
 			return false;
