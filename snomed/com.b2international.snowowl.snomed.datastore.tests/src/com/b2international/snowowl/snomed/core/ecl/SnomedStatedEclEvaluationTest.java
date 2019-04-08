@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2018-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.request.RevisionIndexReadRequest;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.tree.Trees;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.RandomSnomedIdentiferGenerator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
@@ -48,6 +49,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemb
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.ecl.EclStandaloneSetup;
+import com.b2international.snowowl.test.commons.snomed.TestBranchContext;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
@@ -57,6 +59,8 @@ import com.google.inject.Injector;
  * @since 5.15.1
  */
 public class SnomedStatedEclEvaluationTest extends BaseRevisionIndexTest {
+
+	private static final Injector INJECTOR = new EclStandaloneSetup().createInjectorAndDoEMFRegistration();
 	
 	private static final String ROOT_CONCEPT = RandomSnomedIdentiferGenerator.generateConceptId();
 	private static final String HAS_ACTIVE_INGREDIENT = Concepts.HAS_ACTIVE_INGREDIENT;
@@ -68,12 +72,15 @@ public class SnomedStatedEclEvaluationTest extends BaseRevisionIndexTest {
 	@Before
 	public void setup() {
 		super.setup();
-		final Injector injector = new EclStandaloneSetup().createInjectorAndDoEMFRegistration();
+		SnomedCoreConfiguration config = new SnomedCoreConfiguration();
+		config.setConcreteDomainSupported(true);
+		
 		context = TestBranchContext.on(MAIN)
-				.with(EclParser.class, new DefaultEclParser(injector.getInstance(IParser.class), injector.getInstance(IResourceValidator.class)))
-				.with(EclSerializer.class, new DefaultEclSerializer(injector.getInstance(ISerializer.class)))
+				.with(EclParser.class, new DefaultEclParser(INJECTOR.getInstance(IParser.class), INJECTOR.getInstance(IResourceValidator.class)))
+				.with(EclSerializer.class, new DefaultEclSerializer(INJECTOR.getInstance(ISerializer.class)))
 				.with(Index.class, rawIndex())
 				.with(RevisionIndex.class, index())
+				.with(SnomedCoreConfiguration.class, config)
 				.build();
 	}
 	
@@ -109,7 +116,7 @@ public class SnomedStatedEclEvaluationTest extends BaseRevisionIndexTest {
 	
 	private void generateTestHierarchy() {
 		indexRevision(MAIN, nextStorageKey(), concept(STATED_CONCEPT).statedParents(PrimitiveSets.newLongOpenHashSet(Long.parseLong(ROOT_CONCEPT))).build());
-		indexRevision(MAIN, nextStorageKey(), relationship(STATED_CONCEPT, HAS_ACTIVE_INGREDIENT, SUBSTANCE, Trees.STATED_FORM).group(1).build());
+		indexRevision(MAIN, nextStorageKey(), relationship(STATED_CONCEPT, HAS_ACTIVE_INGREDIENT, SUBSTANCE, Concepts.STATED_RELATIONSHIP).group(1).build());
 	}
 	
 	private Expression descendantsOrSelfOf(String...conceptIds) {

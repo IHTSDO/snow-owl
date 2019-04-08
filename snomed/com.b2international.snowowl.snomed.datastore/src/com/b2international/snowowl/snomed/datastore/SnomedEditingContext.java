@@ -113,13 +113,14 @@ import com.google.common.collect.Sets;
  *
  */
 public class SnomedEditingContext extends BaseSnomedEditingContext {
-
+	
 	private SnomedRefSetEditingContext refSetEditingContext;
 	private Concept moduleConcept;
 	private String nameSpace;
 	private boolean uniquenessCheckEnabled = true;
 	private Set<String> newComponentIds = Collections.synchronizedSet(Sets.<String>newHashSet());
 	private SnomedDeletionPlan deletionPlan = new SnomedDeletionPlan();
+	private EffectiveTimeRestorer effectiveTimeRestorer;
 
 	/**
 	 * Creates a new SNOMED CT core components editing context on the specified branch of the SNOMED CT repository.
@@ -145,6 +146,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 
 	private void init(final String namespace) {
 		this.refSetEditingContext = new SnomedRefSetEditingContext(this);
+		this.effectiveTimeRestorer = new EffectiveTimeRestorer();
 		setNamespace(namespace);
 	}
 
@@ -170,7 +172,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	
 	@Override
 	protected <T extends CDOObject> Iterable<? extends IComponent> fetchComponents(Collection<String> componentIds, Class<T> type) {
-		if (type.isAssignableFrom(Concept.class)) {
+		if (Concept.class.isAssignableFrom(type)) {
 			return SnomedRequests.prepareSearchConcept()
 					.all()
 					.filterByIds(componentIds)
@@ -178,7 +180,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
 					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 					.getSync();
-		} else if (type.isAssignableFrom(Description.class)) {
+		} else if (Description.class.isAssignableFrom(type)) {
 			return SnomedRequests.prepareSearchDescription()
 					.all()
 					.filterByIds(componentIds)
@@ -186,7 +188,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
 					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 					.getSync();
-		} else if (type.isAssignableFrom(Relationship.class)) {
+		} else if (Relationship.class.isAssignableFrom(type)) {
 			return SnomedRequests.prepareSearchRelationship()
 					.all()
 					.filterByIds(componentIds)
@@ -194,7 +196,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
 					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 					.getSync();
-		} else if (type.isAssignableFrom(SnomedRefSetMember.class)) {
+		} else if (SnomedRefSetMember.class.isAssignableFrom(type)) {
 			return SnomedRequests.prepareSearchMember()
 					.all()
 					.filterByIds(componentIds)
@@ -202,7 +204,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
 					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 					.getSync();
-		} else if (type.isAssignableFrom(SnomedRefSet.class)) {
+		} else if (SnomedRefSet.class.isAssignableFrom(type)) {
 			return SnomedRequests.prepareSearchRefSet()
 					.all()
 					.filterByIds(componentIds)
@@ -794,8 +796,10 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				}
 			}
 		}
+		
+		effectiveTimeRestorer.restoreEffectiveTimes(transaction.getChangeSetData().getChangedObjects().stream().map(cdoKey -> transaction.getObject(cdoKey.getID()))::iterator, getBranch());
 	}
-	
+
 	private Set<SnomedRefSetMember> getReferringRefSetMembers(Iterable<String> deletedIds) {
 		return SnomedRequests.prepareSearchMember()
 				.all()

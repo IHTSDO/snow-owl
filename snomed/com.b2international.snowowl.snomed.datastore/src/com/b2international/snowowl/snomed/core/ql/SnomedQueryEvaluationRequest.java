@@ -73,7 +73,7 @@ final class SnomedQueryEvaluationRequest implements Request<BranchContext, Promi
 	@Nullable
 	@JsonProperty
 	private String expression;
-
+	
 	void setExpression(String expression) {
 		this.expression = expression;
 	}
@@ -157,7 +157,10 @@ final class SnomedQueryEvaluationRequest implements Request<BranchContext, Promi
 	
 	protected Promise<Expression> eval(BranchContext context, final DomainQuery query) {
 		final String ecl = context.service(SnomedQuerySerializer.class).serialize(query.getEcl());
-		final Promise<Expression> eclExpression = SnomedRequests.prepareEclEvaluation(ecl).build().execute(context);
+		final Promise<Expression> eclExpression = SnomedRequests.prepareEclEvaluation(ecl)
+				.setExpressionForm(Trees.INFERRED_FORM) //TODO support STATED mode here
+				.build()
+				.execute(context);
 		if (query.getFilter() != null) {
 			return Promise.all(evaluate(context, query.getFilter()), eclExpression).then(subExpressions -> {
 				Expression domainFilter = (Expression) subExpressions.get(0);

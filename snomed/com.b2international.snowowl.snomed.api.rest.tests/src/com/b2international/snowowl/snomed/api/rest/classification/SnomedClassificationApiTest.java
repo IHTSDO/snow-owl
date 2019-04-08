@@ -144,7 +144,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		assertEquals(2, childRelationshipChanges.size());
 
 		for (RelationshipChange change : parentRelationshipChanges) {
-			assertEquals(ChangeNature.INFERRED, change.getChangeNature());
+			assertEquals(ChangeNature.NEW, change.getChangeNature());
 			switch (change.getRelationship().getTypeId()) {
 			case Concepts.IS_A:
 				assertEquals(Concepts.ROOT_CONCEPT, change.getRelationship().getDestinationId());
@@ -156,7 +156,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		}
 
 		for (RelationshipChange change : childRelationshipChanges) {
-			assertEquals(ChangeNature.INFERRED, change.getChangeNature());
+			assertEquals(ChangeNature.NEW, change.getChangeNature());
 			switch (change.getRelationship().getTypeId()) {
 			case Concepts.IS_A:
 				assertEquals(parentConceptId, change.getRelationship().getDestinationId());
@@ -412,7 +412,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		if (USE_EXTERNAL_SERVICE) {
 			
 			assertEquals(3, changes.getTotal());
-			assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.INFERRED.equals(relationshipChange.getChangeNature())));
+			assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.NEW.equals(relationshipChange.getChangeNature())));
 			
 			assertInferredIsAExists(changesIterable, childConceptId, equivalentConceptId);
 			assertInferredIsAExists(changesIterable, parentConceptId, equivalentConceptId);
@@ -421,7 +421,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		} else {
 			
 			assertEquals(4, changes.getTotal());
-			assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.INFERRED.equals(relationshipChange.getChangeNature())));
+			assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.NEW.equals(relationshipChange.getChangeNature())));
 			
 			assertInferredIsAExists(changesIterable, childConceptId, parentConceptId);
 			assertInferredIsAExists(changesIterable, childConceptId, equivalentConceptId);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2016-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ public final class SnomedEclEvaluationRequestBuilder
 		implements RevisionIndexRequestBuilder<Promise<Expression>> {
 	
 	private final String expression;
-	
 	private String expressionForm = Trees.INFERRED_FORM;
 	
 	public SnomedEclEvaluationRequestBuilder(String expression) {
@@ -47,11 +46,10 @@ public final class SnomedEclEvaluationRequestBuilder
 	
 	@Override
 	protected Request<BranchContext, Promise<Expression>> doBuild() {
-		final SnomedEclEvaluationRequest request = new SnomedEclEvaluationRequest();
-		
-		request.setExpression(expression);
-		request.setExpressionForm(expressionForm);
-		return request;
+		final SnomedEclEvaluationRequest req = new SnomedEclEvaluationRequest();
+		req.setExpression(expression);
+		req.setExpressionForm(expressionForm);
+		return req;
 	}
 	
 }

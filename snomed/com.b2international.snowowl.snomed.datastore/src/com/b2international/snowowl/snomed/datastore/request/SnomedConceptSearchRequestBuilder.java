@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,9 +99,8 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedComponentSear
 	}
 
 	/**
-	 * Filter matches in the inferred tree by the specified Expression Constraint Language (ECL) expression. 
-	 * The currently supported ECL version is v1.3. See <a href="http://snomed.org/ecl">ECL Specification and Guide</a> or
-	 * <a href="http://www.snomed.org/news-articles/expression-constraint-language">About ECL</a> for more information.
+	 * Filter matches by the specified Expression Constraint Language (ECL) expression. 
+	 * The currently supported ECL version is v1.3. See <a href="http://snomed.org/ecl">ECL Specification and Guide</a>.
 	 * 
 	 * @param expression ECL expression
 	 * @return SnomedConceptSearchRequestBuilder
@@ -112,8 +111,7 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedComponentSear
 	
 	/**
 	 * Filter matches in the stated tree by the specified Expression Constraint Language (ECL) expression. 
-	 * The currently supported ECL version is v1.3. See <a href="http://snomed.org/ecl">ECL Specification and Guide</a> or
-	 * <a href="http://www.snomed.org/news-articles/expression-constraint-language">About ECL</a> for more information.
+	 * The currently supported ECL version is v1.3. See <a href="http://snomed.org/ecl">ECL Specification and Guide</a>.
 	 * 
 	 * @param expression ECL expression
 	 * @return SnomedConceptSearchRequestBuilder

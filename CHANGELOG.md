@@ -1,6 +1,63 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 6.14.0
+
+### Added
+- OWL Axiom support 
+  * Compute stated tree form based on OWL Axiom `SubClassOf` definitions
+  * Query OWL Axioms when evaluating ECL expressions on stated form
+  * Hybrid mode on definition status updates (either updates an existing OWL Expression member or the Concept's `definitionStatusId` property)
+- Effective time restore functionality for SNOMED CT Reference Set Members
+- Support for relationship group updates in classification
+- Evaluation of ECL expressions on stated form
+- New generic validation rule to report relationships with incorrect characteristic types
+
+### Changed
+- Report only active relationships with inactive reference as conflicts upon merge/rebase
+- Severity change in MRCM range validation rule
+
+### Bugs
+- Fix repeated header in Validation DSV Export API
+- Fix various issues with Simple/Map type DSV Exports
+- Fix incorrect update of concrete domain MRCM predicates
+- Fix `session disconnect` command bug
+- Properly disconnect user after failed login attempt to prevent `Already logged in` exceptions
+
+### Performance
+- Improve performance of SNOMED CT Bulk updates with lots of Reference Set Member updates
+- Improve performance of restore effective time functionality
+
+### Dependencies
+- Add SNOMED CT OWL Toolkit 2.3.2
+- Upgrade Spring to 4.3.22
+- Replace Swaggermvc 0.9.3 with Springfox 2.8.0
+- Upgrade rest-assured library to 3.2.0
+- Upgrade mapdb library to 3.0.7
+- Upgrade SLF4J to 1.7.25 
+- Upgrade Logback to 1.2.3
+- Upgrade Fastutil to 8.2.2 
+- Upgrade Tycho to 1.2.0
+
+## 6.13.1
+
+### Added
+- New MRCM attribute range validation rule (#319)
+
+### Changes
+- Numerous improvements to classification time equivalent concept merging functionality (#318)
+
+### Removed
+- Acceptability merge conflict rule (#321)
+
+### Bugs
+- Fix incorrect update of members when more than 50 members were present for a concept (b224370)
+- Fix occasional startup failure due to incorrect initialization phase used in the reasoner module (#325)
+- Fix DSV export group occurence bug (c494229)
+
+### Performance
+- Normal form generation performance improvements (#318)
+
 ## 6.13.0
 
 ### Added

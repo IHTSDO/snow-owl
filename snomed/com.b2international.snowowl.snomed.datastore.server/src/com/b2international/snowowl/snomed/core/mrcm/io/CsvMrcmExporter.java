@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import com.b2international.snowowl.core.LogUtils;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.core.mrcm.ConceptModelComponentRenderer;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
@@ -50,7 +51,7 @@ public class CsvMrcmExporter {
 		final ConceptModelComponentRenderer renderer = new ConceptModelComponentRenderer(sourcePath);
 
 		try (SnomedEditingContext context = new SnomedEditingContext(branch)) {
-			LogUtils.logExportActivity(LOG, user, branch, "Exporting MRCM rules to CSV...");
+			LogUtils.logExportActivity(LOG, user, branch.getPath(), "Exporting MRCM rules to CSV...");
 
 			try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(stream, Charsets.UTF_8)))) {
 				writer.println(
@@ -72,9 +73,9 @@ public class CsvMrcmExporter {
 				}
 			}
 
-			LogUtils.logExportActivity(LOG, user, branch, "MRCM rule export to CSV successfully finished.");
+			LogUtils.logExportActivity(LOG, user, branch.getPath(), "MRCM rule export to CSV successfully finished.");
 		} catch (final Throwable t) {
-			LogUtils.logExportActivity(LOG, user, branch, "Failed to export MRCM rules.");
+			LogUtils.logExportActivity(LOG, user, branch.getPath(), "Failed to export MRCM rules.");
 			throw new SnowowlRuntimeException("Failed to export MRCM rules.", t);
 		}
 	}

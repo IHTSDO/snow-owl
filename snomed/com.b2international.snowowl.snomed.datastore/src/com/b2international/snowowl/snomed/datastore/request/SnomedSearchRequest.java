@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.datastore.request;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
@@ -111,14 +112,9 @@ public abstract class SnomedSearchRequest<R, D extends SnomedDocument> extends S
 
 	protected final Collection<String> evaluateEclFilter(BranchContext context, Collection<String> optionValues) {
 		if (optionValues.isEmpty()) {
-			return null;
+			return Collections.emptySet();
 		}
-		Collection<String> idFilter = FluentIterable.from(optionValues).transform(new Function<String, String>() {
-			@Override
-			public String apply(String input) {
-				return input.trim();
-			}
-		}).toSet();
+		Collection<String> idFilter = FluentIterable.from(optionValues).transform(String::trim).toSet();
 		if (idFilter.size() == 1) {
 			// if only a single item is available in the typeIdFilter
 			final String expression = Iterables.getOnlyElement(idFilter);

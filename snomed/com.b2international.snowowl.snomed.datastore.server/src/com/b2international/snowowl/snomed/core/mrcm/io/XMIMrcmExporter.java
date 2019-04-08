@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ public class XMIMrcmExporter {
 	public void doExport(String sourcePath, String user, OutputStream stream) {
 		final IBranchPath branch = BranchPathUtils.createPath(sourcePath);
 		try (SnomedEditingContext context = new SnomedEditingContext(branch)) {
-			LogUtils.logExportActivity(LOG, user, branch, "Exporting MRCM rules...");
+			LogUtils.logExportActivity(LOG, user, branch.getPath(), "Exporting MRCM rules...");
 
 			final ResourceSet resourceSet = new ResourceSetImpl();
 			resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
@@ -58,9 +58,9 @@ public class XMIMrcmExporter {
 			resource.getContents().add(conceptModel);
 			resource.save(stream, null);
 			
-			LogUtils.logExportActivity(LOG, user, branch, "MRCM rule export successfully finished.");
+			LogUtils.logExportActivity(LOG, user, branch.getPath(), "MRCM rule export successfully finished.");
 		} catch (final Throwable t) {
-			LogUtils.logExportActivity(LOG, user, branch, "Failed to export MRCM rules.");
+			LogUtils.logExportActivity(LOG, user, branch.getPath(), "Failed to export MRCM rules.");
 			throw new SnowowlRuntimeException("Failed to export MRCM rules.", t);
 		}
 	}

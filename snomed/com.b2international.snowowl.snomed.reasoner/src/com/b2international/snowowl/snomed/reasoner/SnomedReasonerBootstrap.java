@@ -35,9 +35,9 @@ public final class SnomedReasonerBootstrap extends DefaultBootstrapFragment impl
 
 	@Override
 	public void postRun(final SnowOwlConfiguration configuration, final Environment env) {
-
+		
 		if (env.isServer() || env.isEmbedded()) {
-
+			
 			final RepositoryManager repositoryManager = env.service(RepositoryManager.class);
 			final Repository repository = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID);
 			final Index repositoryIndex = repository.service(Index.class);
@@ -55,5 +55,6 @@ public final class SnomedReasonerBootstrap extends DefaultBootstrapFragment impl
 			}
 			
 		}
+		
 	}
 }

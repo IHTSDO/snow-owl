@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,12 +45,12 @@ public class XMIMrcmImporter implements MrcmImporter {
 	@Override
 	public void doImport(final String targetPath, String userName, final InputStream content) {
 		final IBranchPath branch = BranchPathUtils.createPath(targetPath);
-		LogUtils.logImportActivity(LOGGER, userName, branch, "Importing MRCM rules...");
-		final URI uri = URI.createFileURI(UUID.randomUUID().toString());
+		LogUtils.logImportActivity(LOGGER, userName, branch.getPath(), "Importing MRCM rules...");
 		try (SnomedEditingContext context = new SnomedEditingContext(branch)) {
 			
 			final ResourceSet resourceSet = new ResourceSetImpl();
 			resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
+			final URI uri = URI.createFileURI(UUID.randomUUID().toString());
 			final Resource resource = resourceSet.createResource(uri);
 			resource.load(content, null);
 			
@@ -59,10 +59,10 @@ public class XMIMrcmImporter implements MrcmImporter {
 			// Prevent container changes by copying all constraints
 			context.getConstraints().addAll(EcoreUtil.copyAll(model.getConstraints()));
 
-			LogUtils.logImportActivity(LOGGER, userName, branch, "MRCM rule import to {} successfully finished.", branch.getPath());
+			LogUtils.logImportActivity(LOGGER, userName, branch.getPath(), "MRCM rule import to {} successfully finished.", branch);
 			CDOServerUtils.commit(context, userName, "Imported MRCM rules", null);
 		} catch (final Throwable t) {
-			LogUtils.logImportActivity(LOGGER, userName, branch, "Failed to import MRCM rules to {}", branch, t);
+			LogUtils.logImportActivity(LOGGER, userName, branch.getPath(), "Failed to import MRCM rules to {}", branch, t);
 			throw new SnowowlRuntimeException(t);
 		}
 	}

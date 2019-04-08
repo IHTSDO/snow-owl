@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,17 +57,17 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Strings;
 import com.google.common.net.HttpHeaders;
-import com.mangofactory.swagger.annotations.ApiIgnore;
-import com.wordnik.swagger.annotations.Api;
-import com.wordnik.swagger.annotations.ApiOperation;
-import com.wordnik.swagger.annotations.ApiParam;
-import com.wordnik.swagger.annotations.ApiResponse;
-import com.wordnik.swagger.annotations.ApiResponses;
+import springfox.documentation.annotations.ApiIgnore;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 /**
  * @since 1.0
  */
-@Api("Concepts")
+@Api(value = "Concepts", description="Concepts", tags = { "concepts" })
 @Controller
 @RequestMapping(produces={ AbstractRestService.SO_MEDIA_TYPE })
 public class SnomedConceptRestService extends AbstractSnomedRestService {
@@ -122,19 +122,19 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="termActive", required=false) 
 			final Boolean descriptionActiveFilter,
 
-			@ApiParam(value="The ECL expression to match in the inferred tree")
+			@ApiParam(value="The ECL expression to match on the inferred form")
 			@RequestParam(value="ecl", required=false) 
 			final String eclFilter,
 			
-			@ApiParam(value="The ECL expression to match in the stated tree")
-			@RequestParam(value="statedEcl", required=false)
+			@ApiParam(value="The ECL expression to match on the stated form")
+			@RequestParam(value="statedEcl", required=false) 
 			final String statedEclFilter,
 			
 			@ApiParam(value="A set of concept identifiers")
 			@RequestParam(value="conceptIds", required=false) 
 			final Set<String> conceptIds,
 			
-			@ApiParam(value="The SNOMED CT Query expression to match")
+			@ApiParam(value="The SNOMED CT Query expression to match (inferred form only)")
 			@RequestParam(value="query", required=false) 
 			final String queryFilter,
 			
