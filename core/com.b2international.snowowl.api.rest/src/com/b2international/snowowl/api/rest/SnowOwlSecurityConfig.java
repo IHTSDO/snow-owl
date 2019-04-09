@@ -26,6 +26,7 @@ import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.firewall.HttpFirewall;
 import org.springframework.security.web.firewall.StrictHttpFirewall;
 
@@ -65,7 +66,9 @@ public class SnowOwlSecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/**")
 				.hasAuthority("ROLE_USER")
 			.and()
-				.httpBasic();
+				.httpBasic()
+			.and()
+				.addFilterAfter(new RequestHeaderAuthenticationDecorator(), BasicAuthenticationFilter.class);
 	}
 	
 	@Override
