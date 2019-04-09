@@ -68,7 +68,7 @@ import io.swagger.annotations.ApiResponses;
 @Api(value = "Merge Reviews", description = "Merge Reviews", tags = { "merge-reviews" })
 @RestController
 @RequestMapping(value="/merge-reviews", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
-public class SnomedBranchMergeReviewController extends AbstractSnomedRestService {
+public class SnomedMergeReviewRestService extends AbstractSnomedRestService {
 
 	@Autowired
 	private IEventBus bus;

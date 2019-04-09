@@ -61,7 +61,7 @@ import io.swagger.annotations.ApiResponses;
 @RestController
 @RequestMapping(
 		produces={ AbstractRestService.SO_MEDIA_TYPE })
-public class SnomedConceptSubResourcesController extends AbstractSnomedRestService {
+public class SnomedConceptSubResourcesRestService extends AbstractSnomedRestService {
 
 	private static final String STATED_FORM = "stated";
 	private static final String INFERRED_FORM = "inferred";

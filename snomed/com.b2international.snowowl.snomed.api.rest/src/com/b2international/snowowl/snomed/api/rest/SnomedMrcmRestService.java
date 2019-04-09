@@ -46,7 +46,7 @@ import io.swagger.annotations.ApiResponses;
 @Api(value = "MRCM", description = "MRCM", tags = { "mrcm" })
 @RestController
 @RequestMapping(value="/mrcm", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
-public class SnomedMrcmController extends AbstractSnomedRestService {
+public class SnomedMrcmRestService extends AbstractSnomedRestService {
 
 	@Autowired
 	private SnomedMrcmService mrcmService;
