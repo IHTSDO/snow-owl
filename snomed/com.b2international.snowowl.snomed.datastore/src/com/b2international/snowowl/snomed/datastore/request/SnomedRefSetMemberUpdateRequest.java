@@ -37,7 +37,7 @@ import com.google.common.collect.ImmutableSet;
 /**
  * @since 4.5
  */
-final class SnomedRefSetMemberUpdateRequest implements SnomedComponentRequest<Boolean> {
+public final class SnomedRefSetMemberUpdateRequest implements SnomedComponentRequest<Boolean> {
 
 	@NotEmpty
 	private final String memberId;

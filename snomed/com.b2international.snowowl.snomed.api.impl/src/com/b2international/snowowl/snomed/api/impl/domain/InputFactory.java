@@ -16,6 +16,8 @@ import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponentWithId;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
@@ -32,11 +34,11 @@ public class InputFactory {
 				new AxiomInputCreator(branch));
 	}
 
-	public <I extends Request<TransactionContext, String>> I createComponentInput(ISnomedBrowserComponentWithId component, Class<I> inputType) {
+	public <I extends SnomedComponentCreateRequest> I createComponentInput(ISnomedBrowserComponentWithId component, Class<I> inputType) {
 		return getInputDelegate(inputType).createInput(component, this);
 	}
 
-	public <I extends Request<TransactionContext, String>> List<I> createComponentInputs(
+	public <I extends SnomedComponentCreateRequest> List<I> createComponentInputs(
 			List<? extends ISnomedBrowserComponentWithId> newVersionComponents,
 			Class<I> inputType) {
 		
@@ -94,7 +96,7 @@ public class InputFactory {
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private <I extends Request<TransactionContext, String>, U extends Request<TransactionContext, Boolean>> ComponentInputCreator<I, U, ISnomedBrowserComponentWithId> getInputDelegate(Class<I> inputType) {
+	private <I extends SnomedComponentCreateRequest, U extends SnomedComponentRequest<Boolean>> ComponentInputCreator<I, U, ISnomedBrowserComponentWithId> getInputDelegate(Class<I> inputType) {
 		for (ComponentInputCreator creator : creators) {
 			if (creator.canCreateInput(inputType)) {
 				return creator;
