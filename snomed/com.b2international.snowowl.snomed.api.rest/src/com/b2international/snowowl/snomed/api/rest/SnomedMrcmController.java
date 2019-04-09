@@ -36,13 +36,14 @@ import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.impl.SnomedMrcmService;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-import com.wordnik.swagger.annotations.Api;
-import com.wordnik.swagger.annotations.ApiOperation;
-import com.wordnik.swagger.annotations.ApiParam;
-import com.wordnik.swagger.annotations.ApiResponse;
-import com.wordnik.swagger.annotations.ApiResponses;
 
-@Api("MRCM")
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+
+@Api(value = "MRCM", description = "MRCM", tags = { "mrcm" })
 @RestController
 @RequestMapping(value="/mrcm", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
 public class SnomedMrcmController extends AbstractSnomedRestService {

@@ -57,17 +57,18 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Strings;
 import com.google.common.net.HttpHeaders;
-import springfox.documentation.annotations.ApiIgnore;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import springfox.documentation.annotations.ApiIgnore;
 
 /**
  * @since 1.0
  */
-@Api(value = "Concepts", description="Concepts", tags = { "concepts" })
+@Api(value = "Concepts", description = "Concepts", tags = { "concepts" })
 @Controller
 @RequestMapping(produces={ AbstractRestService.SO_MEDIA_TYPE })
 public class SnomedConceptRestService extends AbstractSnomedRestService {

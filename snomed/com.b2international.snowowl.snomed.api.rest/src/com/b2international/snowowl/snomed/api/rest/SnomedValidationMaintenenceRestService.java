@@ -20,15 +20,16 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
-import com.wordnik.swagger.annotations.Api;
-import com.wordnik.swagger.annotations.ApiOperation;
-import com.wordnik.swagger.annotations.ApiResponse;
-import com.wordnik.swagger.annotations.ApiResponses;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 /**
  * @since 1.0
  */
-@Api("IHTSDO SNOMED CT Validation Maintenence")
+@Api(value = "IHTSDO SNOMED CT Validation Maintenence", description = "IHTSDO SNOMED CT Validation Maintenence", tags = { "validation-maintenence" })
 @Controller
 @RequestMapping(
 		value="/validation-maintenence",
