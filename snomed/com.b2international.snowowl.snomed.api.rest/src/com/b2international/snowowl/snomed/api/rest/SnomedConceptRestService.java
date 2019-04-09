@@ -43,8 +43,8 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.request.SearchResourceRequest.SortField;
 import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
+import com.b2international.snowowl.snomed.api.ISnomedExpressionService;
 import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpression;
-import com.b2international.snowowl.snomed.api.impl.SnomedExpressionService;
 import com.b2international.snowowl.snomed.api.rest.domain.ChangeRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestInput;
@@ -74,7 +74,7 @@ import springfox.documentation.annotations.ApiIgnore;
 public class SnomedConceptRestService extends AbstractSnomedRestService {
 
 	@Autowired
-	private SnomedExpressionService expressionService;
+	private ISnomedExpressionService expressionService;
 
 	@ApiOperation(
 			value="Retrieve Concepts from a branch", 

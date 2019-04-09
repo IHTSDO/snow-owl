@@ -26,8 +26,11 @@ import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.firewall.HttpFirewall;
 import org.springframework.security.web.firewall.StrictHttpFirewall;
+
+import com.b2international.snowowl.snomed.api.rest.RequestHeaderAuthenticationDecorator;
 
 /**
  * @since 7.0
@@ -64,7 +67,9 @@ public class SnomedSecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/**")
 				.hasAuthority("ROLE_USER")
 			.and()
-				.httpBasic();
+				.httpBasic()
+			.and()
+				.addFilterAfter(new RequestHeaderAuthenticationDecorator(), BasicAuthenticationFilter.class);
 	}
 	
 	@Override

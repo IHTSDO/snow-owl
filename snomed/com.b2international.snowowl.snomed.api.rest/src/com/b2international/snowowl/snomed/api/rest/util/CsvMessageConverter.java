@@ -35,6 +35,7 @@ import com.google.common.collect.Sets;
 
 @SuppressWarnings("rawtypes")
 public class CsvMessageConverter extends AbstractHttpMessageConverter<CollectionResource> {
+	
 	private static final String DEFINITION_STATUS_FIELD = "definitionStatus";
 	private static final String FSN_FIELD = "fsn";
 	private static final MediaType MEDIA_TYPE = new MediaType("text", "csv", Charset.forName("utf-8"));

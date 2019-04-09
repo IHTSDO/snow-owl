@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -72,10 +71,6 @@ public class SnomedMergeReviewRestService extends AbstractSnomedRestService {
 
 	@Autowired
 	private IEventBus bus;
-	
-	@Autowired
-	@Value("${codeSystemShortName}")
-	protected String codeSystemShortName;
 	
 	@Autowired
 	protected ISnomedMergeReviewService mergeReviewService;

@@ -52,31 +52,39 @@ import com.b2international.snowowl.core.MetadataHolder;
 import com.b2international.snowowl.core.MetadataHolderMixin;
 import com.b2international.snowowl.core.MetadataMixin;
 import com.b2international.snowowl.core.branch.Branch;
-import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.datastore.file.FileRegistry;
 import com.b2international.snowowl.datastore.review.BranchState;
+import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.identity.IdentityProvider;
 import com.b2international.snowowl.snomed.api.ISnomedConceptHistoryService;
 import com.b2international.snowowl.snomed.api.ISnomedExportService;
+import com.b2international.snowowl.snomed.api.ISnomedExpressionService;
+import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.ISnomedReferenceSetHistoryService;
 import com.b2international.snowowl.snomed.api.ISnomedRf2ImportService;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.impl.SnomedBrowserService;
 import com.b2international.snowowl.snomed.api.impl.SnomedConceptHistoryServiceImpl;
 import com.b2international.snowowl.snomed.api.impl.SnomedExportService;
+import com.b2international.snowowl.snomed.api.impl.SnomedExpressionService;
+import com.b2international.snowowl.snomed.api.impl.SnomedManualConceptMergeServiceImpl;
+import com.b2international.snowowl.snomed.api.impl.SnomedMergeReviewServiceImpl;
+import com.b2international.snowowl.snomed.api.impl.SnomedMrcmService;
 import com.b2international.snowowl.snomed.api.impl.SnomedReferenceSetHistoryServiceImpl;
 import com.b2international.snowowl.snomed.api.impl.SnomedRf2ImportService;
+import com.b2international.snowowl.snomed.api.impl.validation.SnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.rest.AntPathWildcardMatcher;
 import com.b2international.snowowl.snomed.api.rest.SnowOwlAuthenticationProvider;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchStateMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.CollectionResourceMixin;
+import com.b2international.snowowl.snomed.api.rest.domain.MergeReviewMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.ReviewMixin;
 import com.b2international.snowowl.snomed.api.rest.util.CsvMessageConverter;
-import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.fasterxml.classmate.TypeResolver;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -141,6 +149,7 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 		objectMapper.addMixIn(MetadataHolder.class, MetadataHolderMixin.class);
 		objectMapper.addMixIn(Review.class, ReviewMixin.class);
 		objectMapper.addMixIn(BranchState.class, BranchStateMixin.class);
+		objectMapper.addMixIn(MergeReview.class, MergeReviewMixin.class);
 		return objectMapper;
 	}
 	
@@ -191,15 +200,6 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 	}
 	
 	@Bean
-	public Integer maxReasonerRuns() {
-		return com.b2international.snowowl.core.ApplicationContext.getInstance()
-				.getServiceChecked(SnowOwlConfiguration.class)
-				.getModuleConfig(SnomedCoreConfiguration.class)
-				.getClassificationConfig()
-				.getMaxReasonerRuns();
-	}
-	
-	@Bean
 	public ISnomedExportService exportService() {
 		return new SnomedExportService();
 	}
@@ -215,6 +215,11 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 	}
 	
 	@Bean
+	public ISnomedBrowserValidationService validationService() {
+		return new SnomedBrowserValidationService();
+	}
+	
+	@Bean
 	public ISnomedConceptHistoryService snomedConceptHistoryRestService() {
 		return new SnomedConceptHistoryServiceImpl();
 	}
@@ -222,6 +227,26 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 	@Bean
 	public ISnomedReferenceSetHistoryService snomedReferenceSetHistoryService() {
 		return new SnomedReferenceSetHistoryServiceImpl();
+	}
+	
+	@Bean
+	public ISnomedExpressionService expressionService() {
+		return new SnomedExpressionService();
+	}
+	
+	@Bean
+	public ISnomedMergeReviewService mergeReviewService() {
+		return new SnomedMergeReviewServiceImpl();
+	}
+	
+	@Bean
+	public SnomedMrcmService mrcmService() {
+		return new SnomedMrcmService();
+	}
+	
+	@Bean
+	public SnomedManualConceptMergeServiceImpl manualMergeReviewService() {
+		return new SnomedManualConceptMergeServiceImpl();
 	}
 	
 	@Override
