@@ -35,8 +35,9 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
-import com.jayway.restassured.http.ContentType;
-import com.jayway.restassured.response.Response;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
 /**
  * @since 2.0

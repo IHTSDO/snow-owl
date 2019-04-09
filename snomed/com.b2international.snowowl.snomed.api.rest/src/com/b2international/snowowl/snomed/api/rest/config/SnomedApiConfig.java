@@ -195,6 +195,7 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 		return com.b2international.snowowl.core.ApplicationContext.getInstance()
 				.getServiceChecked(SnowOwlConfiguration.class)
 				.getModuleConfig(SnomedCoreConfiguration.class)
+				.getClassificationConfig()
 				.getMaxReasonerRuns();
 	}
 	

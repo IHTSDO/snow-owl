@@ -88,7 +88,7 @@ public class MrcmImportExportTest {
 		
 		// default/old MRCM import file contains 58 rules
 		final IBranchPath branchPath = childBranch.branchPath();
-		final Path path = Paths.get(PlatformUtil.toAbsolutePath(MrcmImportExportTest.class, "mrcm_defaults.xmi"));
+		final Path path = PlatformUtil.toAbsolutePath(MrcmImportExportTest.class, "mrcm_defaults.xmi");
 		
 		try (final InputStream stream = Files.newInputStream(path, StandardOpenOption.READ)) {
 			Services.service(MrcmImporter.class).doImport(childBranch.path(), "test", stream);

@@ -15,15 +15,13 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
-import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.toList;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
 import java.net.URI;
 import java.security.Principal;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +59,6 @@ import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.b2international.snowowl.snomed.reasoner.domain.ChangeNature;
 import com.b2international.snowowl.snomed.reasoner.domain.ClassificationStatus;
 import com.b2international.snowowl.snomed.reasoner.domain.ClassificationTask;
 import com.b2international.snowowl.snomed.reasoner.domain.ClassificationTasks;
@@ -360,19 +357,15 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService.getConceptDetails(branchPath, conceptId, extendedLocales);
 
 		// Replace ImmutableCollection of relationships
-		final List<ISnomedBrowserRelationship> relationships = new ArrayList<ISnomedBrowserRelationship>(conceptDetails.getRelationships());
+		final List<ISnomedBrowserRelationship> relationships = newArrayList(conceptDetails.getRelationships());
 		conceptDetails.setRelationships(relationships);
 
-		Set<String> relatedConceptIds = newHashSet();
-		
-		relationshipChanges.stream()
-			.filter(change -> ChangeNature.INFERRED == change.getChangeNature())
-			.forEach(change -> relatedConceptIds.add(change.getRelationship().getDestinationId()));
-		
 		for (RelationshipChange relationshipChange : relationshipChanges) {
+			
 			final ReasonerRelationship relationship = relationshipChange.getRelationship();
 			
 			switch (relationshipChange.getChangeNature()) {
+			
 				case REDUNDANT:
 					relationships.removeIf(r -> r.getId().equals(relationship.getOriginId()));
 					break;

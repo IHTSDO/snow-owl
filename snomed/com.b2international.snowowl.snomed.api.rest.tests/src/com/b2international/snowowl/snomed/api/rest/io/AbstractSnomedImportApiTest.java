@@ -32,8 +32,9 @@ import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.test.commons.rest.RestExtensions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.jayway.restassured.http.ContentType;
-import com.jayway.restassured.response.Response;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
 /**
  * @since 2.0
@@ -47,7 +48,7 @@ public abstract class AbstractSnomedImportApiTest extends AbstractSnomedApiTest 
 	private static final long POLL_TIMEOUT = TimeUnit.SECONDS.toMillis(30L);
 
 	protected void assertImportFileCanBeUploaded(final String importId, final String importFile) {
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API).with().multiPart(new File(PlatformUtil.toAbsolutePath(getClass(), importFile)))
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API).with().multiPart(new File(PlatformUtil.toAbsolutePath(getClass(), importFile).toString()))
 		.when().post("/imports/{id}/archive", importId)
 		.then().assertThat().statusCode(204);
 	}
