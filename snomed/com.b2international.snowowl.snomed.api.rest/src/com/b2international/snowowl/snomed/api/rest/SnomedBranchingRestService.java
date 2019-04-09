@@ -123,11 +123,14 @@ public class SnomedBranchingRestService extends AbstractRestService {
 		@ApiResponse(code = 404, message = "Not Found", response=RestApiError.class),
 	})
 	@RequestMapping(value="/{path:**}/children", method=RequestMethod.GET)
-	public DeferredResult<Branches> getChildren(@PathVariable("path") String branchPath) {
+	public DeferredResult<Branches> getChildren(
+			@PathVariable("path") String branchPath,
+			@RequestParam(value="immediateChildren", required=false, defaultValue="false") boolean immediateChildren) {
 		return DeferredResults.wrap(
 				RepositoryRequests
 					.branching()
 					.prepareGetChildren(branchPath)
+					.filterImmediate(immediateChildren)
 					.build(repositoryId)
 					.execute(bus));
 	}
@@ -145,6 +148,7 @@ public class SnomedBranchingRestService extends AbstractRestService {
 				RepositoryRequests
 					.branching()
 					.prepareGet(branchPath)
+					.withLocks()
 					.build(repositoryId)
 					.execute(bus));
 	}
