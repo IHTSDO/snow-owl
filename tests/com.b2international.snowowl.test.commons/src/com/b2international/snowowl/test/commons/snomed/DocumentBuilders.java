@@ -31,7 +31,6 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
-import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintDocument;
 import com.b2international.snowowl.snomed.datastore.index.constraint.SnomedConstraintPredicateType;
@@ -101,11 +100,10 @@ public abstract class DocumentBuilders {
 	}
 	
 	public static SnomedRelationshipIndexEntry.Builder relationship(final String source, final String type, final String destination) {
-		return relationship(source, type, destination, Trees.INFERRED_FORM);
+		return relationship(source, type, destination, Concepts.INFERRED_RELATIONSHIP);
 	}
 	
-	public static SnomedRelationshipIndexEntry.Builder relationship(final String source, final String type, final String destination, final String form) {
-		final String characteristicTypeId = Trees.INFERRED_FORM.equals(form) ? Concepts.INFERRED_RELATIONSHIP : Concepts.STATED_RELATIONSHIP;
+	public static SnomedRelationshipIndexEntry.Builder relationship(final String source, final String type, final String destination, String characteristicTypeId) {
 		return SnomedRelationshipIndexEntry.builder()
 				.id(RandomSnomedIdentiferGenerator.generateRelationshipId())
 				.active(true)
