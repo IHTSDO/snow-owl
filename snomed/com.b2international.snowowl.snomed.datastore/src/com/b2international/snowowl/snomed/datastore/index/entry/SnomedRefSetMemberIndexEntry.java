@@ -69,7 +69,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.base.Objects.ToStringHelper;
-import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 
@@ -315,7 +314,7 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 			public Builder caseSnomedSimpleMapRefSetMember(final SnomedSimpleMapRefSetMember mapRefSetMember) {
 				return builder
 						.field(Fields.MAP_TARGET, mapRefSetMember.getMapTargetComponentId())
-						.field(Fields.MAP_TARGET_DESCRIPTION, Strings.nullToEmpty(mapRefSetMember.getMapTargetComponentDescription()));
+						.field(Fields.MAP_TARGET_DESCRIPTION, mapRefSetMember.getMapTargetComponentDescription());
 			}
 			
 			@Override
