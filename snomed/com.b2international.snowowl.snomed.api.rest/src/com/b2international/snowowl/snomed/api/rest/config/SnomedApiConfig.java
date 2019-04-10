@@ -47,6 +47,7 @@ import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 import com.b2international.commons.platform.PlatformUtil;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.MetadataHolder;
 import com.b2international.snowowl.core.MetadataHolderMixin;
@@ -65,7 +66,9 @@ import com.b2international.snowowl.snomed.api.ISnomedExpressionService;
 import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.ISnomedReferenceSetHistoryService;
 import com.b2international.snowowl.snomed.api.ISnomedRf2ImportService;
+import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserAxiomService;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
+import com.b2international.snowowl.snomed.api.impl.SnomedBrowserAxiomService;
 import com.b2international.snowowl.snomed.api.impl.SnomedBrowserService;
 import com.b2international.snowowl.snomed.api.impl.SnomedConceptHistoryServiceImpl;
 import com.b2international.snowowl.snomed.api.impl.SnomedExportService;
@@ -247,6 +250,15 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 	@Bean
 	public SnomedManualConceptMergeServiceImpl manualMergeReviewService() {
 		return new SnomedManualConceptMergeServiceImpl();
+	}
+	
+	@Bean
+	public ISnomedBrowserAxiomService axiomService() {
+		SnomedBrowserAxiomService axiomService = new SnomedBrowserAxiomService();
+		if (!ApplicationContext.getInstance().exists(ISnomedBrowserAxiomService.class)) {
+			ApplicationContext.getInstance().registerService(ISnomedBrowserAxiomService.class, axiomService);
+		}
+		return axiomService; 
 	}
 	
 	@Override

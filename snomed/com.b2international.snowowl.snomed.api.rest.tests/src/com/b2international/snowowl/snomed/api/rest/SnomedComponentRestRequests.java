@@ -23,7 +23,6 @@ import java.util.Map;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.google.common.base.Joiner;
 
-import io.restassured.http.ContentType;
 import io.restassured.response.ValidatableResponse;
 
 /**

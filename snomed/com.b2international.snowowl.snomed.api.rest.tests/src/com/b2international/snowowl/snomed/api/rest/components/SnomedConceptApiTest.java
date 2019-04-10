@@ -38,14 +38,6 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.ina
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reserveComponentId;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRefSet;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRelationshipRequestBody;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateConcept;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reserveComponentId;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -110,14 +102,15 @@ import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.snomed.datastore.id.domain.IdentifierStatus;
 import com.b2international.snowowl.snomed.datastore.id.domain.SctId;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+
 import io.restassured.response.ValidatableResponse;
 
 /**
@@ -1070,11 +1063,13 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	public void createConceptWithOwlAxiomMemberWithSubClassOfExpression() throws Exception {
 		final String owlSubclassOfExpression = String.format("SubClassOf(:%s :%s)", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS);
 		
-		final Map<?, ?> memberRequestBody = ImmutableMap.builder()
-				.put("moduleId", Concepts.MODULE_SCT_CORE)
-				.put("referenceSetId", Concepts.REFSET_OWL_AXIOM)
-				.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlSubclassOfExpression)
-				.build();
+		final Map<?, ?> memberRequestBody = ImmutableMap.<String, Object>builder()
+					.put("moduleId", Concepts.MODULE_SCT_CORE)
+					.put("referenceSetId", Concepts.REFSET_OWL_AXIOM)
+					.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlSubclassOfExpression)
+						.build()
+					).build();
 
 		final Map<?, ?> conceptRequestBody = createConceptRequestBody(Concepts.ROOT_CONCEPT)
 				.put("members", ImmutableList.of(memberRequestBody))
@@ -1101,10 +1096,12 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		final String owlEquivalentClassesExpression = String.format("EquivalentClasses(:%s :%s)", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS);
 		
 		final Map<?, ?> memberRequestBody = ImmutableMap.builder()
-				.put("moduleId", Concepts.MODULE_SCT_CORE)
-				.put("referenceSetId", Concepts.REFSET_OWL_AXIOM)
-				.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlEquivalentClassesExpression)
-				.build();
+					.put("moduleId", Concepts.MODULE_SCT_CORE)
+					.put("referenceSetId", Concepts.REFSET_OWL_AXIOM)
+					.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlEquivalentClassesExpression)
+						.build()
+					).build();
 
 		final Map<?, ?> conceptRequestBody = createConceptRequestBody(Concepts.ROOT_CONCEPT)
 				.put("members", ImmutableList.of(memberRequestBody))
@@ -1129,11 +1126,14 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void createConceptWithOwlAxiomMemberWithComplexSubClassOfExpressionShouldDefaultToPrimitive() throws Exception {
 		final String owlSubClassOfExpression = "SubClassOf(ObjectIntersectionOf(:73211009 ObjectSomeValuesFrom(:73211009 ObjectSomeValuesFrom(:100106001 :100102001))) :8801005)";
+		
 		final Map<?, ?> memberRequestBody = ImmutableMap.builder()
-				.put("moduleId", Concepts.MODULE_SCT_CORE)
-				.put("referenceSetId", Concepts.REFSET_OWL_AXIOM)
-				.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlSubClassOfExpression)
-				.build();
+					.put("moduleId", Concepts.MODULE_SCT_CORE)
+					.put("referenceSetId", Concepts.REFSET_OWL_AXIOM)
+					.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlSubClassOfExpression)
+						.build()
+					).build();
 		
 		final Map<?, ?> conceptRequestBody = createConceptRequestBody(Concepts.ROOT_CONCEPT)
 				.put("members", ImmutableList.of(memberRequestBody))
@@ -1193,6 +1193,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void testUpdateConceptDefinitionStatusWithAxiomMembersShouldNotChange() {
+		
 		final String conceptId = createNewConcept(branchPath);
 
 		// Update the definition status on concept

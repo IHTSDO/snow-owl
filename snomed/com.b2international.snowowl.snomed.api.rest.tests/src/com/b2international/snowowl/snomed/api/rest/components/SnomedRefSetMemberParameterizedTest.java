@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.api.rest.components;
 
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests.createCodeSystem;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.createVersion;
 import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.getNextAvailableEffectiveDate;
 import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ATTRIBUTE_CARDINALITY;
@@ -54,8 +56,6 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedRefSetRestRequests.updateRefSetComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRefSetRestRequests.updateRefSetMemberEffectiveTime;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewComponent;
-import static com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests.createCodeSystem;
-import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.createVersion;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRefSet;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createReferencedComponent;
@@ -330,6 +330,7 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void testRestorationOfEffectiveTimeOnMutablePropertyChange() {
+		
 		Assume.assumeFalse(SnomedRefSetType.SIMPLE.equals(refSetType));
 
 		final String memberId = createRefSetMember();
@@ -347,10 +348,12 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 			.body("effectiveTime", equalTo(effectiveTime));
 
 		final Map<?, ?> updateRequest = ImmutableMap.builder()
-				.putAll(ImmutableMap.<String, Object>builder().putAll(getUpdateProperties()).build())
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getUpdateProperties())
+						.build())
 				.put("commitComment", "Updated reference set member")
 				.build();
-
+		
 		updateRefSetComponent(branchPath, SnomedComponentType.MEMBER, memberId, updateRequest, false).statusCode(204);
 
 		// Updating a member's properties should unset the effective time
@@ -359,14 +362,16 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 				.body("effectiveTime", equalTo(null));
 
 		for (Entry<String, Object> updateProperty : getUpdateProperties().entrySet()) {
-			updateResponse.body(updateProperty.getKey(), equalTo(updateProperty.getValue()));
+			updateResponse.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + updateProperty.getKey(), equalTo(updateProperty.getValue()));
 		}
 
 		final Map<?, ?> revertUpdateRequest = ImmutableMap.builder()
-				.putAll(ImmutableMap.<String, Object>builder().putAll(getValidProperties()).build())
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.putAll(getValidProperties())
+						.build())
 				.put("commitComment", "Reverted previous update of reference set member")
 				.build();
-
+		
 		updateRefSetComponent(branchPath, SnomedComponentType.MEMBER, memberId, revertUpdateRequest, false).statusCode(204);
 
 		// Getting the member back to its originally released state should restore the effective time
@@ -375,7 +380,7 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 			.body("effectiveTime", equalTo(effectiveTime));
 
 		for (Entry<String, Object> validProperty : getValidProperties().entrySet()) {
-			revertResponse.body(validProperty.getKey(), equalTo(validProperty.getValue()));
+			revertResponse.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + validProperty.getKey(), equalTo(validProperty.getValue()));
 		}
 
 	}

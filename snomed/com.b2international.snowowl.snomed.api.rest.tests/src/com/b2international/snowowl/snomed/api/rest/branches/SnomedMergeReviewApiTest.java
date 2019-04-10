@@ -23,6 +23,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRe
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.reviewLocation;
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.storeConceptForMergeReview;
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.waitForMergeReviewJob;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRefSetRestRequests.updateRefSetComponent;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -734,15 +735,15 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		SnomedComponentRestRequests.getComponent(secondTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()")
 				.body("moduleId", CoreMatchers.equalTo(Concepts.MODULE_SCT_CORE));
 		
-		final Map<?, ?> moduleUpdate = ImmutableMap.of("moduleId", "900000000000012004", "commitComment", "Update member module: " + memberId);
+		final Map<?, ?> moduleUpdate = ImmutableMap.builder()
+				.put("moduleId", Concepts.MODULE_SCT_MODEL_COMPONENT)
+				.put("commitComment", "Update member module: " + memberId)
+				.build();
 
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-			.with().contentType(ContentType.JSON)
-			.and().body(moduleUpdate)
-			.when().put("/{path}/{componentType}/{id}", secondTaskPath, SnomedComponentType.MEMBER.toLowerCasePlural(), memberId);
+		updateRefSetComponent(secondTaskPath, SnomedComponentType.MEMBER, memberId, moduleUpdate, false).statusCode(204);
 		
 		SnomedComponentRestRequests.getComponent(secondTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()")
-			.body("moduleId", CoreMatchers.equalTo("900000000000012004"));
+			.body("moduleId", CoreMatchers.equalTo(Concepts.MODULE_SCT_MODEL_COMPONENT));
 
 		IBranchPath thirdTaskPath = BranchPathUtils.createPath(branchPath, "3");
 		SnomedBranchingRestRequests.createBranch(thirdTaskPath);
@@ -750,12 +751,12 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		SnomedComponentRestRequests.getComponent(thirdTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()")
 			.body("active", CoreMatchers.equalTo(true));
 	
-		final Map<?, ?> inactivationReq = ImmutableMap.of("active", false, "commitComment", "Inactivate member: " + memberId);
+		final Map<?, ?> inactivationReq = ImmutableMap.builder()
+				.put("active", false)
+				.put("commitComment", "Inactivate member: " + memberId)
+				.build();
 		
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-			.with().contentType(ContentType.JSON)
-			.and().body(inactivationReq)
-			.when().put("/{path}/{componentType}/{id}", thirdTaskPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), memberId);
+		updateRefSetComponent(thirdTaskPath, SnomedComponentType.MEMBER, memberId, inactivationReq, false).statusCode(204);
 		
 		SnomedComponentRestRequests.getComponent(thirdTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()")
 			.body("active", CoreMatchers.equalTo(false));
