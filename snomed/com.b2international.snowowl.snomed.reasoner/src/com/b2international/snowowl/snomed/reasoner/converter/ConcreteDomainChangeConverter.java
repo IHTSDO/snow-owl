@@ -91,7 +91,7 @@ public final class ConcreteDomainChangeConverter
 		concreteDomainMember.setReferencedComponentId(entry.getReferencedComponentId());
 
 		switch (entry.getNature()) {
-			case NEW:
+			case INFERRED:
 				/*
 				 * New members are referring to: 
 				 * - a different component 
@@ -155,7 +155,7 @@ public final class ConcreteDomainChangeConverter
 			 */
 			if (needsReferencedComponent) {
 				final List<ReasonerConcreteDomainMember> blankMembers = itemsForCurrentBranch.stream()
-						.filter(c -> !inferredOnly || ChangeNature.NEW.equals(c.getChangeNature()))
+						.filter(c -> !inferredOnly || ChangeNature.INFERRED.equals(c.getChangeNature()))
 						.map(ConcreteDomainChange::getConcreteDomainMember)
 						.collect(Collectors.toList());
 
@@ -180,7 +180,7 @@ public final class ConcreteDomainChangeConverter
 			 * member might be used for multiple eg. "new" counterparts.
 			 */
 			final Set<String> cdMemberUuids = itemsForCurrentBranch.stream()
-					.filter(c -> !inferredOnly || ChangeNature.NEW.equals(c.getChangeNature()))
+					.filter(c -> !inferredOnly || ChangeNature.INFERRED.equals(c.getChangeNature()))
 					.map(c -> c.getConcreteDomainMember().getOriginMemberId())
 					.collect(Collectors.toSet());
 
@@ -206,7 +206,7 @@ public final class ConcreteDomainChangeConverter
 				final String memberUuid = reasonerMember.getOriginMemberId();
 
 				switch (item.getChangeNature()) {
-					case NEW: {
+					case INFERRED: {
 							final SnomedReferenceSetMember expandedMember = cdMembersByUuid.get(memberUuid);
 							final Map<String, Object> expandedProperties = expandedMember.getProperties();
 

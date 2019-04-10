@@ -80,7 +80,7 @@ extends BaseResourceConverter<DescriptionChangeDocument, DescriptionChange, Desc
 		description.setReleased(entry.isReleased());
 
 		switch (entry.getNature()) {
-			case NEW:
+			case INFERRED:
 				// New descriptions are describing a different concept 
 				description.setConceptId(entry.getConceptId());
 				break;
@@ -128,7 +128,7 @@ extends BaseResourceConverter<DescriptionChangeDocument, DescriptionChange, Desc
 			 */
 			if (needsConcept) {
 				final List<ReasonerDescription> blankDescriptions = itemsForCurrentBranch.stream()
-						.filter(c -> ChangeNature.NEW.equals(c.getChangeNature()))
+						.filter(c -> ChangeNature.INFERRED.equals(c.getChangeNature()))
 						.map(DescriptionChange::getDescription)
 						.collect(Collectors.toList());
 	
@@ -163,7 +163,7 @@ extends BaseResourceConverter<DescriptionChangeDocument, DescriptionChange, Desc
 			 * description might be used for multiple eg. "new" counterparts.
 			 */
 			final Set<String> descriptionIds = itemsForCurrentBranch.stream()
-					.filter(c -> !inferredOnly || ChangeNature.NEW.equals(c.getChangeNature()))
+					.filter(c -> !inferredOnly || ChangeNature.INFERRED.equals(c.getChangeNature()))
 					.map(c -> c.getDescription().getOriginDescriptionId())
 					.collect(Collectors.toSet());
 
@@ -185,7 +185,7 @@ extends BaseResourceConverter<DescriptionChangeDocument, DescriptionChange, Desc
 				final String descriptionId = reasonerDescription.getOriginDescriptionId();
 
 				switch (item.getChangeNature()) {
-					case NEW: {
+					case INFERRED: {
 						final SnomedDescription expandedDescription = descriptionsById.get(descriptionId);
 	
 						reasonerDescription.setAcceptabilityMap(expandedDescription.getAcceptabilityMap());

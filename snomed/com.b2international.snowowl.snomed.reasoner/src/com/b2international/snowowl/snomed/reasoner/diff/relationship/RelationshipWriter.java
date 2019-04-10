@@ -43,7 +43,7 @@ public final class RelationshipWriter extends OntologyChangeWriter<StatementFrag
 			.destinationId(Long.toString(fragment.getDestinationId()));
 		
 		switch (nature) {
-			case NEW:
+			case INFERRED:
 				builder.group(fragment.getGroup());
 				builder.unionGroup(fragment.getUnionGroup());
 				builder.characteristicTypeId(Concepts.INFERRED_RELATIONSHIP);

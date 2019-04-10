@@ -41,7 +41,7 @@ public final class ConcreteDomainWriter extends OntologyChangeWriter<ConcreteDom
 			.referencedComponentId(conceptId);
 		
 		switch (nature) {
-			case NEW:
+			case INFERRED:
 				builder.group(fragment.getGroup());
 				builder.characteristicTypeId(Concepts.INFERRED_RELATIONSHIP);
 				builder.released(Boolean.FALSE);

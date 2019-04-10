@@ -27,7 +27,7 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 /**
  * Represents a description change; currently only expected to appear with
- * {@link ChangeNature#NEW} or {@link ChangeNature#REDUNDANT} nature to indicate
+ * {@link ChangeNature#INFERRED} or {@link ChangeNature#REDUNDANT} nature to indicate
  * description replacement, when merging equivalent concepts into a single
  * concept.
  * 

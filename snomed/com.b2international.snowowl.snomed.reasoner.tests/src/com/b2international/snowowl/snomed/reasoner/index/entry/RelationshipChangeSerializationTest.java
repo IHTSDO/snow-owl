@@ -57,7 +57,7 @@ public class RelationshipChangeSerializationTest extends BaseRevisionIndexTest {
 				.classificationId(classificationId)
 				.destinationId("destinationId")
 				.group(1)
-				.nature(ChangeNature.NEW)
+				.nature(ChangeNature.INFERRED)
 				.relationshipId("12345678901")
 				.released(Boolean.FALSE)
 				.sourceId("sourceId")

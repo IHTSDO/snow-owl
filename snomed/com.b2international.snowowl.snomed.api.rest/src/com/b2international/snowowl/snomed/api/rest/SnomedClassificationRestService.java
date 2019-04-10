@@ -377,7 +377,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 						.ifPresent(r -> ((SnomedBrowserRelationship) r).setGroupId(relationship.getGroup()));
 					break;
 					
-				case NEW:
+				case INFERRED:
 					final SnomedBrowserRelationship inferred = new SnomedBrowserRelationship();
 					
 					inferred.setActive(true);

@@ -57,7 +57,7 @@ public class ConcreteDomainChangeSerializationTest extends BaseRevisionIndexTest
 				.classificationId(classificationId)
 				.group(1)
 				.memberId(randomUUID())
-				.nature(ChangeNature.NEW)
+				.nature(ChangeNature.INFERRED)
 				.referencedComponentId("12345678901")
 				.released(Boolean.FALSE)
 				.serializedValue("500")

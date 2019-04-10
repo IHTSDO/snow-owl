@@ -29,7 +29,7 @@ public enum ChangeNature {
 	 * instance based on another component (with some properties adjusted as
 	 * appropriate).
 	 */
-	NEW,
+	INFERRED,
 
 	/**
 	 * The component exists; it should be update in place, using the properties on

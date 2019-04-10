@@ -95,7 +95,7 @@ extends BaseResourceConverter<RelationshipChangeDocument, RelationshipChange, Re
 		relationship.setReleased(entry.isReleased());
 		
 		switch (entry.getNature()) {
-			case NEW:
+			case INFERRED:
 				/* 
 				 * Inferences carry information about:
 				 * - source
@@ -203,7 +203,7 @@ extends BaseResourceConverter<RelationshipChangeDocument, RelationshipChange, Re
 
 			// Now fetch the rest of the properties for the relationships (except IS As where no ID is recorded)
 			final Set<String> relationshipIds = itemsForCurrentBranch.stream()
-					.filter(c -> !inferredOnly || ChangeNature.NEW.equals(c.getChangeNature()))
+					.filter(c -> !inferredOnly || ChangeNature.INFERRED.equals(c.getChangeNature()))
 					.map(c -> c.getRelationship().getOriginId())
 					.filter(id -> id != null)
 					.collect(Collectors.toSet());
@@ -227,7 +227,7 @@ extends BaseResourceConverter<RelationshipChangeDocument, RelationshipChange, Re
 				final String originId = reasonerRelationship.getOriginId();
 				
 				switch (item.getChangeNature()) {
-					case NEW: 
+					case INFERRED: 
 						if (originId == null) {
 							
 							// reasonerRelationship.setCharacteristicType(...) is already set
@@ -322,7 +322,7 @@ extends BaseResourceConverter<RelationshipChangeDocument, RelationshipChange, Re
 			final BiConsumer<ReasonerRelationship, SnomedConcept> conceptIdConsumer) {
 
 		final List<ReasonerRelationship> blankRelationships = relationshipChanges.stream()
-				.filter(c -> ChangeNature.NEW.equals(c.getChangeNature()))
+				.filter(c -> ChangeNature.INFERRED.equals(c.getChangeNature()))
 				.map(RelationshipChange::getRelationship)
 				.collect(Collectors.toList());
 

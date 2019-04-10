@@ -262,13 +262,13 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 			final RelationshipChanges nextChanges = relationshipIterator.next();
 
 			final Set<String> conceptIds = nextChanges.stream()
-					.filter(change -> ChangeNature.NEW.equals(change.getChangeNature()))
+					.filter(change -> ChangeNature.INFERRED.equals(change.getChangeNature()))
 					.map(RelationshipChange::getRelationship)
 					.map(ReasonerRelationship::getSourceId)
 					.collect(Collectors.toSet());
 			
 			final Set<String> originRelationshipIds = nextChanges.stream()
-					.filter(change -> ChangeNature.NEW.equals(change.getChangeNature())
+					.filter(change -> ChangeNature.INFERRED.equals(change.getChangeNature())
 						|| ChangeNature.UPDATED.equals(change.getChangeNature()))
 					.map(RelationshipChange::getRelationship)
 					.map(ReasonerRelationship::getOriginId)
@@ -298,7 +298,7 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 				}
 				
 				switch (change.getChangeNature()) {
-					case NEW: {
+					case INFERRED: {
 							/*
 							 * Do not "infer" any relationship that is passed down from a concept that was
 							 * already merged by the equivalent concept merging step
@@ -352,13 +352,13 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 			final ConcreteDomainChanges nextChanges = concreteDomainIterator.next();
 
 			final Set<String> conceptIds = nextChanges.stream()
-					.filter(c -> ChangeNature.NEW.equals(c.getChangeNature()))
+					.filter(c -> ChangeNature.INFERRED.equals(c.getChangeNature()))
 					.map(ConcreteDomainChange::getConcreteDomainMember)
 					.map(m -> m.getReferencedComponentId())
 					.collect(Collectors.toSet());
 
 			final Set<String> originMemberIds = nextChanges.stream()
-					.filter(change -> ChangeNature.NEW.equals(change.getChangeNature())
+					.filter(change -> ChangeNature.INFERRED.equals(change.getChangeNature())
 							|| ChangeNature.UPDATED.equals(change.getChangeNature()))
 					.map(ConcreteDomainChange::getConcreteDomainMember)
 					.map(ReasonerConcreteDomainMember::getOriginMemberId)
@@ -388,7 +388,7 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 				}
 				
 				switch (change.getChangeNature()) {
-					case NEW: {
+					case INFERRED: {
 							/*
 							 * Do not "infer" any CD member that is passed down from a concept that was
 							 * already merged by the equivalent concept merging step
