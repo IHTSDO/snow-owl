@@ -60,7 +60,7 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 		
 		// An SCTID is required for generating axiom OWL expressions
 		// We don't yet have the concept ID so we will use a known temporary ID and replace it during concept creation.
-		for (ISnomedBrowserAxiom axiom : concept.getAdditionalAxioms()) {
+		for (ISnomedBrowserAxiom axiom : concept.getClassAxioms()) {
 			SnomedBrowserAxiom browserAxiom = (SnomedBrowserAxiom) axiom;
 			browserAxiom.setNamedConceptOnLeft(true);
 			browserAxiom.setReferencedComponentId(Concepts.TEMPORARY_AXIOM_CONCEPT_PLACEHOLDER);
