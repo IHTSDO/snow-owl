@@ -633,10 +633,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
 
 		// additional axioms
-		if (!existingVersionConcept.getAdditionalAxioms().isEmpty() || !newVersionConcept.getAdditionalAxioms().isEmpty()) {
+		if (!existingVersionConcept.getClassAxioms().isEmpty() || !newVersionConcept.getClassAxioms().isEmpty()) {
 			
-			List<ISnomedBrowserAxiom> newAdditionalAxioms = newVersionConcept.getAdditionalAxioms();
-			List<ISnomedBrowserAxiom> existingAdditionalAxioms = existingVersionConcept.getAdditionalAxioms();
+			List<ISnomedBrowserAxiom> newAdditionalAxioms = newVersionConcept.getClassAxioms();
+			List<ISnomedBrowserAxiom> existingAdditionalAxioms = existingVersionConcept.getClassAxioms();
 			
 			// additional axiom delete
 			Set<String> additionalAxiomIdsToDelete = inputFactory.getComponentDeletions(existingAdditionalAxioms, newAdditionalAxioms);
