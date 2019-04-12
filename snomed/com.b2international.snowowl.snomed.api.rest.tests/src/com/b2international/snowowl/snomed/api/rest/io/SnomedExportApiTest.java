@@ -76,6 +76,7 @@ import com.b2international.snowowl.datastore.internal.file.InternalFileRegistry;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
+import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
@@ -1392,7 +1393,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		
 		Map<?, ?> owlOntologyRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_ONTOLOGY, Concepts.ROOT_CONCEPT)
 				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "test expression")
+						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, SnomedApiTestConstants.OWL_ONTOLOGY_1)
 						.build())
 				.put("commitComment", "Created new OWL Ontology reference set member")
 				.build();
@@ -1403,7 +1404,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 		
 		Map<?, ?> owlAxiomRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, Concepts.ROOT_CONCEPT)
 				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "test axiom")
+						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, SnomedApiTestConstants.OWL_AXIOM_1)
 						.build())
 				.put("commitComment", "Created new OWL Axiom reference set member")
 				.build();
@@ -1431,7 +1432,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				Concepts.MODULE_SCT_CORE, 
 				Concepts.REFSET_OWL_ONTOLOGY, 
 				Concepts.ROOT_CONCEPT,
-				"test expression"); 
+				SnomedApiTestConstants.OWL_ONTOLOGY_1); 
 
 		String owlAxiomMemberLine = TAB_JOINER.join(owlAxiomRefsetMemberId, 
 				"", 
@@ -1439,7 +1440,7 @@ public class SnomedExportApiTest extends AbstractSnomedApiTest {
 				Concepts.MODULE_SCT_CORE, 
 				Concepts.REFSET_OWL_AXIOM,
 				Concepts.ROOT_CONCEPT,
-				"test axiom");
+				SnomedApiTestConstants.OWL_AXIOM_1);
 
 		String expectedOwlExpressionDeltaFile = "sct2_sRefset_OWLExpressionDelta";
 		final Map<String, Boolean> files = ImmutableMap.<String, Boolean>builder()
