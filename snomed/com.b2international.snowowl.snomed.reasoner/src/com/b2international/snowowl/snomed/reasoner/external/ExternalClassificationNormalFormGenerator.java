@@ -30,6 +30,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationsh
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.INormalFormGenerator;
 import com.b2international.snowowl.snomed.reasoner.diff.OntologyChangeProcessor;
+import com.google.common.base.Strings;
 
 /**
  *
@@ -59,9 +60,12 @@ public class ExternalClassificationNormalFormGenerator implements INormalFormGen
 			String typeId = elements.get(7);
 			boolean isUniversal = RelationshipModifier.UNIVERSAL.getConceptId().equals(elements.get(9));
 			
-			if (active) { // active -> INFERRED 
+			if (active) { // active -> INFERRED or UPDATED
 				
-				StatementFragment statementFragment = new StatementFragment(
+				
+				if (Strings.isNullOrEmpty(relationshipId)) { // INFERRED
+					
+					StatementFragment statementFragment = new StatementFragment(
 						Long.valueOf(typeId),
 						Long.valueOf(destinationId),
 						false, // destination negated
@@ -71,8 +75,25 @@ public class ExternalClassificationNormalFormGenerator implements INormalFormGen
 						-1L, // relationship id
 						false, // is released
 						false); // has stated pair
-				
-				statementProcessor.handleAddedSubject(sourceId, statementFragment);
+					
+					statementProcessor.handleAddedSubject(sourceId, statementFragment);
+					
+				} else { // UPDATED
+					
+					StatementFragment statementFragment = new StatementFragment(
+						Long.valueOf(typeId),
+						Long.valueOf(destinationId),
+						false, // destination negated
+						group,
+						0, // union group
+						isUniversal,
+						Long.valueOf(relationshipId), // relationship id
+						false, // is released
+						false); // has stated pair
+					
+					statementProcessor.handleUpdatedSubject(sourceId, statementFragment);
+					
+				}
 				
 			} else { // inactive -> REDUNDANT
 				
