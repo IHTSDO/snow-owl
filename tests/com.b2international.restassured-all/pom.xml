@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	
+
 	<artifactId>com.b2international.restassured-all</artifactId>
 	<packaging>eclipse-plugin</packaging>
 
@@ -10,8 +10,8 @@
 		<artifactId>tests-parent</artifactId>
 		<version>6.14.2-SNAPSHOT</version>
 	</parent>
-	
-		<properties>
+
+	<properties>
 		<restassured.version>3.2.0</restassured.version>
 	</properties>
 
@@ -46,13 +46,13 @@
 								json-path,
 								xml-path
 							</includeArtifactIds>
-							<outputDirectory>lib</outputDirectory>
+							<outputDirectory>${basedir}/lib</outputDirectory>
 						</configuration>
 					</execution>
 				</executions>
 			</plugin>
 		</plugins>
-		
+
 		<pluginManagement>
 			<plugins>
 				<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
@@ -67,7 +67,7 @@
 									<pluginExecutionFilter>
 										<groupId>org.apache.maven.plugins</groupId>
 										<artifactId>maven-dependency-plugin</artifactId>
-										<versionRange>[3.0.2,)</versionRange>
+										<versionRange>[3.1.1,)</versionRange>
 										<goals>
 											<goal>copy-dependencies</goal>
 										</goals>
@@ -85,5 +85,5 @@
 			</plugins>
 		</pluginManagement>
 	</build>
-	
+
 </project>
