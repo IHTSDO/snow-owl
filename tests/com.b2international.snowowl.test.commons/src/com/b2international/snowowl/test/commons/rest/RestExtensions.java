@@ -107,19 +107,17 @@ public class RestExtensions {
 			// Enable logging on failed requests
 			RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 			
-			// add custom 
-			final ObjectMapper mapper = new ObjectMapper();
-			mapper.registerModule(new GuavaModule());
-			
-			System.setProperty("http.maxConnections","100");
 			RestAssuredConfig.config()
 				.objectMapperConfig(new ObjectMapperConfig().jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
+					@Override
 					public ObjectMapper create(Type arg0, String arg1) {
+						final ObjectMapper mapper = new ObjectMapper();
+						mapper.registerModule(new GuavaModule());
 						return mapper;
 					}
 				}))
 				.connectionConfig(ConnectionConfig.connectionConfig().closeIdleConnectionsAfterEachResponse())
-    		.httpClient(HttpClientConfig.httpClientConfig().reuseHttpClientInstance());
+	    		.httpClient(HttpClientConfig.httpClientConfig().reuseHttpClientInstance().setParam("http.protocol.expect-continue", true));
 			
 			// add the user to the current identity provider
 			try {
@@ -141,7 +139,7 @@ public class RestExtensions {
 	}
 
 	private static RequestSpecification givenRequestWithPassword(String api, String password) {
-		return givenUnauthenticatedRequest(api).auth().basic(USER, password);
+		return givenUnauthenticatedRequest(api).auth().preemptive().basic(USER, password);
 	}
 
 	public static RequestSpecification withJson(RequestSpecification it, Map<String, ? extends Object> properties) {
