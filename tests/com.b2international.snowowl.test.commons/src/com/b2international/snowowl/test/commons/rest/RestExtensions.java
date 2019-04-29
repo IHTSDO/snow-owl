@@ -107,12 +107,13 @@ public class RestExtensions {
 			// Enable logging on failed requests
 			RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 			
+			final ObjectMapper mapper = new ObjectMapper();
+			mapper.registerModule(new GuavaModule());
+			
 			RestAssuredConfig.config()
 				.objectMapperConfig(new ObjectMapperConfig().jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
 					@Override
 					public ObjectMapper create(Type arg0, String arg1) {
-						final ObjectMapper mapper = new ObjectMapper();
-						mapper.registerModule(new GuavaModule());
 						return mapper;
 					}
 				}))
