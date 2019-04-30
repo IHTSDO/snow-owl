@@ -335,7 +335,7 @@ public class SnomedRefSetMemberParameterizedTest extends AbstractSnomedApiTest {
 
 		final String memberId = createRefSetMember();
 
-		final String shortName = String.format("SCT-ETR-%s", refSetType);
+		final String shortName = String.format("SNOMEDCT-REFM-%s", refSetType);
 		final String effectiveTime = getNextAvailableEffectiveDateAsString(shortName);
 
 		createCodeSystem(branchPath, shortName).statusCode(201);

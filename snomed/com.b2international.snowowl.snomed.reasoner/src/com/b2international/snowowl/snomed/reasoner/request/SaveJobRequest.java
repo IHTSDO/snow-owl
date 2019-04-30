@@ -53,9 +53,9 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
-import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.assigner.DefaultNamespaceAndModuleAssigner;
 import com.b2international.snowowl.snomed.datastore.id.assigner.SnomedNamespaceAndModuleAssigner;
@@ -262,7 +262,6 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 			final RelationshipChanges nextChanges = relationshipIterator.next();
 
 			final Set<String> conceptIds = nextChanges.stream()
-					.filter(change -> ChangeNature.INFERRED.equals(change.getChangeNature()))
 					.map(RelationshipChange::getRelationship)
 					.map(ReasonerRelationship::getSourceId)
 					.collect(Collectors.toSet());
@@ -352,7 +351,6 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 			final ConcreteDomainChanges nextChanges = concreteDomainIterator.next();
 
 			final Set<String> conceptIds = nextChanges.stream()
-					.filter(c -> ChangeNature.INFERRED.equals(c.getChangeNature()))
 					.map(ConcreteDomainChange::getConcreteDomainMember)
 					.map(m -> m.getReferencedComponentId())
 					.collect(Collectors.toSet());
@@ -618,6 +616,7 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 					.prepareUpdateRelationship(relationshipId)
 					.setModuleId(namespaceAndModuleAssigner.getRelationshipModuleId(sourceId))
 					.setActive(false)
+					.setModuleId(namespaceAndModuleAssigner.getRelationshipModuleId(sourceId))
 					.build();
 		} else {
 			request = SnomedRequests
@@ -651,9 +650,9 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 					.prepareUpdateMember()
 					.setMemberId(memberId)
 					.setSource(ImmutableMap.<String, Object>builder()
-							.put(SnomedRf2Headers.FIELD_ACTIVE, false)
-							.put(SnomedRf2Headers.FIELD_MODULE_ID, namespaceAndModuleAssigner.getConcreteDomainModuleId(referencedComponentId))
-							.build())
+						.put(SnomedRf2Headers.FIELD_ACTIVE, false)
+						.put(SnomedRf2Headers.FIELD_MODULE_ID, namespaceAndModuleAssigner.getConcreteDomainModuleId(referencedComponentId))
+						.build())
 					.build();
 		} else {
 			request = SnomedRequests
