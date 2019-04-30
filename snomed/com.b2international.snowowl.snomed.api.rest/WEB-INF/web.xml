@@ -42,20 +42,6 @@
 		<filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
 		<async-supported>true</async-supported>
 	</filter>
-	
-	<filter>
-        <filter-name>characterEncodingFilter</filter-name>
-        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
-        <async-supported>true</async-supported>
-        <init-param>
-            <param-name>encoding</param-name>
-            <param-value>UTF8</param-value>
-        </init-param>
-        <init-param>
-            <param-name>forceEncoding</param-name>
-            <param-value>true</param-value>
-        </init-param>
-    </filter>
 
 	<filter>
 		<filter-name>characterEncodingFilter</filter-name>
@@ -75,11 +61,6 @@
 		<servlet-name>restServlet</servlet-name>
 		<url-pattern>/</url-pattern>
 	</servlet-mapping>
-
-    <filter-mapping>
-        <filter-name>characterEncodingFilter</filter-name>
-        <servlet-name>restServlet</servlet-name>
-    </filter-mapping>
 
 	<filter-mapping>
 		<filter-name>characterEncodingFilter</filter-name>

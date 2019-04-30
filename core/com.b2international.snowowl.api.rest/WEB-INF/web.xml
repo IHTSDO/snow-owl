@@ -62,11 +62,6 @@
 		<url-pattern>/</url-pattern>
 	</servlet-mapping>
 
-    <filter-mapping>
-        <filter-name>characterEncodingFilter</filter-name>
-        <servlet-name>restServlet</servlet-name>
-    </filter-mapping>
-
 	<filter-mapping>
 		<filter-name>characterEncodingFilter</filter-name>
 		<servlet-name>restServlet</servlet-name>
