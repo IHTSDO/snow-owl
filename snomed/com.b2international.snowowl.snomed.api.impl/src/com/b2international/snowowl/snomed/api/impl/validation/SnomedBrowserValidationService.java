@@ -127,7 +127,9 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 			droolsRulesDir = getDefaultDroolsDir().toString();
 		}
 		
+		LOGGER.info("Initializing Drools Engine rule executor using path '{}'", droolsRulesDir);
 		ruleExecutor = new RuleExecutorFactory().createRuleExecutor(droolsRulesDir);
+		
 		testResourceProvider = createTestResourceProvider();
 	}
 
@@ -141,8 +143,10 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 			
 			if (Files.exists(Paths.get(droolsConfig.getTermValidationResourcesPath()))) {
 				resourcesPath = droolsConfig.getTermValidationResourcesPath();
+				LOGGER.info("Initializing Drools Engine resources at default local path '{}'", resourcesPath);
 			} else {
 				resourcesPath = getDefaultDroolsDir().toString();
+				LOGGER.info("Initializing Drools Engine resources at fall-back path '{}'", resourcesPath);
 				createDefaultResourceFiles(resourcesPath);
 			}
 			
@@ -152,6 +156,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 			
 		}
 		
+		LOGGER.info("Initializing Drools Engine resources using S3 bucket '{}'", droolsConfig.getResourcesBucket());
 		return ruleExecutor.newTestResourceProvider(droolsConfig.getAwsKey(), droolsConfig.getAwsPrivateKey(), droolsConfig.getResourcesBucket(), droolsConfig.getResourcesPath());
 	}
 	
@@ -168,7 +173,8 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	private void createDefaultResourceFile(String resourcesPath, String fileName) throws IOException {
 		Path filePath = Paths.get(resourcesPath, fileName);
 		if (!Files.exists(filePath)) {
-			Files.createFile(filePath);
+			Path resultPath = Files.createFile(filePath);
+			LOGGER.info("Created empty Drools Engine resource file: '{}'", resultPath);
 		}
 	}
 
