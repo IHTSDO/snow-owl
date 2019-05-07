@@ -150,6 +150,8 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 				createDefaultResourceFiles(resourcesPath);
 			}
 			
+			resourcesPath = resourcesPath.startsWith("/") ? '/' + resourcesPath : resourcesPath; // XXX ResourceConfiguration.Local removes leading slash from path :'(
+			
 			ManualResourceConfiguration manualConfig = new ManualResourceConfiguration(true, false, new ResourceConfiguration.Local(resourcesPath), null);
 			ResourceManager resourceManager = new ResourceManager(manualConfig, null);
 			return ruleExecutor.newTestResourceProvider(resourceManager);
