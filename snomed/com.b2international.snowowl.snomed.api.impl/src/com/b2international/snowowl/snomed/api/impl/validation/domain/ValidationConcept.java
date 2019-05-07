@@ -1,16 +1,16 @@
 package com.b2international.snowowl.snomed.api.impl.validation.domain;
 
-import java.util.ArrayList;
+import static java.util.stream.Collectors.toList;
+
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.ihtsdo.drools.domain.Description;
+import org.ihtsdo.drools.domain.OntologyAxiom;
 import org.ihtsdo.drools.domain.Relationship;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 
 public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 
@@ -21,18 +21,34 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 	public ValidationConcept(ISnomedBrowserConcept browserConcept) {
 		this.browserConcept = browserConcept;
 		String conceptId = browserConcept.getConceptId();
-		descriptions = new ArrayList<>();
-		for (ISnomedBrowserDescription browserDescription : browserConcept.getDescriptions()) {
-			descriptions.add(new ValidationDescription(browserDescription, conceptId));
-		}
-		relationships = new ArrayList<>();
-		for (ISnomedBrowserRelationship browserRelationship : browserConcept.getRelationships()) {
-			relationships.add(new ValidationRelationship(browserRelationship, conceptId));
-		}
+		
+		descriptions.addAll(browserConcept.getDescriptions().stream()
+				.map(desc -> new ValidationDescription(desc, conceptId)).collect(toList()));
+		
+		relationships.addAll(browserConcept.getRelationships().stream()
+				.map(relationship -> new ValidationRelationship(relationship, conceptId)).collect(toList()));
+		
+		browserConcept.getClassAxioms()
+			.forEach(axiom -> {
+				axiom.getRelationships().forEach(relationship -> {
+					relationships.add(new ValidationAxiomRelationship(axiom, relationship, conceptId));
+				});
+			});
+		
+		browserConcept.getGciAxioms()
+			.forEach(axiom -> {
+				axiom.getRelationships().forEach(relationship -> {
+					relationships.add(new ValidationAxiomRelationship(axiom, relationship, conceptId));
+				});
+			});
+		
 	}
 	
-	public java.util.Collection<? extends org.ihtsdo.drools.domain.OntologyAxiom> getOntologyAxioms() {
-		return new HashSet<>();
+	public java.util.Collection<? extends OntologyAxiom> getOntologyAxioms() {
+		return Stream.concat(
+					browserConcept.getClassAxioms().stream().map(axiom -> new ValidationOntologyAxiom(axiom)),
+					browserConcept.getGciAxioms().stream().map(axiom -> new ValidationOntologyAxiom(axiom)))
+				.collect(toList());
 	}
 
 	@Override

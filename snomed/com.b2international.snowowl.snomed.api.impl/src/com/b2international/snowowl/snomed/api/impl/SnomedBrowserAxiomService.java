@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserR
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
@@ -253,21 +255,32 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		browserAxiom.setReleased(axiomMember.isReleased());
 		browserAxiom.setReferencedComponentId(axiomMember.getReferencedComponentId());
 		browserAxiom.setDefinitionStatus(primitive ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-		browserAxiom.setRelationships(convertToBrowserRelationships(relationships, axiomMember.isActive()));
+		browserAxiom.setOwlExpression((String) axiomMember.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION));
+		
+		Stream<Relationship> axiomRelationships = relationships.values().stream().flatMap(List::stream);
+		
+		Set<String> namedConceptIds = newHashSet(axiomMember.getReferencedComponentId());
+		axiomRelationships.forEach(relationship -> {
+			namedConceptIds.add(Long.toString(relationship.getTypeId()));
+			namedConceptIds.add(Long.toString(relationship.getDestinationId()));
+		});
+		
+		browserAxiom.setNamedConceptIds(namedConceptIds);
+		browserAxiom.setRelationships(convertToBrowserRelationships(axiomRelationships, axiomMember.isActive()));
 
 		return browserAxiom;
 	}
 
-	private List<ISnomedBrowserRelationship> convertToBrowserRelationships(final Map<Integer, List<Relationship>> relationships, final boolean active) {
-		return relationships.values().stream()
-				.flatMap(List::stream)
+	private List<ISnomedBrowserRelationship> convertToBrowserRelationships(final Stream<Relationship> axiomRelationships, final boolean active) {
+		return axiomRelationships
 				.map(relationship -> {
 
 					final SnomedBrowserRelationship browserRelationship = new SnomedBrowserRelationship();
 					browserRelationship.setActive(active);
 					browserRelationship.setGroupId(relationship.getGroup());
-					browserRelationship.setType(new SnomedBrowserRelationshipType(String.valueOf(relationship.getTypeId())));
-					browserRelationship.setTarget(new SnomedBrowserRelationshipTarget(String.valueOf(relationship.getDestinationId())));
+					browserRelationship.setCharacteristicType(CharacteristicType.STATED_RELATIONSHIP);
+					browserRelationship.setType(new SnomedBrowserRelationshipType(Long.toString(relationship.getTypeId())));
+					browserRelationship.setTarget(new SnomedBrowserRelationshipTarget(Long.toString(relationship.getDestinationId())));
 
 					return browserRelationship;
 

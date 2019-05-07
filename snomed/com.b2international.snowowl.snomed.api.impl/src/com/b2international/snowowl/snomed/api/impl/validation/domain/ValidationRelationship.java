@@ -38,6 +38,11 @@ public class ValidationRelationship implements Relationship {
 	public String getModuleId() {
 		return browserRelationship.getModuleId();
 	}
+	
+	@Override
+	public String getAxiomId() {
+		return null;
+	}
 
 	@Override
 	public String getDestinationId() {
