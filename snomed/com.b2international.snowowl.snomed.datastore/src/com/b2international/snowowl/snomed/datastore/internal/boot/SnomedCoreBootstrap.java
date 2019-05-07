@@ -68,10 +68,16 @@ public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
 			}
 		}
 		
-		if (coreConfig.getDroolsConfig() != null && coreConfig.getDroolsConfig().getRulesDirectory() != null) {
+		if (coreConfig.getDroolsConfig() != null) {
 			final SnomedDroolsConfiguration droolsConfig = coreConfig.getDroolsConfig();
 			if (!Strings.isNullOrEmpty(droolsConfig.getRulesDirectory())) {
-				LOGGER.info("Drools service rule directory is set to {}", droolsConfig.getRulesDirectory());
+				LOGGER.info("Drools rules folder is set to {}", droolsConfig.getRulesDirectory());
+			}
+			if (!Strings.isNullOrEmpty(droolsConfig.getAwsKey()) && !Strings.isNullOrEmpty(droolsConfig.getAwsPrivateKey())
+					&& !Strings.isNullOrEmpty(droolsConfig.getResourcesBucket()) && !Strings.isNullOrEmpty(droolsConfig.getResourcesPath())) {
+				LOGGER.info("Additional drools engine resources are configured to be accessed via S3 bucket: '{}'", droolsConfig.getResourcesBucket());
+			} else if (!Strings.isNullOrEmpty(droolsConfig.getTermValidationResourcesPath())) {
+				LOGGER.info("Additional drools engine resources are configured to be accessed via local folder: '{}'", droolsConfig.getTermValidationResourcesPath());
 			}
 		}
 		

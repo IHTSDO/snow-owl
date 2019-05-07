@@ -3,6 +3,10 @@ package com.b2international.snowowl.snomed.api.impl.validation;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.stream.Collectors.toList;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
@@ -21,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.SnowOwlApplication;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
@@ -113,7 +118,16 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	}
 
 	private void createNewRuleExecutor() {
-		ruleExecutor = new RuleExecutorFactory().createRuleExecutor(droolsConfig.getRulesDirectory());
+		
+		String droolsRulesDir;
+		
+		if (Files.exists(Paths.get(droolsConfig.getRulesDirectory()))) {
+			droolsRulesDir = droolsConfig.getRulesDirectory();
+		} else {
+			droolsRulesDir = getDefaultDroolsDir().toString();
+		}
+		
+		ruleExecutor = new RuleExecutorFactory().createRuleExecutor(droolsRulesDir);
 		testResourceProvider = createTestResourceProvider();
 	}
 
@@ -123,13 +137,47 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		if (Strings.isNullOrEmpty(droolsConfig.getAwsKey()) || Strings.isNullOrEmpty(droolsConfig.getAwsPrivateKey()) 
 				|| Strings.isNullOrEmpty(droolsConfig.getResourcesBucket()) || Strings.isNullOrEmpty(droolsConfig.getResourcesPath())) {
 
-			ManualResourceConfiguration manualConfig = new ManualResourceConfiguration(true, false, new ResourceConfiguration.Local(droolsConfig.getTermValidationResourcesPath()), null);
+			String resourcesPath;
+			
+			if (Files.exists(Paths.get(droolsConfig.getTermValidationResourcesPath()))) {
+				resourcesPath = droolsConfig.getTermValidationResourcesPath();
+			} else {
+				resourcesPath = getDefaultDroolsDir().toString();
+				createDefaultResourceFiles(resourcesPath);
+			}
+			
+			ManualResourceConfiguration manualConfig = new ManualResourceConfiguration(true, false, new ResourceConfiguration.Local(resourcesPath), null);
 			ResourceManager resourceManager = new ResourceManager(manualConfig, null);
 			return ruleExecutor.newTestResourceProvider(resourceManager);
 			
 		}
 		
 		return ruleExecutor.newTestResourceProvider(droolsConfig.getAwsKey(), droolsConfig.getAwsPrivateKey(), droolsConfig.getResourcesBucket(), droolsConfig.getResourcesPath());
+	}
+	
+	private void createDefaultResourceFiles(String resourcesPath) {
+		try {
+			createDefaultResourceFile(resourcesPath, "semantic-tags.txt");
+			createDefaultResourceFile(resourcesPath, "cs_words.txt");
+			createDefaultResourceFile(resourcesPath, "us-to-gb-terms-map.txt");
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(e);
+		}
+	}
+
+	private void createDefaultResourceFile(String resourcesPath, String fileName) throws IOException {
+		Path filePath = Paths.get(resourcesPath, fileName);
+		if (!Files.exists(filePath)) {
+			Files.createFile(filePath);
+		}
+	}
+
+	private Path getDefaultDroolsDir() {
+		try {
+			return Files.createDirectories(Paths.get(SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory().toPath().toString(), "snomed-drools-rules"));
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(e);
+		}
 	}
 	
 	private String getLogMessage(String branchPath, List<String> assertionGroups, List<? extends ISnomedBrowserConcept> concepts) {
