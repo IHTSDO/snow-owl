@@ -14,6 +14,7 @@ import org.ihtsdo.drools.domain.Concept;
 import org.ihtsdo.drools.domain.Description;
 import org.ihtsdo.drools.domain.Relationship;
 import org.ihtsdo.drools.helper.DescriptionHelper;
+import org.ihtsdo.drools.service.TestResourceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,39 +25,32 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 public class ValidationDescriptionService implements org.ihtsdo.drools.service.DescriptionService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ValidationDescriptionService.class);
 	
-	private static final Splitter WHITESPACE_SPLITTER = Splitter.on(CharMatcher.WHITESPACE);
-	
 	private DescriptionService descriptionService;
 	private String branchPath;
 	private IEventBus bus;
 
-	private Set<String> caseSignificantWords;
-	private Multimap<String, String> refsetToLanguageSpecificWordsMap;
 	private Set<String> topLevelConceptIds;
 
-	public ValidationDescriptionService(String branchPath, Set<String> caseSignificantWords, Multimap<String, String> refsetToLanguageSpecificWordsMap) {
+	private TestResourceProvider testResourceProvider;
+
+	public ValidationDescriptionService(String branchPath, TestResourceProvider testResourceProvider) {
 		this.branchPath = branchPath;
 		this.bus = ApplicationContext.getServiceForClass(IEventBus.class);
 		this.descriptionService = new DescriptionService(bus, branchPath);
-		this.caseSignificantWords = caseSignificantWords;
-		this.refsetToLanguageSpecificWordsMap = refsetToLanguageSpecificWordsMap;
 		this.topLevelConceptIds = getTopLevelConceptIds();
+		this.testResourceProvider = testResourceProvider;
 	}
 
 	@Override
@@ -186,39 +180,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		if (description == null || description.getAcceptabilityMap() == null || description.getTerm() == null) {
 			return errorMessage;
 		}
-
-		// Only check active synonyms
-		if (!description.getTypeId().equals(Concepts.SYNONYM) || !description.isActive()) {
-			return errorMessage;
-		}
 		
-		Iterable<String> words = WHITESPACE_SPLITTER.split(description.getTerm());
-
-		// convenience variables
-		String usAcc = description.getAcceptabilityMap().get(Concepts.REFSET_LANGUAGE_TYPE_US);
-		String gbAcc = description.getAcceptabilityMap().get(Concepts.REFSET_LANGUAGE_TYPE_UK);
-
-		// NOTE: Supports international only at this point
-		for (String word : words) {
-
-			// Step 1: Check en-us preferred synonyms for en-gb spellings
-			if (usAcc != null 
-					&& refsetToLanguageSpecificWordsMap.containsKey(Concepts.REFSET_LANGUAGE_TYPE_UK)
-					&& refsetToLanguageSpecificWordsMap.get(Concepts.REFSET_LANGUAGE_TYPE_UK).contains(word.toLowerCase())) {
-				
-				errorMessage += "Synonym is preferred in the en-us refset but refers to a word that has en-gb spelling: " + word + "\n";
-			}
-
-			// Step 2: Check en-gb preferred synonyms for en-us spellings
-			if (gbAcc != null 
-					&& refsetToLanguageSpecificWordsMap.containsKey(Concepts.REFSET_LANGUAGE_TYPE_US)
-					&& refsetToLanguageSpecificWordsMap.get(Concepts.REFSET_LANGUAGE_TYPE_US).contains(word.toLowerCase())) {
-				
-				errorMessage += "Synonym is preferred in the en-gb refset but refers to a word that has en-us spelling: " + word + "\n";
-			}
-		}
-
-		return errorMessage;
+		return DescriptionHelper.getLanguageSpecificErrorMessage(description, testResourceProvider.getUsToGbTermMap());
 
 	}
 
@@ -231,39 +194,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		if (description == null || description.getTerm() == null) {
 			return result;
 		}
-
-		Iterable<String> words = WHITESPACE_SPLITTER.split(description.getTerm());
-
-		for (String word : words) {
-
-			// NOTE: Simple test to see if a case-sensitive term exists as
-			// written. Original check for mis-capitalization, but false
-			// positives, e.g. "oF" appears in list but spuriously reports "of"
-			// Map preserved for lower-case matching in future
-			if (caseSignificantWords.contains(word)) {
-
-				// term starting with case sensitive word must be ETCS
-				if (description.getTerm().startsWith(word)
-						&& !CaseSignificance.ENTIRE_TERM_CASE_SENSITIVE.getConceptId().equals(description.getCaseSignificanceId())) {
-					
-					result += "Description starts with case-sensitive word but is not marked entire term case sensitive: " + word + ".\n";
-				}
-
-				// term containing case sensitive word (not at start) must be
-				// ETCS or OICCI
-				else if (!CaseSignificance.ENTIRE_TERM_CASE_SENSITIVE.getConceptId().equals(description.getCaseSignificanceId())
-							&& !CaseSignificance.INITIAL_CHARACTER_CASE_INSENSITIVE.getConceptId().equals(description.getCaseSignificanceId())) {
-					
-					result += "Description contains case-sensitive word but is not marked entire term case sensitive or only initial character case insensitive: " + word + ".\n";
-				}
-			}
-		}
 		
-		return result;
+		return DescriptionHelper.getCaseSensitiveWordsErrorMessage(description, testResourceProvider.getCaseSignificantWords());
 	}
 
 	@Override
-	public Set<String> findParentsNotContainSematicTag(Concept concept, String termSemanticTag, String... languageRefsetIds) {
+	public Set<String> findParentsNotContainingSemanticTag(Concept concept, String termSemanticTag, String... languageRefsetIds) {
 		
 		Set<String> statedParentIds = concept.getRelationships().stream()
 			.filter(r -> r.isActive() && Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
@@ -282,6 +218,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			.map(SnomedDescription::getConceptId)
 			.collect(toSet());
 		
+	}
+	
+	@Override
+	public boolean isRecognisedSemanticTag(String semanticTag) {
+		return semanticTag != null && !semanticTag.isEmpty() && testResourceProvider.getSemanticTags().contains(semanticTag);
 	}
 
 	private Set<String> getTopLevelConceptIds() {

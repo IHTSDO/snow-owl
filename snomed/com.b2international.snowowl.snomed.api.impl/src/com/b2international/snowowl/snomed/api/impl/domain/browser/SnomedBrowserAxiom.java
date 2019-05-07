@@ -1,5 +1,8 @@
 package com.b2international.snowowl.snomed.api.impl.domain.browser;
 
+import static java.util.Collections.emptySet;
+
+import java.util.Collection;
 import java.util.List;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserAxiom;
@@ -19,6 +22,12 @@ public class SnomedBrowserAxiom extends SnomedBrowserComponent implements ISnome
 	
 	@JsonIgnore
 	private String referencedComponentId;
+	
+	@JsonIgnore
+	private String owlExpression;
+	
+	@JsonIgnore
+	private Collection<String> namedConceptIds;
 
 	@JsonDeserialize(contentAs=SnomedBrowserRelationship.class)
 	private List<ISnomedBrowserRelationship> relationships = ImmutableList.of();
@@ -63,12 +72,31 @@ public class SnomedBrowserAxiom extends SnomedBrowserComponent implements ISnome
 		this.isNamedConceptOnLeft = isNamedConceptOnLeft;
 	}
 	
+	@Override
 	public String getReferencedComponentId() {
 		return referencedComponentId;
 	}
 	
 	public void setReferencedComponentId(String referencedComponentId) {
 		this.referencedComponentId = referencedComponentId;
+	}
+	
+	@Override
+	public String getOwlExpression() {
+		return owlExpression;
+	}
+	
+	public void setOwlExpression(String owlExpression) {
+		this.owlExpression = owlExpression;
+	}
+	
+	@Override
+	public Collection<String> getNamedConceptIds() {
+		return namedConceptIds != null ? namedConceptIds : emptySet();
+	}
+	
+	public void setNamedConceptIds(Collection<String> namedConceptIds) {
+		this.namedConceptIds = namedConceptIds;
 	}
 	
 	@Override

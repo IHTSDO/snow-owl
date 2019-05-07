@@ -70,7 +70,7 @@ public class ValidationConceptService implements ConceptService {
 	}
 
 	@Override
-	public Set<String> findTopLevelHierachiesOfConcept(Concept concept) {
+	public Set<String> findTopLevelHierarchiesOfConcept(Concept concept) {
 		
 		Set<String> statedParentIds = concept.getRelationships().stream()
 				.filter(r -> r.isActive() && Concepts.STATED_RELATIONSHIP.equals(r.getCharacteristicTypeId()) && Concepts.IS_A.equals(r.getTypeId()))
@@ -81,7 +81,7 @@ public class ValidationConceptService implements ConceptService {
 			return emptySet();
 		}
 		
-		Set<String> topLevelConceptIds = getAllTopLevelHierachies();
+		Set<String> topLevelConceptIds = getAllTopLevelHierarchies();
 		
 		if (topLevelConceptIds.contains(concept.getId())) {
 			LOGGER.info("Top level hierarchies of concept '{}': '{}'", concept.getId(), concept.getId());
@@ -103,7 +103,7 @@ public class ValidationConceptService implements ConceptService {
 	}
 
 	@Override
-	public Set<String> getAllTopLevelHierachies() {
+	public Set<String> getAllTopLevelHierarchies() {
 		return SnomedRequests.prepareSearchConcept()
 					.all()
 					.filterByActive(true)
