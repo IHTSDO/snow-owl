@@ -71,6 +71,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedSimpleMapRefSetMember;
 import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
+import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemVersionSearchRequestBuilder;
 import com.google.common.base.Strings;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -87,7 +88,7 @@ public final class EffectiveTimeRestorer {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(EffectiveTimeRestorer.class);
 	
-	public void restoreEffectiveTimes(Iterable<CDOObject> componentsToRestore, String branchPath) {
+	public void restoreEffectiveTimes(Iterable<CDOObject> componentsToRestore, String branchPath, long branchBaseTimestamp) {
 		final Multimap<Class<?>, EObject> componentsByType = ArrayListMultimap.create();
 		componentsToRestore
 		.forEach(object -> {
@@ -102,7 +103,7 @@ public final class EffectiveTimeRestorer {
 			return;
 		}
 		
-		final List<String> branchesForPreviousVersion = getAvailableVersionPaths(branchPath);
+		final List<String> branchesForPreviousVersion = getAvailableVersionPaths(branchPath, branchBaseTimestamp);
 		if (branchesForPreviousVersion.isEmpty()) {
 			return;
 		}
@@ -134,7 +135,7 @@ public final class EffectiveTimeRestorer {
 		}
 	}
 	
-	private boolean canRestoreEffectiveTime(EObject componentToRestore, Object previousVersion) {
+	private boolean canRestoreEffectiveTime(EObject componentToRestore, IComponent previousVersion) {
 		if (componentToRestore instanceof Component && previousVersion instanceof SnomedCoreComponent) {
 			if (componentToRestore instanceof Concept && previousVersion instanceof SnomedConcept) {
 				final Concept conceptToRestore = (Concept) componentToRestore;
@@ -158,8 +159,8 @@ public final class EffectiveTimeRestorer {
 						&& relationshipToRestore.getModule().getId().equals(previousRelationship.getModuleId())
 						&& relationshipToRestore.getGroup() == previousRelationship.getGroup().intValue() 
 						&& relationshipToRestore.getUnionGroup() == previousRelationship.getUnionGroup().intValue() 
-						&& relationshipToRestore.getCharacteristicType().getId().equals(previousRelationship.getCharacteristicType().getConceptId())
-						&& relationshipToRestore.getModifier().getId().equals(previousRelationship.getModifier().getConceptId());	
+						&& relationshipToRestore.getCharacteristicType().getId().equals(previousRelationship.getCharacteristicTypeId())
+						&& relationshipToRestore.getModifier().getId().equals(previousRelationship.getModifierId());	
 				
 			} else {
 				throw new UnexpectedTypeException("Unexpected component type '" + componentToRestore.getClass() + "'.");
@@ -173,7 +174,7 @@ public final class EffectiveTimeRestorer {
 						&& memberToRestore.getTargetComponentId().equals(((SnomedConcept) previousMember.getProperties().get(SnomedRf2Headers.FIELD_TARGET_COMPONENT)).getId());
 			} else if(componentToRestore instanceof SnomedAttributeValueRefSetMember) {
 				final SnomedAttributeValueRefSetMember memberToRestore = (SnomedAttributeValueRefSetMember) componentToRestore;
-						return memberToRestore.isActive() == previousMember.isActive()
+				return memberToRestore.isActive() == previousMember.isActive()
 						&& memberToRestore.getModuleId().equals(previousMember.getModuleId())
 						&& memberToRestore.getValueId().equals((String) previousMember.getProperties().get(SnomedRf2Headers.FIELD_VALUE_ID));
 			} else if (componentToRestore instanceof SnomedConcreteDataTypeRefSetMember) {
@@ -409,7 +410,7 @@ public final class EffectiveTimeRestorer {
 		throw new IllegalArgumentException("Object was neither instance of Component or SnomedRefSetMember");
 	}
 	
-	private List<String> getAvailableVersionPaths(String branchPath) {
+	private List<String> getAvailableVersionPaths(String branchPath, long branchBaseTimestamp) {
 		final IEventBus eventBus = ApplicationContext.getServiceForClass(IEventBus.class);
 		final CodeSystems codeSystems = CodeSystemRequests.prepareSearchCodeSystem()
 				.all()
@@ -436,10 +437,17 @@ public final class EffectiveTimeRestorer {
 		// the first code system in the list is the working codesystem
 		final CodeSystemEntry workingCodeSystem = relativeCodeSystems.stream().findFirst().get();
 
-		final Optional<CodeSystemVersionEntry> workingCodeSystemVersion = CodeSystemRequests.prepareSearchCodeSystemVersion()
+		CodeSystemVersionSearchRequestBuilder versionSearch = CodeSystemRequests.prepareSearchCodeSystemVersion()
 				.one()
 				.filterByCodeSystemShortName(workingCodeSystem.getShortName())
-				.sortBy(SearchResourceRequest.SortField.descending(CodeSystemVersionEntry.Fields.EFFECTIVE_DATE))
+				.sortBy(SearchResourceRequest.SortField.descending(CodeSystemVersionEntry.Fields.EFFECTIVE_DATE));
+		
+		// if specified and not restoring effective time on the Code System Working Branch then filter by created at up until the specified branch base timestamp
+		if (branchBaseTimestamp > 0L && !branchPath.equals(workingCodeSystem.getBranchPath())) {
+			versionSearch.filterByCreatedAt(0L, branchBaseTimestamp);
+		}
+		
+		final Optional<CodeSystemVersionEntry> workingCodeSystemVersion = versionSearch
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(eventBus)
 				.getSync()

@@ -73,9 +73,11 @@ public abstract class SnomedApiTestConstants {
 
 	public static final Joiner PATH_JOINER = Joiner.on('/');
 
-	public static final String OWL_AXIOM_1 = "SubClassOf(ObjectIntersectionOf(:73211009 ObjectSomeValuesFrom(:246075003 :410942007)) :8801005)";
+	public static final String OWL_AXIOM_1 = 
+			"SubClassOf(ObjectIntersectionOf(:73211009 ObjectSomeValuesFrom(:246075003 :410942007)) :8801005)";
 	
-	public static final String OWL_AXIOM_2 = "SubClassOf(ObjectIntersectionOf(:73211009 ObjectSomeValuesFrom(:42752001 :64572001)) :8801005)";
+	public static final String OWL_AXIOM_2 =
+			"SubClassOf(ObjectIntersectionOf(:73211009 ObjectSomeValuesFrom(:42752001 :64572001)) :8801005)";
 	
 	public static final String OWL_ONTOLOGY_1 = "Ontology(<http://snomed.info/sct/900000000000207008>)";
 	public static final String OWL_ONTOLOGY_2 = "Prefix(:=<http://snomed.info/id/>)";

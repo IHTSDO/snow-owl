@@ -64,6 +64,7 @@ import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
@@ -252,7 +253,11 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		inactivateConcept(branchPath, conceptId);
 		getComponent(branchPath, SnomedComponentType.CONCEPT, conceptId).statusCode(200)
-		.body("active", equalTo(false));
+			.body("active", equalTo(false))
+			.body("parentIds", equalTo(ImmutableList.of(IComponent.ROOT_ID)))
+			.body("ancestorIds", equalTo(ImmutableList.of()))
+			.body("statedParentIds", equalTo(ImmutableList.of(IComponent.ROOT_ID)))
+			.body("statedAncestorIds", equalTo(ImmutableList.of()));
 	}
 
 	@Test
@@ -675,13 +680,13 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		SnomedRelationship newRelationship = new SnomedRelationship();
 		newRelationship.setId(reserveComponentId(null, ComponentCategory.RELATIONSHIP));
 		newRelationship.setActive(true);
-		newRelationship.setCharacteristicType(CharacteristicType.STATED_RELATIONSHIP);
+		newRelationship.setCharacteristicTypeId(CharacteristicType.STATED_RELATIONSHIP.getConceptId());
 		newRelationship.setTypeId(Concepts.PART_OF);
 		newRelationship.setDestinationId(Concepts.NAMESPACE_ROOT);
 		newRelationship.setModuleId(Concepts.MODULE_SCT_CORE);
 		newRelationship.setGroup(0);
 		newRelationship.setUnionGroup(0);
-		newRelationship.setModifier(RelationshipModifier.EXISTENTIAL);
+		newRelationship.setModifierId(RelationshipModifier.EXISTENTIAL.getConceptId());
 
 		final List<SnomedRelationship> changedRelationships = ImmutableList.<SnomedRelationship>builder()
 				.addAll(concept.getRelationships())
@@ -1093,7 +1098,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void createConceptWithOwlAxiomMemberWithEquivalentClassesExpression() throws Exception {
-		final String owlEquivalentClassesExpression = String.format("EquivalentClasses(:%s ObjectIntersectionOf(:%s :%s)", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS, Concepts.NAMESPACE_ROOT);
+		final String owlEquivalentClassesExpression = String.format("EquivalentClasses(:%s ObjectIntersectionOf(:%s :%s))", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS, Concepts.NAMESPACE_ROOT);
 		
 		final Map<?, ?> memberRequestBody = ImmutableMap.builder()
 					.put("moduleId", Concepts.MODULE_SCT_CORE)
@@ -1204,7 +1209,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 		updateComponent(branchPath, SnomedComponentType.CONCEPT, conceptId, definitionStatusUpdateRequestBody).statusCode(204);
 		
-		final Map<String, Object> properties = ImmutableMap.of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, String.format("EquivalentClasses(:%s ObjectIntersectionOf(:%s :%s)", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS, Concepts.NAMESPACE_ROOT));
+		final Map<String, Object> properties = ImmutableMap.of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, String.format("EquivalentClasses(:%s ObjectIntersectionOf(:%s :%s))", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS, Concepts.NAMESPACE_ROOT));
 		// Add a reference set member
 		final SnomedReferenceSetMember newMember = new SnomedReferenceSetMember();
 		newMember.setId(UUID.randomUUID().toString());
@@ -1240,7 +1245,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	public void testUpdateConceptDefinitionStatusWithEquivalentClassesAxiomMember() {
 		final String conceptId = createNewConcept(branchPath);
 
-		final Map<String, Object> properties = ImmutableMap.of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, String.format("EquivalentClasses(:%s ObjectIntersectionOf(:%s :%s)", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS, Concepts.NAMESPACE_ROOT));
+		final Map<String, Object> properties = ImmutableMap.of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, String.format("EquivalentClasses(:%s ObjectIntersectionOf(:%s :%s))", Concepts.FULLY_SPECIFIED_NAME, Concepts.AMBIGUOUS, Concepts.NAMESPACE_ROOT));
 		// Add a reference set member
 		final SnomedReferenceSetMember newMember = new SnomedReferenceSetMember();
 		newMember.setId(UUID.randomUUID().toString());

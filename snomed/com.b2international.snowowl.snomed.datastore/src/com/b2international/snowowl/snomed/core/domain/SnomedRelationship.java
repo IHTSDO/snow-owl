@@ -152,18 +152,36 @@ public final class SnomedRelationship extends SnomedCoreComponent {
 	 * Returns the characteristic type of the relationship.
 	 * 
 	 * @return the relationship's characteristic type
+	 * @deprecated - get the characteristicTypeId from {@link #getCharacteristicTypeId()} method
 	 */
+	@JsonProperty
 	public CharacteristicType getCharacteristicType() {
 		return characteristicType;
 	}
-
+	
+	/**
+	 * @return the characteristicType ID of the relationship
+	 */
+	public String getCharacteristicTypeId() {
+		return getCharacteristicType() == null ? null : getCharacteristicType().getConceptId();
+	}
+	
 	/**
 	 * Returns the relationship's modifier value.
 	 * 
 	 * @return the modifier of this relationship
+	 * @deprecated - get the modifierId from {@link #getModifierId()} method
 	 */
+	@JsonProperty
 	public RelationshipModifier getModifier() {
 		return modifier;
+	}
+	
+	/**
+	 * @return the modifierId of the relationship.
+	 */
+	public String getModifierId() {
+		return getModifier() == null ? null : getModifier().getConceptId();
 	}
 
 	public void setSource(SnomedConcept source) {
@@ -205,12 +223,36 @@ public final class SnomedRelationship extends SnomedCoreComponent {
 		this.unionGroup = unionGroup;
 	}
 
+	/**
+	 * @param characteristicType
+	 * @deprecated - set characteristicTypeId via {@link #setCharacteristicTypeId(String)} method
+	 */
+	@JsonIgnore
 	public void setCharacteristicType(final CharacteristicType characteristicType) {
 		this.characteristicType = characteristicType;
 	}
+	
+	/**
+	 * @param characteristicTypeId
+	 */
+	public void setCharacteristicTypeId(final String characteristicTypeId) {
+		this.characteristicType = CharacteristicType.getByConceptId(characteristicTypeId);
+	}
 
+	/**
+	 * @param modifier
+	 * @deprecated - set modifierId via {@link #setModifierId(String)} method
+	 */
+	@JsonIgnore
 	public void setModifier(final RelationshipModifier modifier) {
 		this.modifier = modifier;
+	}
+	
+	/**
+	 * @param modifierId
+	 */
+	public void setModifierId(final String modifierId) {
+		this.modifier = RelationshipModifier.getByConceptId(modifierId);
 	}
 
 	@Override

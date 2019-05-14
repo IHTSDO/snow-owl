@@ -29,6 +29,8 @@ public class SnomedConceptRestSearch {
 	private String eclFilter;
 	private String statedEclFilter;
 	private String queryFilter;
+	private String[] semanticTags;
+	private String descriptionTypeFilter;
 	private Set<String> conceptIds;
 	private String expand;
 	private String scrollKeepAlive;
@@ -122,6 +124,22 @@ public class SnomedConceptRestSearch {
 	
 	public void setNamespaceFilter(String namespaceFilter) {
 		this.namespaceFilter = namespaceFilter;
+	}
+
+	public String[] getSemanticTags() {
+		return semanticTags;
+	}
+
+	public void setSemanticTags(String[] semanticTags) {
+		this.semanticTags = semanticTags;
+	}
+
+	public String getDescriptionTypeFilter() {
+		return descriptionTypeFilter;
+	}
+
+	public void setDescriptionTypeFilter(String descriptionTypeFilter) {
+		this.descriptionTypeFilter = descriptionTypeFilter;
 	}
 
 	public String getExpand() {

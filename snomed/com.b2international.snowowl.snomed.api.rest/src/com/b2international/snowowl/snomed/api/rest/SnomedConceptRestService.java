@@ -56,6 +56,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.net.HttpHeaders;
 
 import io.swagger.annotations.Api;
@@ -139,6 +140,14 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="query", required=false) 
 			final String queryFilter,
 			
+			@ApiParam(value="Description semantic tag(s) to match")
+			@RequestParam(value="semanticTag", required=false)
+			final String[] semanticTags,
+			
+			@ApiParam(value="Description type ECL expression to match")
+			@RequestParam(value="descriptionType", required=false) 
+			final String descriptionTypeFilter,
+			
 			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
 			@RequestParam(value="scrollKeepAlive", required=false) 
 			final String scrollKeepAlive,
@@ -178,6 +187,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				eclFilter,
 				statedEclFilter,
 				queryFilter,
+				semanticTags,
+				descriptionTypeFilter,
 				conceptIds,
 				scrollKeepAlive,
 				scrollId,
@@ -231,6 +242,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 				body.getEclFilter(),
 				body.getStatedEclFilter(),
 				body.getQueryFilter(),
+				body.getSemanticTags(),
+				body.getDescriptionTypeFilter(),
 				body.getConceptIds(),
 				body.getScrollKeepAlive(),
 				body.getScrollId(),
@@ -253,6 +266,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			final String eclFilter,
 			final String statedEclFilter,
 			final String queryFilter,
+			final String[] semanticTags,
+			final String descriptionTypeFilter,
 			final Set<String> conceptIds,
 			final String scrollKeepAlive,
 			final String scrollId,
@@ -295,6 +310,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.filterByStatedEcl(statedEclFilter)
 					.filterByQuery(queryFilter)
 					.filterByDescriptionLanguageRefSet(extendedLocales)
+					.filterByDescriptionType(descriptionTypeFilter)
+					.filterByDescriptionSemanticTags(semanticTags == null ? null : ImmutableSet.copyOf(semanticTags))
 					.setExpand(expand)
 					.setLocales(extendedLocales)
 					.sortBy(sortField)

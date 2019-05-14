@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>releng-parent</artifactId>
-		<version>6.14.3-SNAPSHOT</version>
+		<version>6.15.0</version>
 	</parent>
 	
 	<dependencies>
@@ -16,6 +16,11 @@
   			<groupId>org.apache.sshd</groupId>
   			<artifactId>sshd-core</artifactId>
   			<version>0.14.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.semanticweb.elk</groupId>
+			<artifactId>elk-protege</artifactId>
+			<version>${elk.version}</version>
 		</dependency>
 	</dependencies>
 

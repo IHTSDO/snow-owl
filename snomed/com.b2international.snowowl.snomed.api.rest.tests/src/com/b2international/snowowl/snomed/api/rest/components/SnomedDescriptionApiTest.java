@@ -43,6 +43,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.util.List;
 import java.util.Map;
@@ -72,7 +73,6 @@ import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
-import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
@@ -315,7 +315,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, requestBody).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, "inactivationProperties()").statusCode(200)
 			.body("active", equalTo(false))
-		.body("inactivationIndicator", equalTo(InactivationIndicator.DUPLICATE.name()));
+			.body("inactivationIndicator", equalTo(DescriptionInactivationIndicator.DUPLICATE.name()));
 	}
 
 	@Test
@@ -333,7 +333,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, description2Id, requestBody).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.DESCRIPTION, description2Id, "inactivationProperties()").statusCode(200)
 			.body("active", equalTo(false))
-			.body("inactivationIndicator", equalTo(InactivationIndicator.DUPLICATE.name()))
+			.body("inactivationIndicator", equalTo(DescriptionInactivationIndicator.DUPLICATE.name()))
 			.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(description1Id));
 	}
 	
@@ -353,7 +353,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, description2Id, requestBody).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.DESCRIPTION, description2Id, "inactivationProperties()").statusCode(200)
 			.body("active", equalTo(false))
-			.body("inactivationIndicator", equalTo(InactivationIndicator.DUPLICATE.name()))
+			.body("inactivationIndicator", equalTo(DescriptionInactivationIndicator.DUPLICATE.name()))
 			.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(description1Id))
 			.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(description3Id));
 	}
@@ -369,9 +369,9 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		
 		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, inactivationRequestBody).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, "inactivationProperties()").statusCode(200)
-		.body("active", equalTo(false))
-		.body("inactivationIndicator", equalTo(InactivationIndicator.DUPLICATE.name()));
-		
+			.body("active", equalTo(false))
+			.body("inactivationIndicator", equalTo(DescriptionInactivationIndicator.DUPLICATE.name()));
+
 		Map<?, ?> updateRequestBody = ImmutableMap.builder()
 				.put("active", false)
 				.put("inactivationIndicator", DescriptionInactivationIndicator.OUTDATED)
@@ -381,7 +381,38 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, updateRequestBody).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, "inactivationProperties()").statusCode(200)
 			.body("active", equalTo(false))
-		.body("inactivationIndicator", equalTo(InactivationIndicator.OUTDATED.name()));
+			.body("inactivationIndicator", equalTo(DescriptionInactivationIndicator.OUTDATED.name()));
+	}
+	
+	@Test
+	public void updateInactivationIndicatorOnActiveReleasedDescription() throws Exception {
+		String descriptionId = createNewDescription(branchPath);
+		Map<?, ?> inactivationRequestBody = ImmutableMap.builder()
+				.put("inactivationIndicator", DescriptionInactivationIndicator.PENDING_MOVE)
+				.put("commitComment", "Add pending move to description")
+				.build();
+		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, inactivationRequestBody).statusCode(204);
+		getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, "inactivationProperties()").statusCode(200)
+			.body("inactivationIndicator", equalTo(DescriptionInactivationIndicator.PENDING_MOVE.name()));
+		
+		// release component
+		createCodeSystemAndVersion(branchPath, "SNOMEDCT-RELDESC-INACTIVATIONINDICATOR", "v1", "20180701");
+		
+		Map<?, ?> updateRequestBody = ImmutableMap.builder()
+				.put("inactivationIndicator", DescriptionInactivationIndicator.CONCEPT_NON_CURRENT)
+				.put("commitComment", "Updated inactivation indicator on description")
+				.build();
+		
+		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, updateRequestBody).statusCode(204);
+		SnomedDescription description = getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, "members()").statusCode(200).extract().as(SnomedDescription.class);
+		
+		SnomedReferenceSetMember inactivationIndicator = description.getMembers().stream()
+			.filter(member -> Concepts.REFSET_DESCRIPTION_INACTIVITY_INDICATOR.equals(member.getReferenceSetId()))
+			.findFirst()
+			.get();
+		
+		assertEquals(Concepts.CONCEPT_NON_CURRENT, inactivationIndicator.getProperties().get(SnomedRf2Headers.FIELD_VALUE_ID));
+		assertNull(inactivationIndicator.getEffectiveTime());
 	}
 
 	@Test
@@ -395,7 +426,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 
 		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, inactivationRequestBody).statusCode(204);
 		getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId).statusCode(200)
-		.body("caseSignificance", equalTo(CaseSignificance.CASE_INSENSITIVE.name()));
+			.body("caseSignificance", equalTo(CaseSignificance.CASE_INSENSITIVE.name()));
 	}
 
 	@Test

@@ -49,7 +49,6 @@ import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.SnomedIconProvider;
 import com.b2international.snowowl.snomed.datastore.index.change.ConceptChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.change.ConstraintChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.change.DescriptionChangeProcessor;
@@ -66,6 +65,7 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedOWLExpressionC
 import com.b2international.snowowl.snomed.datastore.request.SnomedOWLExpressionConverterResult;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomies;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomy;
+import com.b2international.snowowl.snomed.icons.SnomedIconProvider;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedOWLExpressionRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.google.common.collect.ImmutableList;
