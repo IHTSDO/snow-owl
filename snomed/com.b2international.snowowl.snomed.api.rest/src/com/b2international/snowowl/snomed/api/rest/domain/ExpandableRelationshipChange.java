@@ -1,7 +1,6 @@
 package com.b2international.snowowl.snomed.api.rest.domain;
 
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
-import com.b2international.snowowl.snomed.reasoner.domain.ChangeNature;
 import com.b2international.snowowl.snomed.reasoner.domain.ReasonerRelationship;
 import com.b2international.snowowl.snomed.reasoner.domain.RelationshipChange;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -25,7 +24,7 @@ public class ExpandableRelationshipChange extends RelationshipChange {
 	private RelationshipModifier modifier;
 	
 	public ExpandableRelationshipChange(RelationshipChange change) {
-		setId(change.getChangeNature() == ChangeNature.REDUNDANT ? change.getRelationship().getOriginId() : "");
+		setId(Strings.isNullOrEmpty(change.getRelationship().getOriginId()) ? "" : change.getRelationship().getOriginId());
 		setChangeNature(change.getChangeNature());
 		setSourceId(change.getRelationship().getSourceId());
 		setTypeId(change.getRelationship().getTypeId());

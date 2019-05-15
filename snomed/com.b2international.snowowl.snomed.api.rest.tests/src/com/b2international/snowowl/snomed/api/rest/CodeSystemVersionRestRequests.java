@@ -80,18 +80,18 @@ public abstract class CodeSystemVersionRestRequests {
 				.then();
 	}
 
-	public static SortedSet<String> getEffectiveDates(String shortName) {
+	public static SortedSet<Date> getEffectiveDates(String shortName) {
 		Map<?, ?> response = getVersions(shortName).extract().as(Map.class);
 
 		if (!response.containsKey("items")) {
 			return ImmutableSortedSet.of();
 		} else {
-			ImmutableSortedSet.Builder<String> effectiveDatesBuilder = ImmutableSortedSet.naturalOrder();
+			ImmutableSortedSet.Builder<Date> effectiveDatesBuilder = ImmutableSortedSet.naturalOrder();
 			@SuppressWarnings("unchecked")
 			List<Map<?, ?>> items = (List<Map<?, ?>>) response.get("items");
 			for (Map<?, ?> version : items) {
 				String effectiveDate = (String) version.get("effectiveDate");
-				effectiveDatesBuilder.add(effectiveDate);
+				effectiveDatesBuilder.add(Dates.parse(effectiveDate, DateFormats.SHORT));
 			}
 
 			return effectiveDatesBuilder.build();
@@ -99,11 +99,11 @@ public abstract class CodeSystemVersionRestRequests {
 	}
 
 	public static Date getNextAvailableEffectiveDate(String shortName) {
-		SortedSet<String> effectiveDates = getEffectiveDates(shortName);
+		SortedSet<Date> effectiveDates = getEffectiveDates(shortName);
 		Calendar calendar = Calendar.getInstance();
 
 		if (!effectiveDates.isEmpty()) {
-			Date latestEffectiveDate = Dates.parse(effectiveDates.last(), DateFormats.SHORT);
+			Date latestEffectiveDate = effectiveDates.last();
 			calendar.setTime(latestEffectiveDate);
 		}
 

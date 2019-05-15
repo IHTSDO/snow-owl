@@ -30,6 +30,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.changeToDefining;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRelationshipRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateRelationship;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
@@ -39,29 +40,55 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.date.DateFormats;
+import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.datastore.file.FileRegistry;
+import com.b2international.snowowl.datastore.internal.file.InternalFileRegistry;
 import com.b2international.snowowl.datastore.server.internal.JsonSupport;
+import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.identity.domain.User;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
+import com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.b2international.snowowl.snomed.core.domain.Rf2ExportResult;
+import com.b2international.snowowl.snomed.core.domain.Rf2RefSetExportLayout;
+import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.domain.ChangeNature;
 import com.b2international.snowowl.snomed.reasoner.domain.ClassificationStatus;
 import com.b2international.snowowl.snomed.reasoner.domain.EquivalentConceptSets;
@@ -72,6 +99,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
@@ -95,6 +123,8 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	private static final String PROVOCATION_TECHNIQUE = "246506007";
 
 	private static final boolean USE_EXTERNAL_SERVICE = false;
+	private static final String PATH_TO_EXTERNAL_SERVICE_RELEASE_FOLDER = "<path_to_external_service_release_folder>";
+	
 	private static String REASONER_ID = SnomedClassificationConfiguration.ELK_REASONER_ID;
 	
 	private static int getPersistedInferredRelationshipCount(IBranchPath conceptPath, String conceptId) {
@@ -109,14 +139,47 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	}
 	
 	@BeforeClass
-	public static void before() {
+	public static void before() throws IOException {
 		if (USE_EXTERNAL_SERVICE) {
+			
 			REASONER_ID = "org.semanticweb.elk.owlapi.ElkReasonerFactory"; // IHTSDO default 
+			
+			Rf2ExportResult exportResult = SnomedRequests.rf2().prepareExport()
+					.setReleaseType(Rf2ReleaseType.SNAPSHOT)
+					.setIncludePreReleaseContent(false)
+					.setConceptsAndRelationshipsOnly(true)
+					.setUserId(User.SYSTEM.getUsername())
+					.setReferenceBranch(BranchPathUtils.createMainPath().getPath())
+					.setRefSetExportLayout(Rf2RefSetExportLayout.COMBINED)
+					.setCountryNamespaceElement(SnomedIdentifiers.INT_NAMESPACE)
+					.setLocales(ImmutableList.of(ExtendedLocale.valueOf("en-gb"), ExtendedLocale.valueOf("en-us")))
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+					.getSync();
+			
+			UUID fileId = exportResult.getRegistryId();
+			
+			InternalFileRegistry fileRegistry = (InternalFileRegistry) ApplicationContext.getServiceForClass(FileRegistry.class);
+			File rf2Delta = fileRegistry.getFile(fileId);
+			
+			Path previousPackageFilePath = Paths.get(PATH_TO_EXTERNAL_SERVICE_RELEASE_FOLDER,
+					"prevPackage_" + Dates.formatByGmt(new Date(), DateFormats.SHORT) + ".zip");
+			
+			if (Files.exists(previousPackageFilePath)) {
+				Files.delete(previousPackageFilePath);
+			}
+			
+			Files.copy(rf2Delta.toPath(), previousPackageFilePath, StandardCopyOption.REPLACE_EXISTING);
+			
+			fileRegistry.delete(fileId);
+			
+			Date latestEffectiveDate = CodeSystemVersionRestRequests.getEffectiveDates(SnomedTerminologyComponentConstants.SNOMED_SHORT_NAME).last();
+			
 			SnomedBranchingRestRequests.updateBranch(BranchPathUtils.createMainPath(), ImmutableMap.<String, Object>builder()
-					// include snapshot export of the test dataset here
-					.put("previousPackage", "snomed_export_20190218_162720.zip")
-					.put("previousRelease", "20180131")
+					.put("previousPackage", previousPackageFilePath.getFileName().toString())
+					.put("previousRelease", Dates.formatByGmt(latestEffectiveDate, DateFormats.SHORT))
 					.build());
+			
 		}
 	}
 
@@ -246,6 +309,38 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		// Create version
 		String effectiveDate = getNextAvailableEffectiveDateAsString(codeSystemShortName);
 		createVersion(codeSystemShortName, "v1", effectiveDate).statusCode(201);
+		
+		if (USE_EXTERNAL_SERVICE) {
+			
+			Rf2ExportResult exportResult = SnomedRequests.rf2().prepareExport()
+					.setReleaseType(Rf2ReleaseType.SNAPSHOT)
+					.setIncludePreReleaseContent(false)
+					.setConceptsAndRelationshipsOnly(true)
+					.setUserId(User.SYSTEM.getUsername())
+					.setReferenceBranch(branchPath.getPath())
+					.setRefSetExportLayout(Rf2RefSetExportLayout.COMBINED)
+					.setCountryNamespaceElement(SnomedIdentifiers.INT_NAMESPACE)
+					.setLocales(ImmutableList.of(ExtendedLocale.valueOf("en-gb"), ExtendedLocale.valueOf("en-us")))
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+					.getSync();
+			
+			UUID fileId = exportResult.getRegistryId();
+			
+			InternalFileRegistry fileRegistry = (InternalFileRegistry) ApplicationContext.getServiceForClass(FileRegistry.class);
+			File rf2Delta = fileRegistry.getFile(fileId);
+			
+			Path depPackageFilePath = Paths.get(PATH_TO_EXTERNAL_SERVICE_RELEASE_FOLDER, "depPackage_" + codeSystemShortName + ".zip");
+			
+			Files.copy(rf2Delta.toPath(), depPackageFilePath, StandardCopyOption.REPLACE_EXISTING);
+			
+			fileRegistry.delete(fileId);
+			
+			SnomedBranchingRestRequests.updateBranch(branchPath, ImmutableMap.<String, Object>builder()
+					.put("dependencyPackage", depPackageFilePath.getFileName().toString())
+					.build());
+			
+		}
 		
 		String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId)
@@ -394,7 +489,12 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 			}
 		}
 
-		assertTrue("No redundant relationships found in response.", redundantFound);
+		if (USE_EXTERNAL_SERVICE) { // apparently the external classification service considers the above scenario to be non-redundant
+			assertFalse("There are redundant relationships found in response.", redundantFound);
+		} else {
+			assertTrue("No redundant relationships found in response.", redundantFound);
+		}
+		
 	}
 	
 	@Test
@@ -456,6 +556,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void issue_SO_1830_testInferredEquivalentConceptParents() throws Exception {
+		
 		String parentConceptId = createNewConcept(branchPath);
 		String childConceptId = createNewConcept(branchPath, parentConceptId);
 		String equivalentConceptId = createNewConcept(branchPath, parentConceptId);
@@ -515,6 +616,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void testRelationshipChangesGetResponse() throws Exception {
+		
 		String classificationId1 = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
 		waitForClassificationJob(branchPath, classificationId1)
 			.statusCode(200)
@@ -545,6 +647,74 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "INFERRED", sourceConcept, "\"FSN of concept\"", "116680003", "\"Is a (attribute)\"", "138875005", "\"SNOMED CT Concept (SNOMED RT+CTV3)\"", "false", "900000000000011006", "0", "", "0", "EXISTENTIAL"));
 
 		assertEquals(expectedRows, responseRows);
+		
+	}
+	
+	@Test
+	public void testInferredRelationshipGroupChange() throws Exception {
+		
+		if (USE_EXTERNAL_SERVICE) {
+			
+			String diseaseId = "64572001";
+
+			getComponent(branchPath, SnomedComponentType.CONCEPT, diseaseId).statusCode(200);
+			getComponent(branchPath, SnomedComponentType.CONCEPT, Concepts.CAUSATIVE_AGENT).statusCode(200);
+			
+			// create axiom instead of stated relationship
+			String owlAxiom = "SubClassOf(:64572001 ObjectIntersectionOf(:404684003 ObjectSomeValuesFrom(:609096000 ObjectSomeValuesFrom(:246075003 :370136006))))";
+			
+			Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, diseaseId)
+					.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlAxiom)
+						.build())
+					.put("commitComment", "Created new OWL Axiom reference set member for Disease")
+					.build();
+
+			String memberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
+					.statusCode(201)
+					.extract().header("Location"));
+
+			getComponent(branchPath, SnomedComponentType.MEMBER, memberId).statusCode(200);
+			
+			// create inferred relationship in group 0
+			String relationshipId = createNewRelationship(branchPath, diseaseId, Concepts.CAUSATIVE_AGENT,
+					Concepts.NAMESPACE_ROOT, CharacteristicType.INFERRED_RELATIONSHIP);
+			
+			getComponent(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId)
+				.statusCode(200)
+				.body("group", equalTo(0));
+			
+			// classify
+			String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
+			
+			waitForClassificationJob(branchPath, classificationId)
+				.statusCode(200)
+				.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+
+			RelationshipChanges changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+					.extract()
+					.asInputStream(), RelationshipChanges.class);
+			
+			assertEquals(1, changes.getTotal());
+			RelationshipChange relationshipChange = changes.getItems().stream().findFirst().get();
+			
+			assertEquals(ChangeNature.INFERRED, relationshipChange.getChangeNature());
+			assertEquals(relationshipId, relationshipChange.getRelationship().getOriginId());
+			assertEquals(diseaseId, relationshipChange.getRelationship().getSourceId());
+			assertEquals(Concepts.CAUSATIVE_AGENT, relationshipChange.getRelationship().getTypeId());
+			assertEquals(Concepts.NAMESPACE_ROOT, relationshipChange.getRelationship().getDestinationId());
+			assertEquals(1, relationshipChange.getRelationship().getGroup().intValue());
+			
+			beginClassificationSave(branchPath, classificationId);
+			waitForClassificationSaveJob(branchPath, classificationId)
+				.statusCode(200)
+				.body("status", equalTo(ClassificationStatus.SAVED.name()));
+
+			getComponent(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId)
+				.statusCode(200)
+				.body("group", equalTo(1));
+			
+		}
 		
 	}
 

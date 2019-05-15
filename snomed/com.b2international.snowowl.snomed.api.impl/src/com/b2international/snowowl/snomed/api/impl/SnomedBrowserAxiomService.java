@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.api.impl;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 import java.util.Collection;
@@ -24,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -257,7 +257,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		browserAxiom.setDefinitionStatus(primitive ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
 		browserAxiom.setOwlExpression((String) axiomMember.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION));
 		
-		Stream<Relationship> axiomRelationships = relationships.values().stream().flatMap(List::stream);
+		List<Relationship> axiomRelationships = relationships.values().stream().flatMap(List::stream).collect(toList());
 		
 		Set<String> namedConceptIds = newHashSet(axiomMember.getReferencedComponentId());
 		axiomRelationships.forEach(relationship -> {
@@ -271,8 +271,8 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		return browserAxiom;
 	}
 
-	private List<ISnomedBrowserRelationship> convertToBrowserRelationships(final Stream<Relationship> axiomRelationships, final boolean active) {
-		return axiomRelationships
+	private List<ISnomedBrowserRelationship> convertToBrowserRelationships(final List<Relationship> axiomRelationships, final boolean active) {
+		return axiomRelationships.stream()
 				.map(relationship -> {
 
 					final SnomedBrowserRelationship browserRelationship = new SnomedBrowserRelationship();

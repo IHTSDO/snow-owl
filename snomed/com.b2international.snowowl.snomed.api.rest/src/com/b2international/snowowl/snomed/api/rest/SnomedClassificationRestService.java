@@ -59,6 +59,7 @@ import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.reasoner.domain.ChangeNature;
 import com.b2international.snowowl.snomed.reasoner.domain.ClassificationStatus;
 import com.b2international.snowowl.snomed.reasoner.domain.ClassificationTask;
 import com.b2international.snowowl.snomed.reasoner.domain.ClassificationTasks;
@@ -298,17 +299,28 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 				.execute(bus)
 				.then(changes -> {
 					
-					if (!changes.isEmpty() && !expand.isEmpty()) {
+					if (!changes.isEmpty()) {
 						
-						List<RelationshipChange> expandedChanges = changes.stream()
-							.map(change -> new ExpandableRelationshipChange(change))
-							.collect(toList());
+						// this is a workaround to be compliant with the IHTSDO FE
+						changes.getItems().forEach( change -> {
+							if (change.getChangeNature() == ChangeNature.UPDATED) {
+								change.setChangeNature(ChangeNature.INFERRED);
+							}
+						});
 						
-						return new RelationshipChanges(expandedChanges, 
-								changes.getScrollId(),
-								changes.getSearchAfter(),
-								changes.getLimit(),
-								changes.getTotal());
+						if (!expand.isEmpty()) {
+						
+							List<RelationshipChange> expandedChanges = changes.stream()
+								.map(change -> new ExpandableRelationshipChange(change))
+								.collect(toList());
+							
+							return new RelationshipChanges(expandedChanges,
+									changes.getScrollId(),
+									changes.getSearchAfter(),
+									changes.getLimit(),
+									changes.getTotal());
+							
+						}
 						
 					}
 					
