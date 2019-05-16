@@ -411,6 +411,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		// ...then commit to the branch.
 		createNewConcept(branchPath);
+		
 		// wait 1s before checking review state 
 		Thread.sleep(1000);
 		

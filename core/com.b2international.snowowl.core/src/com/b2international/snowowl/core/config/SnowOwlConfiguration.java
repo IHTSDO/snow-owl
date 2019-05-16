@@ -43,6 +43,9 @@ public class SnowOwlConfiguration extends Configuration {
 	@NotEmpty
 	private String defaultsDirectory = "resources/defaults";
 	
+	@NotEmpty
+	private String mergeReviewStoreDirectory = "resources/merge-review-store";
+	
 	private boolean systemUserNeeded = false;
 	
 	private String description = "You Know, for Terminologies";
@@ -87,6 +90,16 @@ public class SnowOwlConfiguration extends Configuration {
 	@JsonProperty
 	public void setResourceDirectory(String resourceDirectory) {
 		this.resourceDirectory = resourceDirectory;
+	}
+	
+	@JsonProperty
+	public String getMergeReviewStoreDirectory() {
+		return mergeReviewStoreDirectory;
+	}
+	
+	@JsonProperty
+	public void setMergeReviewStoreDirectory(String mergeReviewStoreDirectory) {
+		this.mergeReviewStoreDirectory = mergeReviewStoreDirectory;
 	}
 
 	@JsonProperty("systemUser")

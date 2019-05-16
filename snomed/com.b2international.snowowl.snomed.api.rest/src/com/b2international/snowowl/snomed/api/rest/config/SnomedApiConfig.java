@@ -63,7 +63,6 @@ import com.b2international.snowowl.identity.IdentityProvider;
 import com.b2international.snowowl.snomed.api.ISnomedConceptHistoryService;
 import com.b2international.snowowl.snomed.api.ISnomedExportService;
 import com.b2international.snowowl.snomed.api.ISnomedExpressionService;
-import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.ISnomedReferenceSetHistoryService;
 import com.b2international.snowowl.snomed.api.ISnomedRf2ImportService;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserAxiomService;
@@ -73,12 +72,14 @@ import com.b2international.snowowl.snomed.api.impl.SnomedBrowserService;
 import com.b2international.snowowl.snomed.api.impl.SnomedConceptHistoryServiceImpl;
 import com.b2international.snowowl.snomed.api.impl.SnomedExportService;
 import com.b2international.snowowl.snomed.api.impl.SnomedExpressionService;
-import com.b2international.snowowl.snomed.api.impl.SnomedManualConceptMergeServiceImpl;
-import com.b2international.snowowl.snomed.api.impl.SnomedMergeReviewServiceImpl;
 import com.b2international.snowowl.snomed.api.impl.SnomedMrcmService;
 import com.b2international.snowowl.snomed.api.impl.SnomedReferenceSetHistoryServiceImpl;
 import com.b2international.snowowl.snomed.api.impl.SnomedRf2ImportService;
+import com.b2international.snowowl.snomed.api.impl.mergereview.SnomedManualConceptMergeReviewServiceImpl;
+import com.b2international.snowowl.snomed.api.impl.mergereview.SnomedMergeReviewServiceImpl;
 import com.b2international.snowowl.snomed.api.impl.validation.SnomedBrowserValidationService;
+import com.b2international.snowowl.snomed.api.mergereview.ISnomedManualConceptMergeReviewService;
+import com.b2international.snowowl.snomed.api.mergereview.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.rest.AntPathWildcardMatcher;
 import com.b2international.snowowl.snomed.api.rest.SnowOwlAuthenticationProvider;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchMixin;
@@ -214,7 +215,11 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 	
 	@Bean
 	public ISnomedBrowserService browserService() {
-		return new SnomedBrowserService();
+		SnomedBrowserService browserService = new SnomedBrowserService();
+		if (!ApplicationContext.getInstance().exists(ISnomedBrowserService.class)) {
+			ApplicationContext.getInstance().registerService(ISnomedBrowserService.class, browserService);
+		}
+		return browserService;
 	}
 	
 	@Bean
@@ -239,7 +244,11 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 	
 	@Bean
 	public ISnomedMergeReviewService mergeReviewService() {
-		return new SnomedMergeReviewServiceImpl();
+		ISnomedMergeReviewService mergeReviewService = new SnomedMergeReviewServiceImpl();
+		if (!ApplicationContext.getInstance().exists(ISnomedMergeReviewService.class)) {
+			ApplicationContext.getInstance().registerService(ISnomedMergeReviewService.class, mergeReviewService);
+		}
+		return mergeReviewService;
 	}
 	
 	@Bean
@@ -248,8 +257,12 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
 	}
 	
 	@Bean
-	public SnomedManualConceptMergeServiceImpl manualMergeReviewService() {
-		return new SnomedManualConceptMergeServiceImpl();
+	public ISnomedManualConceptMergeReviewService manualMergeReviewService() {
+		ISnomedManualConceptMergeReviewService manualMergeService = new SnomedManualConceptMergeReviewServiceImpl();
+		if (!ApplicationContext.getInstance().exists(ISnomedManualConceptMergeReviewService.class)) {
+			ApplicationContext.getInstance().registerService(ISnomedManualConceptMergeReviewService.class, manualMergeService);
+		}
+		return manualMergeService;
 	}
 	
 	@Bean

@@ -42,6 +42,7 @@ public final class Environment implements ServiceProvider {
 	
 	private File configDirectory;
 	private File resourcesDirectory;
+	private File mergeReviewStoreDirectory;
 
 	public Environment(final Bootstrap bootstrap, File homeDirectory, final SnowOwlConfiguration configuration) throws Exception {
 		this.homeDirectory = homeDirectory;
@@ -58,10 +59,12 @@ public final class Environment implements ServiceProvider {
 		// TODO check if the configuration uses an absolute path
 		this.configDirectory = createDirectory(homeDirectory, configuration.getConfigurationDirectory());
 		this.resourcesDirectory = createDirectory(homeDirectory, configuration.getResourceDirectory());
+		this.mergeReviewStoreDirectory = createDirectory(homeDirectory, configuration.getMergeReviewStoreDirectory());
 		// set resolved directory paths to configuration
 		configuration.setInstallationDirectory(this.homeDirectory.getAbsolutePath());
 		configuration.setConfigurationDirectory(this.configDirectory.getAbsolutePath());
 		configuration.setResourceDirectory(this.resourcesDirectory.getAbsolutePath());
+		configuration.setMergeReviewStoreDirectory(this.mergeReviewStoreDirectory.getAbsolutePath());
 	}
 
 	/**
@@ -119,6 +122,10 @@ public final class Environment implements ServiceProvider {
 		return resourcesDirectory;
 	}
 
+	public File getMergeReviewStoreDirectory() {
+		return mergeReviewStoreDirectory;
+	}
+	
 	/**
 	 * Returns the {@link PreferencesService} from the
 	 * {@link ApplicationContext}.

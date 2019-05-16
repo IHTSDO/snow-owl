@@ -8,6 +8,9 @@ configurationDirectory: testing/rest/configuration
 # Redirects resources directory to have a clean H2 content
 resourceDirectory: testing/rest/resources
 
+# Redirects merge-review-store directory to have a clean H2 content
+mergeReviewStoreDirectory: testing/rest/resources/merge-review-store
+
 # necessary to connect one user to the system otherwise Snow Owl startup fails
 systemUser: true
 
