@@ -144,6 +144,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 			if (Files.exists(Paths.get(droolsConfig.getTermValidationResourcesPath()))) {
 				resourcesPath = droolsConfig.getTermValidationResourcesPath();
 				LOGGER.info("Initializing Drools Engine resources at default local path '{}'", resourcesPath);
+				createDefaultResourceFiles(resourcesPath);
 			} else {
 				resourcesPath = getDefaultDroolsDir().toString();
 				LOGGER.info("Initializing Drools Engine resources at fall-back path '{}'", resourcesPath);
