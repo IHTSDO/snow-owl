@@ -15,33 +15,42 @@
  */
 package com.b2international.snowowl.snomed.api.impl.mergereview;
 
+import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
+
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 import com.b2international.commons.ReflectionUtils;
 import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedManualConceptMergeReviewService;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.google.common.collect.FluentIterable;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 /**
@@ -49,75 +58,28 @@ import com.google.common.collect.Sets;
  */
 public abstract class MergeReviewCallable<T> implements Callable<T> {
 
-	/**
-	 * Checked fields: definitionStatus, effectiveTime, inactivationIndicator, moduleId, subclassDefinitionStatus
-	 */
-	private static final String[] IGNORED_CONCEPT_FIELDS = new String[] {
-			"class",
-			"score",
-			"storageKey",
-			"iconId",
+	private static final Set<String> CONCEPT_FIELDS = ImmutableSet.<String>of("moduleId", "effectiveTime", "definitionStatus");
 
-			"statedAncestorIds",
-			"statedParentIds",
-			"ancestorIds",
-			"parentIds",
+	private static final Set<String> DESCRIPTION_FIELDS = ImmutableSet.<String>of("moduleId", "active", "effectiveTime", "typeId", "term",
+			"languageCode", "conceptId", "caseSignificance", "acceptabilityMap");
 
-			"statedAncestors",
-			"statedDescendants",
-			"ancestors",
-			"descendants",
+	private static final Set<String> RELATIONSHIP_FIELDS = ImmutableSet.<String>of("moduleId", "active", "effectiveTime", "sourceId", "typeId",
+			"destinationId", "characteristicTypeId", "destinationNegated", "group", "modifierId", "unionGroup");
 
-			"id",
-			"members",
-			"referenceSet",
-			"relationships",
-			"descriptions",
-			"fsn",
-			"pt"
-	};
+	private static final Set<String> MEMBER_FIELDS = ImmutableSet.<String>of("moduleId", "active", "effectiveTime", "referencedComponentId", "referenceSetId");
 
-	/**
-	 * Checked fields: acceptabilityMap, caseSignificance, conceptId, effectiveTime, inactivationIndicator, languageCode, moduleId, term, typeId
-	 */
-	private static final String[] IGNORED_DESCRIPTION_FIELDS = new String[] {
-			"class",
-			"score",
-			"storageKey",
-			"iconId",
-
-			"id",
-			"concept",
-			"type",
-
-			"members",
-			"associationTargets"
-	};
-
-	/**
-	 * Checked fields: characteristicType, destinationId, destinationNegated, effectiveTime, group, modifier, moduleId, sourceId, typeId, unionGroup
-	 */
-	private static final String[] IGNORED_RELATIONSHIP_FIELDS = new String[] {
-			"class",
-			"score",
-			"iconId",
-			"storageKey",
-
-			"id",
-			"source",
-			"type",
-			"destination",
-			"members"
-	};
-
-	private static final Set<String> NON_INFERRED_CHARACTERISTIC_TYPES = ImmutableSet.of(
-			Concepts.STATED_RELATIONSHIP,
-			Concepts.ADDITIONAL_RELATIONSHIP,
-			Concepts.QUALIFYING_RELATIONSHIP);
+	private static final Multimap<SnomedRefSetType, String> REFERENCE_SET_MEMBER_FIELDS_TO_COMPARE = ImmutableMultimap.<SnomedRefSetType, String>builder()
+			.put(SnomedRefSetType.OWL_AXIOM, SnomedRf2Headers.FIELD_OWL_EXPRESSION)
+			.put(SnomedRefSetType.LANGUAGE, SnomedRf2Headers.FIELD_ACCEPTABILITY_ID)
+			.put(SnomedRefSetType.ASSOCIATION, SnomedRf2Headers.FIELD_TARGET_COMPONENT)
+			.put(SnomedRefSetType.ATTRIBUTE_VALUE, SnomedRf2Headers.FIELD_VALUE_ID)
+			.build();
 
 	private static final String FAKE_ID = "FAKE_ID";
+	private static final SnomedConcept FAKE_CONCEPT = new SnomedConcept(FAKE_ID);
 	private static final SnomedDescription FAKE_DESCRIPTION = new SnomedDescription(FAKE_ID);
 	private static final SnomedRelationship FAKE_RELATIONSHIP = new SnomedRelationship(FAKE_ID);
+	private static final SnomedReferenceSetMember FAKE_MEMBER = new SnomedReferenceSetMember(FAKE_ID);
 
 	/**
 	 * Special value indicating that the concept ID should not be added to the intersection set, because it did not change (ignoring
@@ -153,233 +115,638 @@ public abstract class MergeReviewCallable<T> implements Callable<T> {
 		final SnomedConcept sourceConcept = getConcept(parameters.getSourcePath(), conceptId);
 		final SnomedConcept targetConcept = getConcept(parameters.getTargetPath(), conceptId);
 
-		if (hasSinglePropertyChanges(baseConcept, sourceConcept, targetConcept, IGNORED_CONCEPT_FIELDS)) {
-			return onSuccess();
-		}
-
-		if (hasFsnOrPtChanges(baseConcept.getFsn(), sourceConcept.getFsn(), targetConcept.getFsn())) {
-			return onSuccess();
-		}
-
-		if (hasFsnOrPtChanges(baseConcept.getPt(), sourceConcept.getPt(), targetConcept.getPt())) {
-			return onSuccess();
-		}
-
-		if (hasDescriptionChanges(baseConcept, sourceConcept, targetConcept, basePath)) {
-			return onSuccess();
-		}
-
-		if (hasNonInferredRelationshipChanges(baseConcept, sourceConcept, targetConcept, basePath)) {
+		if (hasConflictingConceptChanges(baseConcept, sourceConcept, targetConcept)) {
 			return onSuccess();
 		}
 
 		return onSkip();
 	}
 
-	private boolean hasFsnOrPtChanges(final SnomedDescription baseDescription, final SnomedDescription sourceDescription, final SnomedDescription targetDescription) {
+	private boolean hasConflictingConceptChanges(final SnomedConcept baseConcept, final SnomedConcept sourceConcept, final SnomedConcept targetConcept) {
 
-		if (baseDescription !=null) {
+		if (baseConcept != null) {
 
-			if (sourceDescription != null && targetDescription !=null) {
+			if (sourceConcept == null && targetConcept != null) { // if source has been deleted while target has changed
 
-				final boolean newTargetDescription = !baseDescription.getId().equals(targetDescription.getId());
-				final boolean hasSourceChanges = hasSinglePropertyChanges(FAKE_DESCRIPTION, baseDescription /* must be compared against the base */,
-						sourceDescription, IGNORED_DESCRIPTION_FIELDS);
-
-				if (hasSourceChanges && newTargetDescription) {
+				if (hasConceptChanges(baseConcept, targetConcept, true)) {
 					return true;
 				}
 
-				final boolean newSourceDescription = !baseDescription.getId().equals(sourceDescription.getId());
-				final boolean hasTargetChanges = hasSinglePropertyChanges(FAKE_DESCRIPTION, baseDescription /* must be compared against the base */,
-						targetDescription, IGNORED_DESCRIPTION_FIELDS);
+			} else if (sourceConcept != null && targetConcept == null) { // if target has been deleted while source has changed
 
-				if (hasTargetChanges && newSourceDescription) {
+				if (hasConceptChanges(baseConcept, sourceConcept, true)) {
 					return true;
 				}
 
-			} else if (sourceDescription != null) { // target removed pt or fsn
+			} else if (sourceConcept != null && targetConcept != null) {
 
-				// if source has changed show merge review
-				if (hasSinglePropertyChanges(FAKE_DESCRIPTION, baseDescription /* must be compared against the base */, sourceDescription,
-						IGNORED_DESCRIPTION_FIELDS)) {
-					return true;
+				// if there was an inactivation on one side and a change on the other
+
+				if (sourceConcept.isActive() ^ targetConcept.isActive()) { // if active status is different
+
+					final boolean sourceChangedActiveStatus = baseConcept.isActive() ^ sourceConcept.isActive();
+					final boolean targetHasChanges = hasConceptChanges(baseConcept, targetConcept, true);
+
+					if (sourceChangedActiveStatus && targetHasChanges) {
+						return true;
+					}
+
+					final boolean targetChangedActiveStatus = baseConcept.isActive() ^ targetConcept.isActive();
+					final boolean sourceHasChanges = hasConceptChanges(baseConcept, sourceConcept, true);
+
+					if (targetChangedActiveStatus && sourceHasChanges) {
+						return true;
+					}
+
+				} else { // both side has the same status
+
+					if (hasConceptChanges(baseConcept, sourceConcept, targetConcept)) {
+						return true;
+					} else if (hasConceptChanges(baseConcept, sourceConcept, false) && hasConceptChanges(baseConcept, targetConcept, false)) {
+						return true;
+					}
+
 				}
 
-			} else if (targetDescription != null) { // source removed pt or fsn
+			}
 
-				// if target has changed show merge review
-				if (hasSinglePropertyChanges(FAKE_DESCRIPTION, baseDescription /* must be compared against the base */,
-						targetDescription, IGNORED_DESCRIPTION_FIELDS)) {
-					return true;
+			// if the same new concept was added on both sides, raise merge review anyway
+		} else if (sourceConcept != null && targetConcept != null) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * If target concept has changes compared to source or base
+	 */
+	private boolean hasConceptChanges(final SnomedConcept sourceConcept, final SnomedConcept targetConcept, final boolean includeDescriptionChanges) {
+
+		// check difference of simple concept properties
+		if (hasSinglePropertyChanges(sourceConcept, targetConcept)) {
+			return true;
+		}
+
+		if (includeDescriptionChanges) {
+
+			// check difference of concept descriptions, including reference set members of descriptions as well (language, association and attribute value types)
+			if (hasComponentChanges(getDescriptions(sourceConcept), getDescriptions(targetConcept), SnomedDescription.class)) {
+				return true;
+			}
+
+		}
+
+		// check difference of concept stated relationships
+		if (hasComponentChanges(getStatedRelationships(sourceConcept), getStatedRelationships(targetConcept), SnomedRelationship.class)) {
+			return true;
+		}
+
+		// check difference of concept reference set members, including association, attribute value and OWL axiom types
+		if (hasComponentChanges(getReferenceSetMembers(sourceConcept), getReferenceSetMembers(targetConcept), SnomedReferenceSetMember.class)) {
+			return true;
+		}
+
+		// check conflicting FSN changes
+		if (hasFsnOrPtChanges(sourceConcept.getFsn(), targetConcept.getFsn())) {
+			return true;
+		}
+
+		// check conflicting PT changes
+		if (hasFsnOrPtChanges(sourceConcept.getPt(), targetConcept.getPt())) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * If there are concept changes using a three-way compare (base-to-source, base-to-target, source-to-target)
+	 */
+	private boolean hasConceptChanges(final SnomedConcept baseConcept, final SnomedConcept sourceConcept, final SnomedConcept targetConcept) {
+
+		// check difference of simple concept properties
+		if (hasSinglePropertyChanges(baseConcept, sourceConcept, targetConcept)) {
+			return true;
+		}
+
+		// check difference of concept descriptions, including reference set members of descriptions as well (language, association and attribute value types)
+		if (hasComponentChanges(getDescriptions(baseConcept), getDescriptions(sourceConcept), getDescriptions(targetConcept), SnomedDescription.class)) {
+			return true;
+		}
+
+		// check difference of concept stated relationships
+		if (hasComponentChanges(getStatedRelationships(baseConcept), getStatedRelationships(sourceConcept), getStatedRelationships(targetConcept),
+				SnomedRelationship.class)) {
+			return true;
+		}
+
+		// check difference of concept reference set members, including association, attribute value and OWL axiom types
+		if (hasComponentChanges(getReferenceSetMembers(baseConcept), getReferenceSetMembers(sourceConcept), getReferenceSetMembers(targetConcept), SnomedReferenceSetMember.class)) {
+			return true;
+		}
+
+		// check conflicting FSN changes
+		if (hasFsnOrPtChanges(baseConcept.getFsn(), sourceConcept.getFsn(), targetConcept.getFsn())) {
+			return true;
+		}
+
+		// check conflicting PT changes
+		if (hasFsnOrPtChanges(baseConcept.getPt(), sourceConcept.getPt(), targetConcept.getPt())) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private <U extends SnomedComponent> boolean hasComponentChanges(final U sourceComponent, final U targetComponent) {
+
+		if (hasSinglePropertyChanges(sourceComponent, targetComponent)) {
+			return true;
+		}
+
+		// check reference set member changes
+		if (hasReferenceSetMemberChanges(sourceComponent, targetComponent)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private <U extends SnomedComponent> boolean hasComponentChanges(final Collection<U> sourceComponents, final Collection<U> targetComponents, final Class<U> clazz) {
+
+		if (sourceComponents.isEmpty() && targetComponents.isEmpty()) {
+			return false;
+		}
+
+		final Map<String, U> sourceComponentsMap = sourceComponents.stream().collect(toMap(SnomedComponent::getId, Function.identity()));
+		final Map<String, U> targetComponentsMap = targetComponents.stream().collect(toMap(SnomedComponent::getId, Function.identity()));
+
+		final Set<String> newComponentIds = Sets.difference(targetComponentsMap.keySet(), sourceComponentsMap.keySet());
+
+		// there are additions compared to source / base
+		if (!newComponentIds.isEmpty()) {
+			return true;
+		}
+
+		final Set<String> deletedComponentIds = Sets.difference(sourceComponentsMap.keySet(), targetComponentsMap.keySet());
+
+		// there are deletions compared to source / base
+		if (!deletedComponentIds.isEmpty()) {
+			return true;
+		}
+
+		// source and target key set must be equivalent at this point
+		for (final String id : sourceComponentsMap.keySet()) {
+
+			final U sourceComponent = sourceComponentsMap.get(id);
+			final U targetComponent = targetComponentsMap.get(id);
+
+			if (hasComponentChanges(sourceComponent, targetComponent)) {
+				return true;
+			}
+
+		}
+
+		return false;
+	}
+
+	private <U extends SnomedComponent> boolean hasComponentChanges(final Collection<U> baseComponents, final Collection<U> sourceComponents, final Collection<U> targetComponents, final Class<U> clazz) {
+
+		if (baseComponents.isEmpty() && sourceComponents.isEmpty() && targetComponents.isEmpty()) {
+			return false;
+		}
+
+		final Map<String, U> baseMap = baseComponents.stream().collect(toMap(SnomedComponent::getId, Function.identity()));
+		final Map<String, U> sourceMap = sourceComponents.stream().collect(toMap(SnomedComponent::getId, Function.identity()));
+		final Map<String, U> targetMap = targetComponents.stream().collect(toMap(SnomedComponent::getId, Function.identity()));
+
+		final Set<String> newSourceIds = Sets.difference(sourceMap.keySet(), baseMap.keySet());
+		final Set<String> newTargetIds = Sets.difference(targetMap.keySet(), baseMap.keySet());
+		final Set<String> deletedSourceIds = Sets.difference(baseMap.keySet(), sourceMap.keySet());
+		final Set<String> deletedTargetIds = Sets.difference(baseMap.keySet(), targetMap.keySet());
+
+		// show merge screen when there are different additions on both sides
+		if (!Sets.difference(newSourceIds, newTargetIds).isEmpty() && !newTargetIds.isEmpty()) {
+			return true;
+		}
+
+		if (!Sets.difference(newTargetIds, newSourceIds).isEmpty() && !newSourceIds.isEmpty()) {
+			return true;
+		}
+
+		// show merge screen when there are different deletions on both sides
+		if (!Sets.difference(deletedSourceIds, deletedTargetIds).isEmpty() && !deletedTargetIds.isEmpty()) {
+			return true;
+		}
+
+		if (!Sets.difference(deletedTargetIds, deletedSourceIds).isEmpty() && !deletedSourceIds.isEmpty()) {
+			return true;
+		}
+
+		// show merge screen when there is an addition and a deletion at the same time
+		if (!newSourceIds.isEmpty() && !deletedTargetIds.isEmpty()) {
+			return true;
+		}
+
+		if (!newTargetIds.isEmpty() && !deletedSourceIds.isEmpty()) {
+			return true;
+		}
+
+		final Set<String> allComponentIds = Sets.union(baseMap.keySet(), Sets.union(sourceMap.keySet(), targetMap.keySet()));
+
+		for (final String id : allComponentIds) {
+
+			final U sourceComponent = sourceMap.get(id);
+			final U targetComponent = targetMap.get(id);
+
+			if (!baseMap.containsKey(id)) {
+
+				// the same component was added on both sides -> two way compare
+				if (sourceMap.containsKey(id) && targetMap.containsKey(id)) {
+
+					if (hasComponentChanges(sourceComponent, targetComponent)) {
+						return true;
+					}
+
 				}
 
 			} else {
-				// fall through -> both sides removed either pt or the fsn
+
+				final U baseComponent = baseMap.get(id);
+
+				if (sourceMap.containsKey(id) && targetMap.containsKey(id)) {
+
+					if (sourceComponent.isActive() ^ targetComponent.isActive()) { // if active status is different
+
+						final boolean sourceChangedActiveStatus = baseComponent.isActive() ^ sourceComponent.isActive();
+						final boolean targetHasChanges = hasComponentChanges(baseComponent, targetComponent);
+
+						if (sourceChangedActiveStatus && targetHasChanges) {
+							return true;
+						}
+
+						final boolean targetChangedActiveStatus = baseComponent.isActive() ^ targetComponent.isActive();
+						final boolean sourceHasChanges = hasComponentChanges(baseComponent, sourceComponent);
+
+						if (targetChangedActiveStatus && sourceHasChanges) {
+							return true;
+						}
+
+					} else {
+
+						if (hasSinglePropertyChanges(baseComponent, sourceComponent, targetComponent)) {
+							return true;
+						}
+
+						// if these are components with reference set members then compare member equivalence as well
+						if (hasReferenceSetMemberChanges(baseComponent, sourceComponent, targetComponent)) {
+							return true;
+						}
+
+					}
+
+				} else if (sourceMap.containsKey(id)) {
+
+					// if there was a change on one side and a deletion on the other
+					// if these are components with reference set members then compare member equivalence as well
+					if (hasComponentChanges(baseComponent, sourceComponent)) {
+						return true;
+					}
+
+				} else if (targetMap.containsKey(id)) {
+
+					// if there was a change on one side and a deletion on the other
+					// if these are components with reference set members then compare member equivalence as well
+					if (hasComponentChanges(baseComponent, targetComponent)) {
+						return true;
+					}
+
+				}
+
 			}
 
-		} else if (sourceDescription != null && targetDescription !=null) {
-			return true; // both source and target added a new description, must be reviewed
+		}
+
+		return false;
+	}
+
+	private boolean hasReferenceSetMemberChanges(final SnomedComponent sourceComponent, final SnomedComponent targetComponent) {
+
+		if (sourceComponent instanceof SnomedCoreComponent && targetComponent instanceof SnomedCoreComponent) {
+
+			final SnomedCoreComponent sourceCoreComponent = (SnomedCoreComponent) sourceComponent;
+			final SnomedCoreComponent targetCoreComponent = (SnomedCoreComponent) targetComponent;
+
+			if (hasComponentChanges(getReferenceSetMembers(sourceCoreComponent), getReferenceSetMembers(targetCoreComponent), SnomedReferenceSetMember.class)) {
+				return true;
+			}
+
+		} else if (sourceComponent instanceof SnomedReferenceSetMember && targetComponent instanceof SnomedReferenceSetMember) {
+
+			final SnomedReferenceSetMember sourceMember = (SnomedReferenceSetMember) sourceComponent;
+			final SnomedReferenceSetMember targetMember = (SnomedReferenceSetMember) targetComponent;
+
+			// raise merge review if id is the same but type is different
+			if (sourceMember.type() != targetMember.type()) {
+				return true;
+			}
+
+			if (hasConflictingMemberPropertyChanges(sourceMember, targetMember)) {
+				return true;
+			}
+
+		}
+
+		return false;
+	}
+
+	private boolean hasReferenceSetMemberChanges(final SnomedComponent baseComponent, final SnomedComponent sourceComponent, final SnomedComponent targetComponent) {
+
+		if (baseComponent instanceof SnomedCoreComponent && sourceComponent instanceof SnomedCoreComponent && targetComponent instanceof SnomedCoreComponent) {
+
+			final SnomedCoreComponent baseCoreComponent = (SnomedCoreComponent) baseComponent;
+			final SnomedCoreComponent sourceCoreComponent = (SnomedCoreComponent) sourceComponent;
+			final SnomedCoreComponent targetCoreComponent = (SnomedCoreComponent) targetComponent;
+
+			if (hasComponentChanges(getReferenceSetMembers(baseCoreComponent), getReferenceSetMembers(sourceCoreComponent), getReferenceSetMembers(targetCoreComponent), SnomedReferenceSetMember.class)) {
+				return true;
+			}
+
+		} else if (baseComponent instanceof SnomedReferenceSetMember && sourceComponent instanceof SnomedReferenceSetMember && targetComponent instanceof SnomedReferenceSetMember) {
+
+			final SnomedReferenceSetMember baseMember = (SnomedReferenceSetMember) baseComponent;
+			final SnomedReferenceSetMember sourceMember = (SnomedReferenceSetMember) sourceComponent;
+			final SnomedReferenceSetMember targetMember = (SnomedReferenceSetMember) targetComponent;
+
+			// raise merge review if id is the same but type is different
+			if (ImmutableSet.of(baseMember.type(), sourceMember.type(), targetMember.type()).size() != 1) {
+				return true;
+			}
+
+			if (hasConflictingMemberPropertyChanges(baseMember, sourceMember, targetMember)) {
+				return true;
+			}
+
+		}
+
+		return false;
+	}
+
+	private boolean hasConflictingMemberPropertyChanges(final SnomedReferenceSetMember sourceMember, final SnomedReferenceSetMember targetMember) {
+
+		// make sure this is a supported member type
+		if (REFERENCE_SET_MEMBER_FIELDS_TO_COMPARE.containsKey(sourceMember.type())) {
+
+			// iterate over all specified reference set member properties and compare them
+			for (final String property : REFERENCE_SET_MEMBER_FIELDS_TO_COMPARE.get(sourceMember.type())) {
+
+				String sourceProperty;
+				String targetProperty;
+
+				if (SnomedRf2Headers.FIELD_TARGET_COMPONENT.equals(property)) {
+
+					sourceProperty = ((SnomedComponent) sourceMember.getProperties().get(property)).getId();
+					targetProperty = ((SnomedComponent) targetMember.getProperties().get(property)).getId();
+
+				} else {
+
+					sourceProperty = (String) sourceMember.getProperties().get(property);
+					targetProperty = (String) targetMember.getProperties().get(property);
+
+				}
+
+
+				if (!Strings.isNullOrEmpty(sourceProperty) && !Strings.isNullOrEmpty(targetProperty)) {
+
+					// if value of property does not match, raise merge screen
+					if (!Objects.equals(sourceProperty, targetProperty)) {
+						return true;
+					}
+
+				} else if (!Strings.isNullOrEmpty(sourceProperty) || !Strings.isNullOrEmpty(targetProperty)) {
+					// if either of source or target's property is set but the other is not
+					return true;
+				}
+
+			}
+
+		}
+
+		return false;
+	}
+
+	private boolean hasConflictingMemberPropertyChanges(final SnomedReferenceSetMember baseMember, final SnomedReferenceSetMember sourceMember, final SnomedReferenceSetMember targetMember) {
+
+		// make sure this is a supported member type
+		if (REFERENCE_SET_MEMBER_FIELDS_TO_COMPARE.containsKey(sourceMember.type())) {
+
+			// iterate over all specified reference set member properties and compare them
+			for (final String property : REFERENCE_SET_MEMBER_FIELDS_TO_COMPARE.get(sourceMember.type())) {
+
+				String baseProperty;
+				String sourceProperty;
+				String targetProperty;
+
+				if (SnomedRf2Headers.FIELD_TARGET_COMPONENT.equals(property)) {
+
+					baseProperty = ((SnomedComponent) baseMember.getProperties().get(property)).getId();
+					sourceProperty = ((SnomedComponent) sourceMember.getProperties().get(property)).getId();
+					targetProperty = ((SnomedComponent) targetMember.getProperties().get(property)).getId();
+
+				} else {
+
+					baseProperty = (String) baseMember.getProperties().get(property);
+					sourceProperty = (String) sourceMember.getProperties().get(property);
+					targetProperty = (String) targetMember.getProperties().get(property);
+
+				}
+
+
+				if (Strings.isNullOrEmpty(baseProperty)) {
+
+					if (!Strings.isNullOrEmpty(sourceProperty) && !Strings.isNullOrEmpty(targetProperty)) {
+
+						if (!Objects.equals(sourceProperty, targetProperty)) {
+							return true;
+						}
+
+					}
+
+				} else {
+
+					if (!Strings.isNullOrEmpty(sourceProperty) && !Strings.isNullOrEmpty(targetProperty)) {
+
+						final boolean hasSourceChanges = !Objects.equals(baseProperty, sourceProperty);
+						final boolean hasTargetChanges = !Objects.equals(baseProperty, targetProperty);
+						final boolean hasConflictingChanges = !Objects.equals(sourceProperty, targetProperty);
+
+						if (hasSourceChanges && hasTargetChanges && hasConflictingChanges) {
+							return true;
+						}
+
+					} else if (!Strings.isNullOrEmpty(sourceProperty)) {
+
+						if (!Objects.equals(baseProperty, sourceProperty)) {
+							return true;
+						}
+
+					} else if (!Strings.isNullOrEmpty(targetProperty)) {
+
+						if (!Objects.equals(baseProperty, targetProperty)) {
+							return true;
+						}
+
+					}
+
+				}
+
+			}
+
+		}
+
+		return false;
+	}
+
+	private boolean hasFsnOrPtChanges(final SnomedDescription sourceDescription, final SnomedDescription targetDescription) {
+
+		if (sourceDescription != null && targetDescription != null) {
+
+			if (!sourceDescription.getId().equals(targetDescription.getId())) {
+				return true;
+			} else if (hasSinglePropertyChanges(sourceDescription, targetDescription)) {
+				return true;
+			}
+
+		} else if (sourceDescription != null) {
+			return true;
+		} else if (targetDescription != null) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private boolean hasFsnOrPtChanges(final SnomedDescription baseDescription, final SnomedDescription sourceDescription, final SnomedDescription targetDescription) {
+
+		if (baseDescription != null) {
+
+			if (sourceDescription != null && targetDescription != null) {
+
+				final Set<String> ids = ImmutableSet.of(baseDescription.getId(), sourceDescription.getId(), targetDescription.getId());
+
+				if (ids.size() == 1) {
+
+					if (hasSinglePropertyChanges(baseDescription, sourceDescription, targetDescription)) {
+						return true;
+					}
+
+				} else if (hasFsnOrPtChanges(baseDescription, sourceDescription)
+						&& hasFsnOrPtChanges(baseDescription, targetDescription)
+						&& hasFsnOrPtChanges(sourceDescription, targetDescription)) {
+					return true;
+				}
+
+			} else if (sourceDescription != null) {
+
+				// if target was deleted and source has changed
+				if (hasFsnOrPtChanges(baseDescription, sourceDescription)) {
+					return true;
+				}
+
+			} else if (targetDescription != null) {
+
+				// if source was deleted and target has changed
+				if (hasFsnOrPtChanges(baseDescription, targetDescription)) {
+					return true;
+				}
+
+			}
+
+			// if there are two new additions on source and target, compare them against each other
+		} else if (sourceDescription != null && targetDescription != null) {
+
+			if (hasFsnOrPtChanges(sourceDescription, targetDescription)) {
+				return true;
+			}
+
 		}
 
 		return false;
 	}
 
 	private SnomedConcept getConcept(final String path, final String conceptId) {
-		return SnomedRequests.prepareGetConcept(conceptId)
-				.setExpand("fsn(),pt(),inactivationProperties()")
-				.setLocales(parameters.getExtendedLocales())
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
-				.execute(getBus())
-				.getSync();
+
+		try {
+
+			return SnomedRequests.prepareGetConcept(conceptId)
+					.setExpand("fsn(),pt(),descriptions(expand(members())),relationships(), members()")
+					.setLocales(parameters.getExtendedLocales())
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
+					.execute(getBus())
+					.getSync();
+
+		} catch (final NotFoundException e) {
+			return null;
+		}
 	}
 
-	private SnomedDescriptions getDescriptions(final String path, final String conceptId) {
-		return SnomedRequests.prepareSearchDescription()
-				.all()
-				.filterByConcept(conceptId)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
-				.execute(getBus())
-				.getSync();
+	private Collection<SnomedRelationship> getStatedRelationships(final SnomedConcept concept) {
+		return concept.getRelationships().stream()
+				.filter(relationship -> Concepts.STATED_RELATIONSHIP.equals(relationship.getCharacteristicTypeId()))
+				.collect(toSet());
 	}
 
-	private boolean hasDescriptionChanges(final SnomedConcept baseConcept, final SnomedConcept sourceConcept, final SnomedConcept targetConcept,
-			final String basePath) {
-
-		final boolean sourceChangedActiveStatus = baseConcept.isActive() ^ sourceConcept.isActive();
-		final boolean targetChangedActiveStatus = baseConcept.isActive() ^ targetConcept.isActive();
-		final boolean activeStatusDiffers = sourceConcept.isActive() ^ targetConcept.isActive();
-
-		final SnomedDescriptions baseDescriptions = getDescriptions(basePath, conceptId);
-		final SnomedDescriptions sourceDescriptions = getDescriptions(parameters.getSourcePath(), conceptId);
-		final SnomedDescriptions targetDescriptions = getDescriptions(parameters.getTargetPath(), conceptId);
-
-		final Map<String, SnomedDescription> baseMap = Maps.uniqueIndex(baseDescriptions, input -> input.getId());
-		final Map<String, SnomedDescription> sourceMap = Maps.uniqueIndex(sourceDescriptions, input -> input.getId());
-		final Map<String, SnomedDescription> targetMap = Maps.uniqueIndex(targetDescriptions, input -> input.getId());
-
-		final Set<String> newSourceDescriptionIds = Sets.difference(sourceMap.keySet(), baseMap.keySet());
-		final Set<String> newTargetDescriptionIds = Sets.difference(targetMap.keySet(), baseMap.keySet());
-
-		// if there are additions on both sides
-		if (!newSourceDescriptionIds.isEmpty() && !newTargetDescriptionIds.isEmpty()) {
-			if (!Sets.difference(newSourceDescriptionIds, newTargetDescriptionIds).isEmpty() ||
-					!Sets.difference(newTargetDescriptionIds, newSourceDescriptionIds).isEmpty()) { // if the are differing additions on both sides
-				return true; // always show merge screen when there are additions on both sides
-			}
-		}
-
-		// if there were additions while the other side was inactivated
-		if (activeStatusDiffers) {
-			if (targetChangedActiveStatus && !newSourceDescriptionIds.isEmpty()) {
-				return true;
-			} else if (sourceChangedActiveStatus && !newTargetDescriptionIds.isEmpty()) {
-				return true;
-			}
-		}
-
-		final Set<String> allDescriptionIds = Sets.union(baseMap.keySet(), Sets.union(sourceMap.keySet(), targetMap.keySet()));
-
-		for (final String id : allDescriptionIds) {
-
-			if (!baseMap.containsKey(id) && (sourceMap.containsKey(id) ^ targetMap.containsKey(id))) {
-				continue; // this must be an addition
-			} else if (baseMap.containsKey(id) && !sourceMap.containsKey(id) && !targetMap.containsKey(id)) {
-				continue; // this must the same deletion on both sides;
-			}
-
-			final SnomedDescription baseDescription = baseMap.containsKey(id) ? baseMap.get(id) : FAKE_DESCRIPTION;
-			final SnomedDescription sourceDescription = sourceMap.containsKey(id) ? sourceMap.get(id) : FAKE_DESCRIPTION;
-			final SnomedDescription targetDescription = targetMap.containsKey(id) ? targetMap.get(id) : FAKE_DESCRIPTION;
-
-			if (hasSinglePropertyChanges(baseDescription, sourceDescription, targetDescription, IGNORED_DESCRIPTION_FIELDS)) {
-				return true;
-			}
-		}
-
-		return false;
+	private Collection<SnomedDescription> getDescriptions(final SnomedConcept concept) {
+		return concept.getDescriptions().getItems();
 	}
 
-	private SnomedRelationships getUnpublishedNonInferredRelationships(final String path, final String conceptId) {
-		return SnomedRequests.prepareSearchRelationship()
-				.all()
-				.filterBySource(conceptId)
-				.filterByEffectiveTime(EffectiveTimes.UNSET_EFFECTIVE_TIME_LABEL)
-				.filterByCharacteristicTypes(NON_INFERRED_CHARACTERISTIC_TYPES)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
-				.execute(getBus())
-				.getSync();
+	private Collection<SnomedReferenceSetMember> getReferenceSetMembers(final SnomedCoreComponent component) {
+		if (component.getMembers() == null) {
+			return emptySet();
+		}
+		return component.getMembers().stream()
+				.filter(member -> REFERENCE_SET_MEMBER_FIELDS_TO_COMPARE.containsKey(member.type()))
+				.collect(toSet());
 	}
 
-	private boolean hasNonInferredRelationshipChanges(final SnomedConcept baseConcept, final SnomedConcept sourceConcept,
-			final SnomedConcept targetConcept, final String basePath) {
-
-		final boolean sourceChangedActiveStatus = baseConcept.isActive() ^ sourceConcept.isActive();
-		final boolean targetChangedActiveStatus = baseConcept.isActive() ^ targetConcept.isActive();
-		final boolean activeStatusDiffers = sourceConcept.isActive() ^ targetConcept.isActive();
-
-		final SnomedRelationships baseRelationships = getUnpublishedNonInferredRelationships(basePath, conceptId);
-		final SnomedRelationships sourceRelationships = getUnpublishedNonInferredRelationships(parameters.getSourcePath(), conceptId);
-		final SnomedRelationships targetRelationships = getUnpublishedNonInferredRelationships(parameters.getTargetPath(), conceptId);
-
-		final Map<String, SnomedRelationship> baseMap = FluentIterable.from(baseRelationships).uniqueIndex(input -> input.getId());
-		final Map<String, SnomedRelationship> sourceMap = FluentIterable.from(sourceRelationships).uniqueIndex(input -> input.getId());
-		final Map<String, SnomedRelationship> targetMap = FluentIterable.from(targetRelationships).uniqueIndex(input -> input.getId());
-
-		final Set<String> newSourceRelationshipIds = Sets.difference(sourceMap.keySet(), baseMap.keySet());
-		final Set<String> newTargetRelationshipIds = Sets.difference(targetMap.keySet(), baseMap.keySet());
-
-		// if there are additions on both sides
-		if (!newSourceRelationshipIds.isEmpty() && !newTargetRelationshipIds.isEmpty()) {
-			if (!Sets.difference(newSourceRelationshipIds, newTargetRelationshipIds).isEmpty() ||
-					!Sets.difference(newTargetRelationshipIds, newSourceRelationshipIds).isEmpty()) { // if the are differing additions on both sides
-				return true; // always show merge screen when there are additions on both sides
-			}
+	private <U extends SnomedComponent> Set<String> getComponentFields(final Class<U> clazz) {
+		if (clazz.isAssignableFrom(SnomedConcept.class)) {
+			return CONCEPT_FIELDS;
+		} else if (clazz.isAssignableFrom(SnomedDescription.class)) {
+			return DESCRIPTION_FIELDS;
+		} else if (clazz.isAssignableFrom(SnomedRelationship.class)) {
+			return RELATIONSHIP_FIELDS;
+		} else if (clazz.isAssignableFrom(SnomedReferenceSetMember.class)) {
+			return MEMBER_FIELDS;
 		}
-
-		// if there were additions while the other side was inactivated
-		if (activeStatusDiffers) {
-			if (targetChangedActiveStatus && !newSourceRelationshipIds.isEmpty()) {
-				return true;
-			} else if (sourceChangedActiveStatus && !newTargetRelationshipIds.isEmpty()) {
-				return true;
-			}
-		}
-
-		final Set<String> allRelationshipIds = Sets.union(baseMap.keySet(), Sets.union(sourceMap.keySet(), targetMap.keySet()));
-
-		for (final String id : allRelationshipIds) {
-
-			if (!baseMap.containsKey(id) && (sourceMap.containsKey(id) ^ targetMap.containsKey(id))) {
-				continue; // this must be an addition
-			} else if (baseMap.containsKey(id) && !sourceMap.containsKey(id) && !targetMap.containsKey(id)) {
-				continue; // this must the same deletion on both sides;
-			}
-
-			final SnomedRelationship baseRelationship = baseMap.containsKey(id) ? baseMap.get(id) : FAKE_RELATIONSHIP;
-			final SnomedRelationship sourceRelationship = sourceMap.containsKey(id) ? sourceMap.get(id) : FAKE_RELATIONSHIP;
-			final SnomedRelationship targetRelationship = targetMap.containsKey(id) ? targetMap.get(id) : FAKE_RELATIONSHIP;
-
-			if (hasSinglePropertyChanges(baseRelationship, sourceRelationship, targetRelationship, IGNORED_RELATIONSHIP_FIELDS)) {
-				return true;
-			}
-		}
-
-		return false;
+		throw new RuntimeException("Unsupported type: " + clazz);
 	}
 
-	private boolean hasSinglePropertyChanges(final SnomedComponent baseComponent, final SnomedComponent sourceComponent,
-			final SnomedComponent targetComponent, final String... ignoredProperties) {
+	private <U extends SnomedComponent> SnomedComponent getFakeComponent(final Class<U> clazz) {
+		if (clazz.isAssignableFrom(SnomedConcept.class)) {
+			return FAKE_CONCEPT;
+		} else if (clazz.isAssignableFrom(SnomedDescription.class)) {
+			return FAKE_DESCRIPTION;
+		} else if (clazz.isAssignableFrom(SnomedRelationship.class)) {
+			return FAKE_RELATIONSHIP;
+		} else if (clazz.isAssignableFrom(SnomedReferenceSetMember.class)) {
+			return FAKE_MEMBER;
+		}
+		throw new RuntimeException("Unsupported type: " + clazz);
+	}
 
-		final Map<String, Object> baseMap = ReflectionUtils.getBeanMap(baseComponent, ignoredProperties);
-		final Map<String, Object> sourceMap = ReflectionUtils.getBeanMap(sourceComponent, ignoredProperties);
-		final Map<String, Object> targetMap = ReflectionUtils.getBeanMap(targetComponent, ignoredProperties);
+	private boolean hasSinglePropertyChanges(final SnomedComponent sourceComponent, final SnomedComponent targetComponent) {
+		return hasSinglePropertyChanges(getFakeComponent(sourceComponent.getClass()), sourceComponent, targetComponent);
+	}
 
-		for (final String key : baseMap.keySet()) {
+	private boolean hasSinglePropertyChanges(final SnomedComponent baseComponent, final SnomedComponent sourceComponent, final SnomedComponent targetComponent) {
 
-			Object baseValue = baseMap.get(key);
-			Object sourceValue = sourceMap.get(key);
-			Object targetValue = targetMap.get(key);
+		for (final String property : getComponentFields(sourceComponent.getClass())) {
+
+			Object baseValue = ReflectionUtils.getPropertyValue(baseComponent, property);
+			Object sourceValue = ReflectionUtils.getPropertyValue(sourceComponent, property);
+			Object targetValue = ReflectionUtils.getPropertyValue(targetComponent, property);
 
 			// skip null comparison
 			if (baseValue == null && sourceValue == null && targetValue == null) {
@@ -417,28 +784,12 @@ public abstract class MergeReviewCallable<T> implements Callable<T> {
 
 			} else {
 
-				if (!sourceComponent.getId().equals(FAKE_ID) && !targetComponent.getId().equals(FAKE_ID)) {
+				final boolean hasSourceChanges = !Objects.equals(sourceValue, baseValue);
+				final boolean hasTargetChanges = !Objects.equals(targetValue, baseValue);
+				final boolean hasConflictingChanges = !Objects.equals(sourceValue, targetValue);
 
-					final boolean hasSourceChanges = !Objects.equals(sourceValue, baseValue);
-					final boolean hasTargetChanges = !Objects.equals(targetValue, baseValue);
-					final boolean hasConflictingChanges = !Objects.equals(sourceValue, targetValue);
-
-					if (hasSourceChanges && hasTargetChanges && hasConflictingChanges) {
-						return true;
-					}
-
-				} else if (sourceComponent.getId().equals(FAKE_ID)) {
-
-					if (!Objects.equals(targetValue, baseValue)) { // has target changes
-						return true;
-					}
-
-				} else if (targetComponent.getId().equals(FAKE_ID)) {
-
-					if (!Objects.equals(sourceValue, baseValue)) { // has source changes
-						return true;
-					}
-
+				if (hasSourceChanges && hasTargetChanges && hasConflictingChanges) {
+					return true;
 				}
 
 			}

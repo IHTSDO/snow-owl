@@ -18,6 +18,8 @@ package com.b2international.snowowl.snomed.api.rest;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.SCT_API;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
+import static com.google.common.collect.Sets.newHashSet;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -26,7 +28,9 @@ import java.util.Set;
 
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.mergereview.SnomedBrowserMergeReviewDetail;
+import com.b2international.snowowl.snomed.api.mergereview.ISnomedBrowserMergeReviewDetail;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
@@ -48,26 +52,25 @@ public abstract class SnomedMergeReviewingRestRequests {
 	}
 
 	public static ValidatableResponse createMergeReview(String source, String target) {
-				ImmutableMap.Builder<String, Object> requestBuilder = ImmutableMap.<String, Object>builder()
-				.put("source", source)
-				.put("target", target);
-		
 		return givenAuthenticatedRequest(SCT_API)
 				.contentType(ContentType.JSON)
-				.body(requestBuilder.build())
+				.body(ImmutableMap.<String, Object>of("source", source, "target", target))
 				.post("/merge-reviews")
 				.then();
 	}
 	
+	public static Set<ISnomedBrowserMergeReviewDetail> createMergeReviewAndGetDetails(IBranchPath source, IBranchPath target) {
+		return createMergeReviewAndGetDetails(source.getPath(), target.getPath());
+	}
 	
+	public static Set<ISnomedBrowserMergeReviewDetail> createMergeReviewAndGetDetails(String source, String target) {
+		String reviewId = reviewLocation(createMergeReview(source, target));
+		assertReviewCurrent(reviewId);
+		return getMergeReviewDetailsResponse(reviewId);
+	}
 
 	public static String reviewLocation(ValidatableResponse response) {
-		final String location = response
-			.statusCode(201)
-			.header("Location", notNullValue())
-			.extract().header("Location");
-
-		return lastPathSegment(location);
+		return lastPathSegment(response.statusCode(201).header("Location", notNullValue()).extract().header("Location"));
 	}
 
 	public static ValidatableResponse getMergeReview(String id) {
@@ -77,37 +80,37 @@ public abstract class SnomedMergeReviewingRestRequests {
 				.then();
 	}
 	
-	public static JsonNode getMergeReviewDetailsResponse(String reviewId) {
-		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.with().header("Accept-Language", "en-GB")
+	public static Set<ISnomedBrowserMergeReviewDetail> getMergeReviewDetailsResponse(String reviewId) {
+		return newHashSet(givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.when()
 				.get("/merge-reviews/{id}/details", reviewId)
 				.then()
 				.statusCode(200)
 				.extract()
 				.body()
-				.as(JsonNode.class);
+				.as(SnomedBrowserMergeReviewDetail[].class));
 	}
 	
-	
-	public static void storeConceptForMergeReview(String reviewId, String conceptId, JsonNode concept) {
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-		.with().header("Accept-Language", "en-GB")
-		.content(concept)
-		.contentType(ContentType.JSON)
-		.when()
-		.post("/merge-reviews/{id}/{conceptId}", reviewId, conceptId)
-		.then()
-		.statusCode(200);
+	public static ValidatableResponse storeConceptForMergeReview(String reviewId, String conceptId, ISnomedBrowserConcept concept) {
+		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.body(concept)
+			.contentType(ContentType.JSON)
+			.when()
+			.post("/merge-reviews/{id}/{conceptId}", reviewId, conceptId)
+			.then();
 	}
 	
-	public static void mergeAndApply(String reviewId) {
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-		.with().header("Accept-Language", "en-GB")
-		.when()
-		.post("/merge-reviews/{id}/apply", reviewId)
-		.then()
-		.statusCode(204);
+	public static ValidatableResponse mergeAndApply(String reviewId) {
+		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.when()
+			.post("/merge-reviews/{id}/apply", reviewId)
+			.then();
+	}
+	
+	public static void assertReviewCurrent(final String reviewId) {
+		waitForMergeReviewJob(reviewId)
+			.statusCode(200)
+			.body("status", equalTo(ReviewStatus.CURRENT.toString()));
 	}
 	
 	public static ValidatableResponse waitForMergeReviewJob(String id) {

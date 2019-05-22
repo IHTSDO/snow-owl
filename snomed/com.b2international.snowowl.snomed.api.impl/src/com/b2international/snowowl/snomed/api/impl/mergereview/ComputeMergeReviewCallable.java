@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
@@ -39,10 +40,19 @@ public class ComputeMergeReviewCallable extends MergeReviewCallable<ISnomedBrows
 
 	@Override
 	protected ISnomedBrowserMergeReviewDetail onSuccess() throws IOException {
-		final ISnomedBrowserConcept sourceConcept = getBrowserService().getConceptDetails(parameters.getSourcePath(), conceptId, parameters.getExtendedLocales());
-		final ISnomedBrowserConcept targetConcept = getBrowserService().getConceptDetails(parameters.getTargetPath(), conceptId, parameters.getExtendedLocales());
+		
+		final ISnomedBrowserConcept sourceConcept = getBrowserConcept(parameters.getSourcePath(), conceptId, parameters.getExtendedLocales());
+		final ISnomedBrowserConcept targetConcept = getBrowserConcept(parameters.getTargetPath(), conceptId, parameters.getExtendedLocales());
 
-		final ISnomedBrowserConcept autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, parameters.getExtendedLocales());
+		ISnomedBrowserConcept autoMergedConcept = null;
+		
+		if (sourceConcept != null && targetConcept != null) {
+			autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, parameters.getExtendedLocales());
+		} else if (sourceConcept != null) {
+			autoMergedConcept = sourceConcept;
+		} else if (targetConcept != null) {
+			autoMergedConcept = targetConcept;
+		}
 
 		ISnomedBrowserConcept manuallyMergedConcept = null;
 
@@ -51,6 +61,14 @@ public class ComputeMergeReviewCallable extends MergeReviewCallable<ISnomedBrows
 		}
 
 		return new SnomedBrowserMergeReviewDetail(sourceConcept, targetConcept, autoMergedConcept, manuallyMergedConcept);
+	}
+
+	private ISnomedBrowserConcept getBrowserConcept(String branchPath, String conceptId, List<ExtendedLocale> locales) {
+		try {
+			return getBrowserService().getConceptDetails(branchPath, conceptId, locales);
+		} catch (NotFoundException e) {
+			return null;
+		}
 	}
 
 	private SnomedBrowserConcept mergeConcepts(

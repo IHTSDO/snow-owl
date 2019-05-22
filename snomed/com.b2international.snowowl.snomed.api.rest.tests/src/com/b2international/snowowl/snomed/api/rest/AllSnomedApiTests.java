@@ -32,7 +32,6 @@ import com.b2international.snowowl.snomed.api.rest.branches.SnomedBranchingApiTe
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedListFeaturesTests;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeConflictTest;
-import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeReviewApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedReviewApiTest;
 import com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiTest;
 import com.b2international.snowowl.snomed.api.rest.classification.SnomedClassificationApiTest;
@@ -53,6 +52,11 @@ import com.b2international.snowowl.snomed.api.rest.id.SnomedIdentifierApiTest;
 import com.b2international.snowowl.snomed.api.rest.io.SnomedExportApiTest;
 import com.b2international.snowowl.snomed.api.rest.io.SnomedImportApiExtensionImportTest;
 import com.b2international.snowowl.snomed.api.rest.io.SnomedImportApiTest;
+import com.b2international.snowowl.snomed.api.rest.mergereview.SnomedMergeReviewApiTest;
+import com.b2international.snowowl.snomed.api.rest.mergereview.SnomedMergeReviewApprovedChangesTest;
+import com.b2international.snowowl.snomed.api.rest.mergereview.SnomedMergeReviewConcurrentChangesTest;
+import com.b2international.snowowl.snomed.api.rest.mergereview.SnomedMergeReviewDeletedWhileChangedTest;
+import com.b2international.snowowl.snomed.api.rest.mergereview.SnomedMergeReviewInactivatedWhileChangedTest;
 import com.b2international.snowowl.snomed.api.rest.perf.SnomedConceptCreatePerformanceTest;
 import com.b2international.snowowl.snomed.api.rest.perf.SnomedMergePerformanceTest;
 import com.b2international.snowowl.snomed.api.rest.versioning.SnomedVersioningApiTest;
@@ -78,6 +82,10 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	SnomedMergeConflictTest.class,
 	SnomedReviewApiTest.class,
 	SnomedMergeReviewApiTest.class,
+	SnomedMergeReviewDeletedWhileChangedTest.class,
+	SnomedMergeReviewInactivatedWhileChangedTest.class,
+	SnomedMergeReviewConcurrentChangesTest.class,
+	SnomedMergeReviewApprovedChangesTest.class,
 	SnomedVersioningApiTest.class,
 	SnomedImportApiTest.class,
 	SnomedImportApiExtensionImportTest.class,

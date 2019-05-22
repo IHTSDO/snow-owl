@@ -19,6 +19,9 @@ import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests.deleteBranch;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestRequests.createBrowserConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestRequests.createBrowserConceptRequest;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestRequests.createDefaultDescriptions;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestRequests.createIsaRelationship;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestRequests.updateBrowserConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.deleteComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
@@ -82,80 +85,6 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 
 	private static final String FINDING_CONTEXT = "408729009";
 	
-	private static Map<String, Object> createBrowserConceptRequest() {
-		ImmutableMap.Builder<String, Object> conceptBuilder = ImmutableMap.<String, Object>builder()
-				.put("fsn", "FSN of new concept")
-				.put("preferredSynonym", "PT of new concept")
-				.put("moduleId", Concepts.MODULE_SCT_CORE)
-				.put("definitionStatus", DefinitionStatus.PRIMITIVE)
-				.put("descriptions", createDefaultDescriptions())
-				.put("relationships", createIsaRelationship());
-
-		return conceptBuilder.build();
-	}
-
-	private static List<?> createDefaultDescriptions(String pt, String fsn) {
-		Map<?, ?> fsnDescription = ImmutableMap.<String, Object>builder()
-				.put("active", true)
-				.put("term", fsn)
-				.put("type", SnomedBrowserDescriptionType.FSN)
-				.put("lang", "en")
-				.put("moduleId", Concepts.MODULE_SCT_CORE)
-				.put("caseSignificance", CaseSignificance.CASE_INSENSITIVE)
-				.put("acceptabilityMap", SnomedApiTestConstants.UK_PREFERRED_MAP)
-				.build();
-		
-		Map<?, ?> ptDescription = ImmutableMap.<String, Object>builder()
-				.put("active", true)
-				.put("term", pt)
-				.put("type", SnomedBrowserDescriptionType.SYNONYM)
-				.put("lang", "en")
-				.put("moduleId", Concepts.MODULE_SCT_CORE)
-				.put("caseSignificance", CaseSignificance.CASE_INSENSITIVE)
-				.put("acceptabilityMap", SnomedApiTestConstants.UK_PREFERRED_MAP)
-				.build();
-		
-		return ImmutableList.of(fsnDescription, ptDescription);
-	}
-	
-	private static List<?> createDefaultDescriptions() {
-		return createDefaultDescriptions("PT of new concept", "FSN of new concept");
-	}
-
-	private static List<?> createIsaRelationship() {
-		return createIsaRelationship(Concepts.ROOT_CONCEPT, CharacteristicType.STATED_RELATIONSHIP);
-	}
-
-	private static List<?> createIsaRelationship(String parentId, CharacteristicType characteristicType) {
-		return createIsaRelationship(parentId, characteristicType, true);
-	}
-	private static List<?> createIsaRelationship(String parentId, CharacteristicType characteristicType, boolean relationshipActive) {
-		Map<?, ?> type = ImmutableMap.<String, Object>builder()
-				.put("conceptId", Concepts.IS_A)
-				.put("fsn", "Is a (attribute)")
-				.build();
-
-		Map<?, ?> target = ImmutableMap.<String, Object>builder()
-				.put("active", true)
-				.put("moduleId", Concepts.MODULE_SCT_CORE)
-				.put("conceptId", parentId)
-				.put("fsn", "Parent of new concept")
-				.put("definitionStatus", DefinitionStatus.PRIMITIVE)
-				.build();
-
-		Map<?, ?> isaRelationship = ImmutableMap.<String, Object>builder()
-				.put("modifier", RelationshipModifier.EXISTENTIAL)
-				.put("groupId", "0")
-				.put("characteristicType", characteristicType)
-				.put("active", relationshipActive)
-				.put("type", type)
-				.put("moduleId", Concepts.MODULE_SCT_CORE)
-				.put("target", target)
-				.build();
-
-		return ImmutableList.of(isaRelationship);
-	}
-
 	@SuppressWarnings("unchecked")
 	private static List<Object> getListElement(Map<String, Object> concept, String elementName) {
 		Object listElement = concept.get(elementName);

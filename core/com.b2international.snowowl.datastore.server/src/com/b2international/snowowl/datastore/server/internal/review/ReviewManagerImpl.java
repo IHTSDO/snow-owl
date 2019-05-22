@@ -296,11 +296,12 @@ public class ReviewManagerImpl implements ReviewManager {
 	}
 
 	void createConceptChanges(final String id, final String branch, final RevisionCompare compare) {
-		final Set<String> newConcepts = newHashSet();
-		final Set<String> changedConcepts = newHashSet();
-		final Set<String> deletedConcepts = newHashSet();
 		
-		// collect new container IDs
+		final Set<String> newComponentIds = newHashSet();
+		final Set<String> changedComponentIds = newHashSet();
+		final Set<String> deletedComponentIds = newHashSet();
+		
+		// collect new concept ids
 		for (final Class<? extends Revision> revisionType : compare.getNewRevisionTypes()) {
 			final Hits<? extends Revision> hits = compare.searchNew(Query.select(revisionType).where(Expressions.matchAll()).build());
 			for (Revision hit : hits) {
@@ -308,12 +309,13 @@ public class ReviewManagerImpl implements ReviewManager {
 					final ContainerIdProvider idProvider = (ContainerIdProvider) hit;
 					final String containerId = idProvider.getContainerId();
 					if (idProvider.isRoot() && containerId != null) {
-						newConcepts.add(containerId);
+						newComponentIds.add(containerId);
 					}
 				}
 			}
 		}
 		
+		// collect the ids of existing concepts were a new component was added (e.g. descriptions, relationships, reference set members) -> changed
 		for (final Class<? extends Revision> revisionType : compare.getNewRevisionTypes()) {
 			final Hits<? extends Revision> hits = compare.searchNew(Query.select(revisionType).where(Expressions.matchAll()).build());
 			// iterate over again and add non root ids
@@ -322,25 +324,27 @@ public class ReviewManagerImpl implements ReviewManager {
 					final ContainerIdProvider idProvider = (ContainerIdProvider) hit;
 					final String containerId = idProvider.getContainerId();
 					// if the container ID is registered as new, then skip adding it to the changed set, otherwise add it
-					if (containerId != null && !idProvider.isRoot() && !newConcepts.contains(containerId)) {
-						changedConcepts.add(containerId);
+					if (containerId != null && !idProvider.isRoot() && !newComponentIds.contains(containerId)) {
+						changedComponentIds.add(containerId);
 					}
 				}
 			}
 		}
 		
+		// collect the concept id of all changed components
 		for (final Class<? extends Revision> revisionType : compare.getChangedRevisionTypes()) {
 			final Hits<? extends Revision> hits = compare.searchChanged(Query.select(revisionType).where(Expressions.matchAll()).build());
 			for (Revision hit : hits) {
 				if (hit instanceof ContainerIdProvider) {
 					final String containerId = ((ContainerIdProvider) hit).getContainerId();
 					if (containerId != null) {
-						changedConcepts.add(containerId);
+						changedComponentIds.add(containerId);
 					}
 				}
 			}
 		}
 		
+		// collect the ids of all deleted concepts
 		for (final Class<? extends Revision> revisionType : compare.getDeletedRevisionTypes()) {
 			final Hits<? extends Revision> hits = compare.searchDeleted(Query.select(revisionType).where(Expressions.matchAll()).build());
 			for (Revision hit : hits) {
@@ -348,12 +352,13 @@ public class ReviewManagerImpl implements ReviewManager {
 					final ContainerIdProvider idProvider = (ContainerIdProvider) hit;
 					final String containerId = idProvider.getContainerId();
 					if (idProvider.isRoot() && containerId != null) {
-						deletedConcepts.add(containerId);
+						deletedComponentIds.add(containerId);
 					}
 				}
 			}
 		}
 		
+		// collect the ids of existing concepts were a component was deleted (e.g. descriptions, relationships, reference set members) -> changed
 		for (final Class<? extends Revision> revisionType : compare.getDeletedRevisionTypes()) {
 			final Hits<? extends Revision> hits = compare.searchDeleted(Query.select(revisionType).where(Expressions.matchAll()).build());
 			// iterate over again and add non root ids
@@ -362,14 +367,16 @@ public class ReviewManagerImpl implements ReviewManager {
 					final ContainerIdProvider idProvider = (ContainerIdProvider) hit;
 					final String containerId = idProvider.getContainerId();
 					// if the container ID is registered as new, then skip adding it to the changed set, otherwise add it
-					if (containerId != null && !idProvider.isRoot() && !deletedConcepts.contains(containerId)) {
-						changedConcepts.add(containerId);
+					if (containerId != null && !idProvider.isRoot() && !deletedComponentIds.contains(containerId)) {
+						changedComponentIds.add(containerId);
 					}
 				}
 			}
 		}
 		
-		final ConceptChanges convertedChanges = new ConceptChanges(id, newConcepts, changedConcepts, deletedConcepts);
+		// these set of component ids can contain concept, description and relationship ids, given that the referenced component id of a reference set
+		// member can be any of those.
+		final ConceptChanges convertedChanges = new ConceptChanges(id, newComponentIds, changedComponentIds, deletedComponentIds);
 
 		try {
 			getReview(id);

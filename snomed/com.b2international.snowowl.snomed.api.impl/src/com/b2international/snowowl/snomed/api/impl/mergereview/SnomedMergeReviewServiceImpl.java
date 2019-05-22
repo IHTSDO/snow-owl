@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.impl.mergereview;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.stream.Collectors.toSet;
 
 import java.io.IOException;
@@ -58,8 +59,12 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConce
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedManualConceptMergeReviewService;
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedMergeReviewService;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
@@ -243,107 +248,75 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 
 	private Set<String> getFilteredMergeReviewIntersection(final MergeReview mergeReview) {
 
-		final Set<String> sourceConceptIds = Sets.newHashSet();
-		final Set<String> sourceDescriptionIds = Sets.newHashSet();
-		final Set<String> sourceRelationshipIds = Sets.newHashSet();
-
+		Set<String> changedConceptIds = newHashSet();
+		
 		final ConceptChanges sourceChanges = RepositoryRequests.reviews()
 				.prepareGetConceptChanges(mergeReview.sourceToTargetReviewId())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(getBus())
 				.getSync();
-
-		for (final String id : sourceChanges.changedConcepts()) {
-			final ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
-			if (componentCategory == ComponentCategory.CONCEPT) {
-				sourceConceptIds.add(id);
-			} else if (componentCategory == ComponentCategory.DESCRIPTION) {
-				sourceDescriptionIds.add(id);
-			} else if (componentCategory == ComponentCategory.RELATIONSHIP) {
-				sourceRelationshipIds.add(id);
-			} else {
-				LOG.warn("Changed concept set contained invalid component id: {}", id);
-			}
-		}
-
-		if (!sourceDescriptionIds.isEmpty()) {
-
-			sourceConceptIds.addAll(SnomedRequests.prepareSearchDescription()
-					.filterByIds(sourceDescriptionIds)
-					.setLimit(sourceDescriptionIds.size())
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.sourcePath())
-					.execute(getBus())
-					.then(input -> input.getItems().stream().map(d -> d.getConceptId()).collect(toSet()))
-					.getSync());
-
-		}
-
-		if (!sourceRelationshipIds.isEmpty()) {
-
-			sourceConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
-					.filterByIds(sourceRelationshipIds)
-					.setLimit(sourceRelationshipIds.size())
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.sourcePath())
-					.execute(getBus())
-					.then(input -> input.getItems().stream().map(d -> d.getSourceId()).collect(toSet()))
-					.getSync());
-
-		}
-
-		sourceConceptIds.removeAll(sourceChanges.deletedConcepts());
-
+		
 		final ConceptChanges targetChanges = RepositoryRequests.reviews()
 				.prepareGetConceptChanges(mergeReview.targetToSourceReviewId())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(getBus())
 				.getSync();
+		
+		Set<String> changedSourceConceptIds = getChangedConceptIds(sourceChanges, mergeReview.sourcePath());
+		Set<String> changedTargetConceptIds = getChangedConceptIds(targetChanges, mergeReview.targetPath());
+		
+		sourceChanges.deletedConcepts().stream()
+			.filter(changedTargetConceptIds::contains)
+			.forEach(changedConceptIds::add);
+		
+		targetChanges.deletedConcepts().stream()
+			.filter(changedSourceConceptIds::contains)
+			.forEach(changedConceptIds::add);
+		
+		changedConceptIds.addAll(Sets.intersection(changedSourceConceptIds, changedTargetConceptIds));
+		
+		return changedConceptIds;
+	}
 
-		final Set<String> targetConceptIds = Sets.newHashSet();
-		final Set<String> targetDescriptionIds = Sets.newHashSet();
-		final Set<String> targetRelationshipIds = Sets.newHashSet();
+	private Set<String> getChangedConceptIds(final ConceptChanges conceptChanges, final String branchPath) {
+		
+		Set<String> changedConceptIds = conceptChanges.changedConcepts().stream()
+			.filter(id -> ComponentCategory.CONCEPT == SnomedIdentifiers.create(id).getComponentCategory())
+			.collect(toSet());
+		
+		Set<String> changedDescriptionIds = conceptChanges.changedConcepts().stream()
+			.filter(id -> ComponentCategory.DESCRIPTION == SnomedIdentifiers.create(id).getComponentCategory())
+			.collect(toSet());
+		
+		if (!changedDescriptionIds.isEmpty()) {
 
-		for (final String id : targetChanges.changedConcepts()) {
-			final ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
-			if (componentCategory == ComponentCategory.CONCEPT) {
-				targetConceptIds.add(id);
-			} else if (componentCategory == ComponentCategory.DESCRIPTION) {
-				targetDescriptionIds.add(id);
-			} else if (componentCategory == ComponentCategory.RELATIONSHIP) {
-				targetRelationshipIds.add(id);
-			} else {
-				LOG.warn("Changed concept set contained invalid component id: {}", id);
-			}
-		}
-
-		if (!targetDescriptionIds.isEmpty()) {
-
-			targetConceptIds.addAll(SnomedRequests.prepareSearchDescription()
-					.filterByIds(targetDescriptionIds)
-					.setLimit(targetDescriptionIds.size())
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.targetPath())
+			changedConceptIds.addAll(SnomedRequests.prepareSearchDescription()
+					.filterByIds(changedDescriptionIds)
+					.setLimit(changedDescriptionIds.size())
+					.setFields(SnomedDescriptionIndexEntry.Fields.CONCEPT_ID)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 					.execute(getBus())
-					.then(input -> input.getItems().stream().map(d -> d.getConceptId()).collect(toSet()))
-					.getSync());
-
+					.getSync().stream().map(SnomedDescription::getConceptId).collect(toSet()));
 
 		}
+		
+		Set<String> changedRelationshipIds = conceptChanges.changedConcepts().stream()
+				.filter(id -> ComponentCategory.RELATIONSHIP == SnomedIdentifiers.create(id).getComponentCategory())
+				.collect(toSet());
+		
+		if (!changedRelationshipIds.isEmpty()) {
 
-		if (!targetRelationshipIds.isEmpty()) {
-
-			targetConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
-					.filterByIds(targetRelationshipIds)
-					.setLimit(targetRelationshipIds.size())
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.targetPath())
+			changedConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
+					.filterByIds(changedRelationshipIds)
+					.setLimit(changedRelationshipIds.size())
+					.setFields(SnomedRelationshipIndexEntry.Fields.SOURCE_ID)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 					.execute(getBus())
-					.then(input -> input.getItems().stream().map(d -> d.getSourceId()).collect(toSet()))
-					.getSync());
+					.getSync().stream().map(SnomedRelationship::getSourceId).collect(toSet()));
+
 		}
-
-		targetConceptIds.removeAll(targetChanges.deletedConcepts());
-
-		sourceConceptIds.retainAll(targetConceptIds);
-
-		return sourceConceptIds;
+		
+		return changedConceptIds;
 	}
 
 	@Override

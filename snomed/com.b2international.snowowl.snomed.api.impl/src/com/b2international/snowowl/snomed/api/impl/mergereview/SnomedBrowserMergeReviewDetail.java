@@ -16,18 +16,29 @@
 package com.b2international.snowowl.snomed.api.impl.mergereview;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedBrowserMergeReviewDetail;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 /**
  * @since 4.5
  */
 public class SnomedBrowserMergeReviewDetail implements ISnomedBrowserMergeReviewDetail {
 
-	private final ISnomedBrowserConcept sourceConcept;
-	private final ISnomedBrowserConcept targetConcept;
-	private final ISnomedBrowserConcept autoMergedConcept;
-	private final ISnomedBrowserConcept manuallyMergedConcept;
+	@JsonDeserialize(as=SnomedBrowserConcept.class)
+	private ISnomedBrowserConcept sourceConcept;
+	
+	@JsonDeserialize(as=SnomedBrowserConcept.class)
+	private ISnomedBrowserConcept targetConcept;
+	
+	@JsonDeserialize(as=SnomedBrowserConcept.class)
+	private ISnomedBrowserConcept autoMergedConcept;
+	
+	@JsonDeserialize(as=SnomedBrowserConcept.class)
+	private ISnomedBrowserConcept manuallyMergedConcept;
 
+	public SnomedBrowserMergeReviewDetail() {}
+	
 	public SnomedBrowserMergeReviewDetail(final ISnomedBrowserConcept sourceConcept,
 			final ISnomedBrowserConcept targetConcept,
 			final ISnomedBrowserConcept autoMergedConcept,
@@ -58,4 +69,47 @@ public class SnomedBrowserMergeReviewDetail implements ISnomedBrowserMergeReview
 		return manuallyMergedConcept;
 	}
 
+	public void setSourceConcept(ISnomedBrowserConcept sourceConcept) {
+		this.sourceConcept = sourceConcept;
+	}
+
+	public void setTargetConcept(ISnomedBrowserConcept targetConcept) {
+		this.targetConcept = targetConcept;
+	}
+
+	public void setAutoMergedConcept(ISnomedBrowserConcept autoMergedConcept) {
+		this.autoMergedConcept = autoMergedConcept;
+	}
+
+	public void setManuallyMergedConcept(ISnomedBrowserConcept manuallyMergedConcept) {
+		this.manuallyMergedConcept = manuallyMergedConcept;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("SnomedBrowserMergeReviewDetail [");
+		if (sourceConcept != null) {
+			builder.append("sourceConcept=");
+			builder.append(sourceConcept);
+			builder.append(", ");
+		}
+		if (targetConcept != null) {
+			builder.append("targetConcept=");
+			builder.append(targetConcept);
+			builder.append(", ");
+		}
+		if (autoMergedConcept != null) {
+			builder.append("autoMergedConcept=");
+			builder.append(autoMergedConcept);
+			builder.append(", ");
+		}
+		if (manuallyMergedConcept != null) {
+			builder.append("manuallyMergedConcept=");
+			builder.append(manuallyMergedConcept);
+		}
+		builder.append("]");
+		return builder.toString();
+	}
+	
 }

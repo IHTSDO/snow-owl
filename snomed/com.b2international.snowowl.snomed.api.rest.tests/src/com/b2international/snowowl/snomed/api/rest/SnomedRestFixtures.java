@@ -20,6 +20,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.updateComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests.createMerge;
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests.waitForMergeJob;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRefSetRestRequests.updateRefSetComponent;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -364,6 +365,16 @@ public abstract class SnomedRestFixtures {
 				.build();
 
 		updateComponent(relationshipPath, SnomedComponentType.RELATIONSHIP, relationshipId, inactivationRequest).statusCode(204);
+	}
+	
+	public static void inactivateMember(IBranchPath branchPath, String memberId) {
+		
+		Map<?, ?> inactivationRequest = ImmutableMap.builder()
+				.put("active", false)
+				.put("commitComment", "Inactivated reference set member")
+				.build();
+
+		updateRefSetComponent(branchPath, SnomedComponentType.MEMBER, memberId, inactivationRequest, false).statusCode(204);
 	}
 
 	@SuppressWarnings("unchecked")
