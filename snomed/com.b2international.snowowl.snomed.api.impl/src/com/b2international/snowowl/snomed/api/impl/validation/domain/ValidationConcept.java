@@ -31,14 +31,14 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 		browserConcept.getClassAxioms()
 			.forEach(axiom -> {
 				axiom.getRelationships().forEach(relationship -> {
-					relationships.add(new ValidationAxiomRelationship(axiom, relationship, conceptId));
+					relationships.add(new ValidationAxiomRelationship(axiom, relationship, conceptId, false));
 				});
 			});
 		
 		browserConcept.getGciAxioms()
 			.forEach(axiom -> {
 				axiom.getRelationships().forEach(relationship -> {
-					relationships.add(new ValidationAxiomRelationship(axiom, relationship, conceptId));
+					relationships.add(new ValidationAxiomRelationship(axiom, relationship, conceptId, true));
 				});
 			});
 		

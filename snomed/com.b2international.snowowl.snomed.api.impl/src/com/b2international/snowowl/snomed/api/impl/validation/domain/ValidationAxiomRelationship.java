@@ -24,10 +24,12 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelat
 public class ValidationAxiomRelationship extends ValidationRelationship {
 
 	private ISnomedBrowserAxiom axiom;
+	private boolean isGciAxiom;
 
-	public ValidationAxiomRelationship(ISnomedBrowserAxiom axiom, ISnomedBrowserRelationship relationship, String conceptId) {
+	public ValidationAxiomRelationship(ISnomedBrowserAxiom axiom, ISnomedBrowserRelationship relationship, String conceptId, boolean isGciAxiom) {
 		super(relationship, conceptId);
 		this.axiom = axiom;
+		this.isGciAxiom = isGciAxiom;
 	}
 	
 	@Override
@@ -55,5 +57,9 @@ public class ValidationAxiomRelationship extends ValidationRelationship {
 		return axiom.getModuleId();
 	}
 	
+	@Override
+	public boolean isAxiomGCI() {
+		return isGciAxiom;
+	}
 	
 }

@@ -45,6 +45,11 @@ public class ValidationRelationship implements Relationship {
 	}
 
 	@Override
+	public boolean isAxiomGCI() {
+		return false;
+	}
+	
+	@Override
 	public String getDestinationId() {
 		return browserRelationship.getTarget().getConceptId();
 	}
