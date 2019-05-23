@@ -72,6 +72,10 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 			return Collections.emptyList();
 		}
 		
+		if (ruleExecutor == null || testResourceProvider == null) {
+			throw new BadRequestException("Snomed Drools Engine is not configured properly");
+		}
+		
 		List<String> assertionGroups = getAssertionGroups(branchPath);
 
 		LOGGER.info(getLogMessage(branchPath, assertionGroups, concepts));
@@ -118,19 +122,29 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	}
 
 	private void createNewRuleExecutor() {
-		
-		String droolsRulesDir;
-		
-		if (Files.exists(Paths.get(droolsConfig.getRulesDirectory()))) {
-			droolsRulesDir = droolsConfig.getRulesDirectory();
-		} else {
-			droolsRulesDir = getDefaultDroolsDir().toString();
+		try {
+			
+			String droolsRulesDir;
+			
+			if (Files.exists(Paths.get(droolsConfig.getRulesDirectory()))) {
+				droolsRulesDir = droolsConfig.getRulesDirectory();
+			} else {
+				droolsRulesDir = getDefaultDroolsDir().toString();
+			}
+			
+			LOGGER.info("Initializing Drools Engine rule executor using path '{}'", droolsRulesDir);
+			ruleExecutor = new RuleExecutorFactory().createRuleExecutor(droolsRulesDir);
+			
+			testResourceProvider = createTestResourceProvider();
+			
+		} catch (Exception e) {
+			
+			LOGGER.error("Failed to initialize Snomed Drools Engine", e);
+			
+			ruleExecutor = null;
+			testResourceProvider = null;
+			
 		}
-		
-		LOGGER.info("Initializing Drools Engine rule executor using path '{}'", droolsRulesDir);
-		ruleExecutor = new RuleExecutorFactory().createRuleExecutor(droolsRulesDir);
-		
-		testResourceProvider = createTestResourceProvider();
 	}
 
 	private TestResourceProvider createTestResourceProvider() {
