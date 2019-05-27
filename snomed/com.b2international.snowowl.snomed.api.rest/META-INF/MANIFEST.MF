@@ -3,7 +3,10 @@ Bundle-Version: 6.15.1.qualifier
 Bundle-Name: Snow Owl SNOMED CT REST Service
 Bundle-ManifestVersion: 2
 Bundle-SymbolicName: com.b2international.snowowl.snomed.api.rest;singleton:=true
-Import-Package: com.b2international.snowowl.api.impl.history,
+Import-Package: com.amazonaws;version="2.1.0",
+ com.amazonaws.auth;version="2.1.0",
+ com.amazonaws.services.s3;version="2.1.0",
+ com.b2international.snowowl.api.impl.history,
  com.b2international.snowowl.snomed,
  com.b2international.snowowl.snomed.api,
  com.b2international.snowowl.snomed.api.browser,
