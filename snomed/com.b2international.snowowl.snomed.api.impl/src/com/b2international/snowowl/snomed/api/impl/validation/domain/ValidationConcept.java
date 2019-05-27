@@ -1,5 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl.validation.domain;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.toList;
 
 import java.util.Collection;
@@ -20,6 +21,9 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 
 	public ValidationConcept(ISnomedBrowserConcept browserConcept) {
 		this.browserConcept = browserConcept;
+		this.descriptions = newArrayList();
+		this.relationships = newArrayList();
+		
 		String conceptId = browserConcept.getConceptId();
 		
 		descriptions.addAll(browserConcept.getDescriptions().stream()
