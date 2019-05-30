@@ -215,7 +215,7 @@ public class SnomedExternalClassificationService implements IDisposableService {
 				} else if (externalClassificationStatus == ClassificationStatus.FAILED) {
 					throw new ExternalClassificationServiceException(
 							"External classification request (external id: %s) returned with FAILED status. Reason: %s", externalClassificationRequestId,
-							classificationStatus.getErrorMessage());
+							classificationStatus.getStatusMessage());
 				}
 			
 				Thread.sleep(timeBetweenPollTries);

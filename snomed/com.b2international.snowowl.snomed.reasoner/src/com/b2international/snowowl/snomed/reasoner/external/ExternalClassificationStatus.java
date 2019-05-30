@@ -32,8 +32,7 @@ public class ExternalClassificationStatus {
 	private String previousPackage;
 	private String dependencyPackage;
 	private ClassificationStatus status;
-	private String errorMessage;
-	private String developerMessage;
+	private String statusMessage;
 	
 	public String getClassificationId() {
 		return classificationId;
@@ -90,21 +89,13 @@ public class ExternalClassificationStatus {
 	public void setStatus(ClassificationStatus status) {
 		this.status = status;
 	}
-	
-	public String getErrorMessage() {
-		return errorMessage;
+
+	public String getStatusMessage() {
+		return statusMessage;
 	}
-	
-	public void setErrorMessage(String errorMessage) {
-		this.errorMessage = errorMessage;
-	}
-	
-	public String getDeveloperMessage() {
-		return developerMessage;
-	}
-	
-	public void setDeveloperMessage(String developerMessage) {
-		this.developerMessage = developerMessage;
+
+	public void setStatusMessage(String statusMessage) {
+		this.statusMessage = statusMessage;
 	}
 	
 }
