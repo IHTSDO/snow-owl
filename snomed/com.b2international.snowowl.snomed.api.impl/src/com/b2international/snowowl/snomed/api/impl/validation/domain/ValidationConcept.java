@@ -12,6 +12,8 @@ import org.ihtsdo.drools.domain.OntologyAxiom;
 import org.ihtsdo.drools.domain.Relationship;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserAxiom;
+import com.google.common.base.Strings;
 
 public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 
@@ -50,8 +52,24 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 	
 	public java.util.Collection<? extends OntologyAxiom> getOntologyAxioms() {
 		return Stream.concat(
-					browserConcept.getClassAxioms().stream().map(axiom -> new ValidationOntologyAxiom(axiom)),
-					browserConcept.getGciAxioms().stream().map(axiom -> new ValidationOntologyAxiom(axiom)))
+					browserConcept.getClassAxioms().stream()
+						.filter(SnomedBrowserAxiom.class::isInstance)
+						.map(SnomedBrowserAxiom.class::cast)
+						.peek(axiom -> {
+							if (Strings.isNullOrEmpty(axiom.getReferencedComponentId()) && !Strings.isNullOrEmpty(browserConcept.getId())) {
+								axiom.setReferencedComponentId(browserConcept.getId());
+							}
+						})
+						.map(axiom -> new ValidationOntologyAxiom(axiom)),
+					browserConcept.getGciAxioms().stream()
+						.filter(SnomedBrowserAxiom.class::isInstance)
+						.map(SnomedBrowserAxiom.class::cast)
+						.peek(axiom -> {
+							if (Strings.isNullOrEmpty(axiom.getReferencedComponentId()) && !Strings.isNullOrEmpty(browserConcept.getId())) {
+								axiom.setReferencedComponentId(browserConcept.getId());
+							}
+						})
+						.map(axiom -> new ValidationOntologyAxiom(axiom)))
 				.collect(toList());
 	}
 
