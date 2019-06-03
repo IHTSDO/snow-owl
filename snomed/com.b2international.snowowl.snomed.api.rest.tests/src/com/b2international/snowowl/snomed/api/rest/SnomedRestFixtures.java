@@ -89,17 +89,16 @@ public abstract class SnomedRestFixtures {
 				.extract().header("Location"));
 	}
 
+	public static Builder<String, Object> createConceptRequestBody() {
+		return createConceptRequestBody(null);
+	}
+	
 	public static Builder<String, Object> createConceptRequestBody(String parentConceptId) {
 		return createConceptRequestBody(parentConceptId, Concepts.MODULE_SCT_CORE, SnomedApiTestConstants.UK_PREFERRED_MAP);
 	}
 
 	public static Builder<String, Object> createConceptRequestBody(String parentConceptId, String moduleId, Map<String, Acceptability> acceptabilityMap) {
-		Map<?, ?> relationshipRequestBody = ImmutableMap.builder()
-				.put("moduleId", moduleId)
-				.put("typeId", Concepts.IS_A)
-				.put("destinationId", parentConceptId)
-				.build();
-
+		
 		Map<?, ?> ptRequestBody = ImmutableMap.builder()
 				.put("moduleId", moduleId)
 				.put("typeId", Concepts.SYNONYM)
@@ -118,9 +117,20 @@ public abstract class SnomedRestFixtures {
 
 		Builder<String, Object> conceptRequestBody = ImmutableMap.<String, Object>builder()
 				.put("moduleId", moduleId)
-				.put("descriptions", ImmutableList.of(fsnRequestBody, ptRequestBody))
-				.put("relationships", ImmutableList.of(relationshipRequestBody));
+				.put("descriptions", ImmutableList.of(fsnRequestBody, ptRequestBody));
 
+		if (parentConceptId != null) {
+			
+			Map<?, ?> relationshipRequestBody = ImmutableMap.builder()
+					.put("moduleId", moduleId)
+					.put("typeId", Concepts.IS_A)
+					.put("destinationId", parentConceptId)
+					.build();
+			
+			conceptRequestBody.put("relationships", ImmutableList.of(relationshipRequestBody));
+			
+		}
+		
 		return conceptRequestBody;
 	}
 

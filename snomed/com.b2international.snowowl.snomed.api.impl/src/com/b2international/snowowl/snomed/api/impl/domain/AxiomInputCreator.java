@@ -48,17 +48,14 @@ public class AxiomInputCreator extends AbstractInputCreator implements Component
 
 	@Override
 	public SnomedRefSetMemberCreateRequest createInput(final ISnomedBrowserAxiom newAxiom, final InputFactory inputFactory) {
-		if (newAxiom.getAxiomId() == null) {
-			final SnomedBrowserAxiom browserAxiom = (SnomedBrowserAxiom) newAxiom;
-			return (SnomedRefSetMemberCreateRequest) SnomedRequests
-				.prepareNewMember()
-				.setModuleId(browserAxiom.getModuleId())
-				.setReferenceSetId(Concepts.REFSET_OWL_AXIOM)
-				.setReferencedComponentId(browserAxiom.getReferencedComponentId())
-				.setProperties(ImmutableMap.<String, Object>of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, toOwlExpression(browserAxiom)))
-				.build();
-		}
-		return null;
+		final SnomedBrowserAxiom browserAxiom = (SnomedBrowserAxiom) newAxiom;
+		return (SnomedRefSetMemberCreateRequest) SnomedRequests
+			.prepareNewMember()
+			.setModuleId(browserAxiom.getModuleId())
+			.setReferenceSetId(Concepts.REFSET_OWL_AXIOM)
+			.setReferencedComponentId(browserAxiom.getReferencedComponentId())
+			.setProperties(ImmutableMap.<String, Object>of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, toOwlExpression(browserAxiom)))
+			.build();
 	}
 
 	@Override

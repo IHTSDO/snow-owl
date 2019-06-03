@@ -45,7 +45,12 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 				&& relationship.getCharacteristicType() == CharacteristicType.STATED_RELATIONSHIP 
 				&& relationship.isActive());
 		
-		if (!hasActiveStatedIsaRelationship) {
+		boolean hasActiveStatedIsaAxiom = concept.getClassAxioms().stream()
+			.filter(axiom -> axiom.isActive())
+			.flatMap(axiom -> axiom.getRelationships().stream())
+			.anyMatch(relationship -> relationship.getType().getConceptId().equals(Concepts.IS_A));
+		
+		if (!hasActiveStatedIsaRelationship && !hasActiveStatedIsaAxiom) {
 			throw new BadRequestException("At least one active stated IS A relationship is required.");
 		}
 		

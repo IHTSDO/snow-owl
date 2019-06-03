@@ -61,7 +61,6 @@ public final class SnomedConceptCreateRequest extends BaseSnomedComponentCreateR
 	@Size(min = 2)
 	private List<SnomedDescriptionCreateRequest> descriptions = Collections.emptyList();
 	
-	@Size(min = 1)
 	private List<SnomedRelationshipCreateRequest> relationships = Collections.emptyList();
 	
 	private List<SnomedRefSetMemberCreateRequest> members = Collections.emptyList();
@@ -201,25 +200,31 @@ public final class SnomedConceptCreateRequest extends BaseSnomedComponentCreateR
 	}
 	
 	private void convertRelationships(final TransactionContext context, String conceptId) {
-		Pair<String, CharacteristicType> defaultType = Pair.identicalPairOf(Concepts.IS_A, CharacteristicType.STATED_RELATIONSHIP);
-		final Set<Pair<String, CharacteristicType>> requiredRelationships = newHashSet();
-		requiredRelationships.add(defaultType);
 		
-		for (final SnomedRelationshipCreateRequest relationshipRequest : relationships) {
-			relationshipRequest.setSourceId(conceptId);
+		if (!relationships.isEmpty()) {
 			
-			if (null == relationshipRequest.getModuleId()) {
-				relationshipRequest.setModuleId(getModuleId());
+			Pair<String, CharacteristicType> defaultType = Pair.identicalPairOf(Concepts.IS_A, CharacteristicType.STATED_RELATIONSHIP);
+			final Set<Pair<String, CharacteristicType>> requiredRelationships = newHashSet();
+			requiredRelationships.add(defaultType);
+			
+			for (final SnomedRelationshipCreateRequest relationshipRequest : relationships) {
+				relationshipRequest.setSourceId(conceptId);
+				
+				if (null == relationshipRequest.getModuleId()) {
+					relationshipRequest.setModuleId(getModuleId());
+				}
+				
+				relationshipRequest.execute(context);
+				
+				requiredRelationships.remove(Pair.identicalPairOf(relationshipRequest.getTypeId(), relationshipRequest.getCharacteristicType()));
 			}
 			
-			relationshipRequest.execute(context);
+			if (!requiredRelationships.isEmpty()) {
+				throw new BadRequestException("The following relationships must be supplied with the concept [%s].", Joiner.on(",").join(requiredRelationships));
+			}
 			
-			requiredRelationships.remove(Pair.identicalPairOf(relationshipRequest.getTypeId(), relationshipRequest.getCharacteristicType()));
 		}
 		
-		if (!requiredRelationships.isEmpty()) {
-			throw new BadRequestException("The following relationships must be supplied with the concept [%s].", Joiner.on(",").join(requiredRelationships));
-		}
 	}
 	
 	private void convertMembers(final TransactionContext context, final String conceptId) {

@@ -1076,7 +1076,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 						.build()
 					).build();
 
-		final Map<?, ?> conceptRequestBody = createConceptRequestBody(Concepts.ROOT_CONCEPT)
+		final Map<?, ?> conceptRequestBody = createConceptRequestBody()
 				.put("members", ImmutableList.of(memberRequestBody))
 				.put("commitComment", "Created concept with owl axiom reference set member")
 				.build();
@@ -1140,7 +1140,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 						.build()
 					).build();
 		
-		final Map<?, ?> conceptRequestBody = createConceptRequestBody(Concepts.ROOT_CONCEPT)
+		final Map<?, ?> conceptRequestBody = createConceptRequestBody()
 				.put("members", ImmutableList.of(memberRequestBody))
 				.put("commitComment", "Created concept with owl axiom reference set member")
 				.build();
