@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.api.impl.validation.domain;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserAxiom;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 
 /**
  * @since 6.14.3 
@@ -60,6 +61,11 @@ public class ValidationAxiomRelationship extends ValidationRelationship {
 	@Override
 	public boolean isAxiomGCI() {
 		return isGciAxiom;
+	}
+	
+	@Override
+	public String getCharacteristicTypeId() {
+		return CharacteristicType.STATED_RELATIONSHIP.getConceptId();
 	}
 	
 }
