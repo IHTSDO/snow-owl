@@ -30,6 +30,6 @@ public interface IConceptIdWithPreferredSynonymProvider {
 	/**
 	 * @return The preferred synonym of this concept for the requested dialect 
 	 */
-	String getPreferredSynonym();
+	ISnomedBrowserTerm getPreferredSynonym();
 
 }

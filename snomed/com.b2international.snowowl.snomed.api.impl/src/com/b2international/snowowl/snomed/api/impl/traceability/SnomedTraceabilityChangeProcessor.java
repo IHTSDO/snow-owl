@@ -68,6 +68,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserD
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserTerm;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
@@ -219,7 +220,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 							convertedConcept.setEffectiveTime(concept.getEffectiveTime());
 							convertedConcept.setModuleId(concept.getModuleId());
 							convertedConcept.setRelationships(convertRelationships(concept.getRelationships()));
-							convertedConcept.setFsn(concept.getId());
+							convertedConcept.setFsn(new SnomedBrowserTerm(concept.getId()));
 							convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
 							convertedConcept.setAssociationTargets(concept.getAssociationTargets());
 							convertedConcepts.add(convertedConcept);
@@ -459,14 +460,14 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				convertedRelationship.setSourceId(input.getSourceId());
 				
 				final SnomedBrowserRelationshipType type = new SnomedBrowserRelationshipType(input.getTypeId());
-				type.setFsn(input.getTypeId());
+				type.setFsn(new SnomedBrowserTerm(input.getTypeId()));
 				convertedRelationship.setType(type);
 				
 				final SnomedBrowserRelationshipTarget target = new SnomedBrowserRelationshipTarget(input.getDestinationId());
 				target.setActive(input.getDestination().isActive());
 				target.setDefinitionStatus(input.getDestination().getDefinitionStatus());
 				target.setEffectiveTime(input.getDestination().getEffectiveTime());
-				target.setFsn(input.getDestinationId());
+				target.setFsn(new SnomedBrowserTerm(input.getDestinationId()));
 				target.setModuleId(input.getDestination().getModuleId());
 				convertedRelationship.setTarget(target);
 				

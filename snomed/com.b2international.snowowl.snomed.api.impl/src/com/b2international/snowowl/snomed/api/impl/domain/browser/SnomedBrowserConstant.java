@@ -20,7 +20,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConst
 public class SnomedBrowserConstant implements ISnomedBrowserConstant {
 
 	private String conceptId;
-	private String fsn;
+	private SnomedBrowserTerm fsn;
 
 	@Override
 	public String getConceptId() {
@@ -28,7 +28,7 @@ public class SnomedBrowserConstant implements ISnomedBrowserConstant {
 	}
 
 	@Override
-	public String getFsn() {
+	public SnomedBrowserTerm getFsn() {
 		return fsn;
 	}
 
@@ -36,7 +36,7 @@ public class SnomedBrowserConstant implements ISnomedBrowserConstant {
 		this.conceptId = conceptId;
 	}
 
-	public void setFsn(final String fsn) {
+	public void setFsn(final SnomedBrowserTerm fsn) {
 		this.fsn = fsn;
 	}
 

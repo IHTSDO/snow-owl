@@ -28,7 +28,7 @@ import com.google.common.collect.Multimap;
 public interface ISnomedBrowserConcept extends ISnomedBrowserComponentWithId, IConceptIdWithFsnProvider, DefinitionStatusProvider, TaxonomyNode {
 
 	/** @return the Preferred Term of this concept for the requested language code and dialect */
-	String getPreferredSynonym();
+	ISnomedBrowserTerm getPreferredSynonym();
 	
 	/** @return the list of descriptions associated with this concept */
 	List<ISnomedBrowserDescription> getDescriptions();

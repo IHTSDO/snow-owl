@@ -17,7 +17,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelat
 public class SnomedBrowserRelationshipType implements ISnomedBrowserRelationshipType {
 
 	private String conceptId;
-	private String fsn;
+	private SnomedBrowserTerm fsn;
 
 	public SnomedBrowserRelationshipType() {
 	}
@@ -32,7 +32,7 @@ public class SnomedBrowserRelationshipType implements ISnomedBrowserRelationship
 	}
 
 	@Override
-	public String getFsn() {
+	public SnomedBrowserTerm getFsn() {
 		return fsn;
 	}
 
@@ -40,7 +40,7 @@ public class SnomedBrowserRelationshipType implements ISnomedBrowserRelationship
 		this.conceptId = conceptId;
 	}
 
-	public void setFsn(final String fsn) {
+	public void setFsn(final SnomedBrowserTerm fsn) {
 		this.fsn = fsn;
 	}
 	

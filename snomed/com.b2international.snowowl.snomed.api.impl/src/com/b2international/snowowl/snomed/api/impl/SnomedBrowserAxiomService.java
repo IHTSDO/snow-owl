@@ -48,6 +48,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserC
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserTerm;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
@@ -220,7 +221,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		if (idToConceptMap.containsKey(type.getConceptId())) {
 
 			final SnomedConcept typeConcept = idToConceptMap.get(type.getConceptId());
-			type.setFsn(typeConcept.getFsn() == null ? type.getConceptId() : typeConcept.getFsn().getTerm());
+			type.setFsn(typeConcept.getFsn() == null ? new SnomedBrowserTerm(type.getConceptId()) : new SnomedBrowserTerm(typeConcept.getFsn()));
 
 		} else {
 			LOGGER.warn("Concept {} used in axiom attribute type but does not exist on this branch {}.", type.getConceptId(), branchPath);
@@ -231,7 +232,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		if (idToConceptMap.containsKey(target.getConceptId())) {
 
 			final SnomedConcept targetConcept = idToConceptMap.get(target.getConceptId());
-			target.setFsn(targetConcept.getFsn() == null ? target.getConceptId() : targetConcept.getFsn().getTerm());
+			target.setFsn(targetConcept.getFsn() == null ? new SnomedBrowserTerm(target.getConceptId()) : new SnomedBrowserTerm(targetConcept.getFsn()));
 
 			target.setActive(targetConcept.isActive());
 			target.setEffectiveTime(targetConcept.getEffectiveTime());

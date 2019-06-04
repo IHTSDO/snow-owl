@@ -18,7 +18,7 @@ import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 public class SnomedBrowserRelationshipTarget extends SnomedBrowserComponent implements ISnomedBrowserRelationshipTarget {
 
 	private String conceptId;
-	private String fsn;
+	private SnomedBrowserTerm fsn;
 	private DefinitionStatus definitionStatus;
 
 	public SnomedBrowserRelationshipTarget() {
@@ -34,7 +34,7 @@ public class SnomedBrowserRelationshipTarget extends SnomedBrowserComponent impl
 	}
 
 	@Override
-	public String getFsn() {
+	public SnomedBrowserTerm getFsn() {
 		return fsn;
 	}
 
@@ -47,7 +47,7 @@ public class SnomedBrowserRelationshipTarget extends SnomedBrowserComponent impl
 		this.conceptId = conceptId;
 	}
 
-	public void setFsn(final String fsn) {
+	public void setFsn(final SnomedBrowserTerm fsn) {
 		this.fsn = fsn;
 	}
 

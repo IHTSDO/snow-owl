@@ -18,8 +18,8 @@ import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 public class SnomedBrowserDescriptionResultDetails implements ISnomedBrowserDescriptionResultDetails {
 
 	private String conceptId;
-	private String fsn;
-	private String preferredSynonym;
+	private SnomedBrowserTerm fsn;
+	private SnomedBrowserTerm preferredSynonym;
 	private boolean active;
 	private String moduleId;
 	private DefinitionStatus definitionStatus;
@@ -30,12 +30,12 @@ public class SnomedBrowserDescriptionResultDetails implements ISnomedBrowserDesc
 	}
 
 	@Override
-	public String getFsn() {
+	public SnomedBrowserTerm getFsn() {
 		return fsn;
 	}
 	
 	@Override
-	public String getPreferredSynonym() {
+	public SnomedBrowserTerm getPreferredSynonym() {
 		return preferredSynonym;
 	}
 
@@ -58,11 +58,11 @@ public class SnomedBrowserDescriptionResultDetails implements ISnomedBrowserDesc
 		this.conceptId = conceptId;
 	}
 
-	public void setFsn(final String fsn) {
+	public void setFsn(final SnomedBrowserTerm fsn) {
 		this.fsn = fsn;
 	}
 	
-	public void setPreferredSynonym(final String preferredSynonym) {
+	public void setPreferredSynonym(final SnomedBrowserTerm preferredSynonym) {
 		this.preferredSynonym = preferredSynonym;
 	}
 

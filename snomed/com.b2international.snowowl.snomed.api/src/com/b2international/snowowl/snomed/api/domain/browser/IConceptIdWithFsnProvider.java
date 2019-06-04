@@ -28,5 +28,5 @@ public interface IConceptIdWithFsnProvider {
 	/**
 	 * @return The fully specified name of this concept for the requested dialect
 	 */
-	String getFsn();
+	ISnomedBrowserTerm getFsn();
 }

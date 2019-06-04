@@ -31,9 +31,9 @@ import com.google.common.collect.Multimap;
 public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISnomedBrowserConcept {
 
 	private String conceptId;
-	private String fsn;
+	private SnomedBrowserTerm fsn;
 	private DefinitionStatus definitionStatus;
-	private String preferredSynonym;
+	private SnomedBrowserTerm preferredSynonym;
 	private boolean leafInferred;
 	private boolean leafStated;
 	private InactivationIndicator inactivationIndicator;
@@ -62,7 +62,7 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 	}
 
 	@Override
-	public String getFsn() {
+	public SnomedBrowserTerm getFsn() {
 		return fsn;
 	}
 
@@ -72,7 +72,7 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 	}
 
 	@Override
-	public String getPreferredSynonym() {
+	public SnomedBrowserTerm getPreferredSynonym() {
 		return preferredSynonym;
 	}
 
@@ -110,7 +110,7 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 		this.conceptId = conceptId;
 	}
 
-	public void setFsn(final String fsn) {
+	public void setFsn(final SnomedBrowserTerm fsn) {
 		this.fsn = fsn;
 	}
 
@@ -118,7 +118,7 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 		this.definitionStatus = definitionStatus;
 	}
 
-	public void setPreferredSynonym(final String preferredSynonym) {
+	public void setPreferredSynonym(final SnomedBrowserTerm preferredSynonym) {
 		this.preferredSynonym = preferredSynonym;
 	}
 

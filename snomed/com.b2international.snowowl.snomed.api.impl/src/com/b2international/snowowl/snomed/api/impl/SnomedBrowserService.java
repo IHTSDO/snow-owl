@@ -78,6 +78,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserP
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserTerm;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ConceptEnum;
@@ -175,8 +176,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				browserConcept.setInactivationIndicator(concept.getInactivationIndicator());
 				browserConcept.setAssociationTargets(concept.getAssociationTargets());
 				
-				browserConcept.setFsn(concept.getFsn() != null ? concept.getFsn().getTerm() : concept.getId());
-				browserConcept.setPreferredSynonym(concept.getPt() != null ? concept.getPt().getTerm() : concept.getId());
+				browserConcept.setFsn(concept.getFsn() != null ? new SnomedBrowserTerm(concept.getFsn()) : new SnomedBrowserTerm(concept.getId()));
+				browserConcept.setPreferredSynonym(concept.getPt() != null ? new SnomedBrowserTerm(concept.getPt().getTerm()) : new SnomedBrowserTerm(concept.getId()));
 				
 				browserConcept.setDescriptions(convertDescriptions(concept.getDescriptions()));
 				browserConcept.setRelationships(convertRelationships(concept.getRelationships()));
@@ -296,7 +297,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				convertedConcept.setConceptId(childConceptId);
 				convertedConcept.setDefinitionStatus(conceptEntry.getDefinitionStatus());
 				
-				String term = descriptionOptional.transform(description -> description.getTerm()).or(conceptEntry.getId());
+				SnomedBrowserTerm term = descriptionOptional.transform(description -> new SnomedBrowserTerm(description)).or(new SnomedBrowserTerm(conceptEntry.getId()));
 				if (preferredDescriptionType == SnomedBrowserDescriptionType.FSN) {
 					convertedConcept.setFsn(term);
 				} else if (preferredDescriptionType == SnomedBrowserDescriptionType.SYNONYM) {
@@ -347,7 +348,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				convertedConcept.setModuleId(conceptEntry.getModuleId());
 				
 				
-				String term = descriptionOptional.transform(description -> description.getTerm()).or(conceptEntry.getId());
+				SnomedBrowserTerm term = descriptionOptional.transform(description -> new SnomedBrowserTerm(description)).or(new SnomedBrowserTerm(conceptEntry.getId()));
 				if (preferredDescriptionType == SnomedBrowserDescriptionType.FSN) {
 					convertedConcept.setFsn(term);
 				} else if (preferredDescriptionType == SnomedBrowserDescriptionType.SYNONYM) {
@@ -439,15 +440,15 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 							
 							if (preferredDescriptionType == SnomedBrowserDescriptionType.FSN) {
 								if (descriptionByConceptIdMap.containsKey(conceptId)) {
-									details.setFsn(descriptionByConceptIdMap.get(conceptId).getTerm());
+									details.setFsn(new SnomedBrowserTerm(descriptionByConceptIdMap.get(conceptId)));
 								} else {
-									details.setFsn(conceptId);
+									details.setFsn(new SnomedBrowserTerm(conceptId));
 								}
 							} else {
 								if (descriptionByConceptIdMap.containsKey(conceptId)) {
-									details.setPreferredSynonym(descriptionByConceptIdMap.get(conceptId).getTerm());
+									details.setPreferredSynonym(new SnomedBrowserTerm(descriptionByConceptIdMap.get(conceptId)));
 								} else {
-									details.setPreferredSynonym(conceptId);
+									details.setPreferredSynonym(new SnomedBrowserTerm(conceptId));
 								}
 							}
 							
@@ -490,9 +491,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				
 				final SnomedDescription fullySpecifiedName = descriptionService.getFullySpecifiedName(conceptId, locales);
 				if (fullySpecifiedName != null) {
-					constant.setFsn(fullySpecifiedName.getTerm());
+					constant.setFsn(new SnomedBrowserTerm(fullySpecifiedName));
 				} else {
-					constant.setFsn(conceptId);
+					constant.setFsn(new SnomedBrowserTerm(conceptId));
 				}
 				
 				resultBuilder.put(conceptEnum.name(), constant);
@@ -740,7 +741,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private String getFsn(ISnomedBrowserConcept concept) {
 		if (concept.getFsn() != null) {
-			return concept.getFsn();
+			return concept.getFsn().getTerm();
 		}
 		
 		List<ISnomedBrowserDescription> descriptions = concept.getDescriptions();
@@ -834,9 +835,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final SnomedBrowserRelationshipType result = new SnomedBrowserRelationshipType(concept.getId());
 		
 		if (concept.getFsn() != null) {
-			result.setFsn(concept.getFsn().getTerm());
+			result.setFsn(new SnomedBrowserTerm(concept.getFsn()));
 		} else {
-			result.setFsn(concept.getId());
+			result.setFsn(new SnomedBrowserTerm(concept.getId()));
 		}
 		
 		return result;
@@ -849,7 +850,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		result.setActive(concept.isActive());
 		result.setDefinitionStatus(concept.getDefinitionStatus());
 		result.setEffectiveTime(concept.getEffectiveTime());
-		result.setFsn(concept.getFsn() != null ? concept.getFsn().getTerm() : concept.getId());
+		result.setFsn(concept.getFsn() != null ? new SnomedBrowserTerm(concept.getFsn()) : new SnomedBrowserTerm(concept.getId()));
 		result.setModuleId(concept.getModuleId());
 		result.setReleased(concept.isReleased());
 		
@@ -880,9 +881,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		SnomedDescription fullySpecifiedName = descriptionService.getFullySpecifiedName(destinationConcept.getId(), locales);
 		if (fullySpecifiedName != null) {
-			target.setFsn(fullySpecifiedName.getTerm());
+			target.setFsn(new SnomedBrowserTerm(fullySpecifiedName));
 		} else {
-			target.setFsn(destinationConcept.getId());
+			target.setFsn(new SnomedBrowserTerm(destinationConcept.getId()));
 		}
 		
 		return target;

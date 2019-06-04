@@ -396,6 +396,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 	}
 	
 	@Test		
+	@SuppressWarnings("rawtypes")
 	public void bulkUpdateAndCreateConcepts() throws Exception {		
 		
 		Map<String, Object> updateConceptRequest = Maps.newHashMap(createBrowserConceptRequest());
@@ -441,7 +442,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		Map<String, Object> updatedConcept = browserConcepts.get(0);
 		assertEquals(firstConceptId, updatedConcept.get("conceptId"));
 		assertEquals(conceptIds.get(0), updatedConcept.get("conceptId"));
-		assertEquals(updatedFsnTerm, updatedConcept.get("fsn"));
+		assertEquals(updatedFsnTerm, ((Map)updatedConcept.get("fsn")).get("term"));
 		
 		Map<String, Object> createdConcept = browserConcepts.get(1);
 		assertEquals(conceptIds.get(1), createdConcept.get("conceptId"));
@@ -464,12 +465,12 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		SnomedBrowserRestRequests.getBrowserConceptChildren(branchPath, FINDING_CONTEXT, "stated&preferredDescriptionType=FSN")
 				.assertThat().statusCode(200)		
 				.and().body("size()", equalTo(1))		
-				.and().body("[0].fsn", equalTo(fsn));
+				.and().body("[0].fsn.term", equalTo(fsn));
 		
 		SnomedBrowserRestRequests.getBrowserConceptChildren(branchPath, FINDING_CONTEXT, "stated&preferredDescriptionType=SYNONYM")
 				.assertThat().statusCode(200)		
 				.and().body("size()", equalTo(1))		
-				.and().body("[0].preferredSynonym", equalTo(pt));
+				.and().body("[0].preferredSynonym.term", equalTo(pt));
 	}
 	
 	@Test		
@@ -489,12 +490,12 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		SnomedBrowserRestRequests.searchDescriptionsReturnFSN(branchPath, "visotactile")
 				.assertThat().statusCode(200)		
 				.and().body("items.size()", equalTo(1))		
-				.and().body("items[0].concept.fsn", equalTo(fsn));
+				.and().body("items[0].concept.fsn.term", equalTo(fsn));
 		
 		SnomedBrowserRestRequests.searchDescriptionsReturnPT(branchPath, "circulatory")
 				.assertThat().statusCode(200)		
 				.and().body("items.size()", equalTo(1))		
-				.and().body("items[0].concept.preferredSynonym", equalTo(pt));
+				.and().body("items[0].concept.preferredSynonym.term", equalTo(pt));
 	}
 	
 	@Test
