@@ -221,7 +221,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		return DeferredResults.wrap(ClassificationRequests.prepareSearchEquivalentConceptSet()
 				.all()
 				.filterByClassificationId(classificationId)
-				.setExpand("equivalentConcepts(expand(pt()))")
+				.setExpand("equivalentConcepts(expand(fsn()))")
 				.setLocales(extendedLocales)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus));
@@ -361,7 +361,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		RelationshipChanges relationshipChanges = ClassificationRequests.prepareSearchRelationshipChange()
 			.filterBySourceId(conceptId)
 			.filterByClassificationId(classificationId)
-			.setExpand("relationship(expand(destination(expand(fsn()),type(expand(fsn())))")
+			.setExpand("relationship(expand(destination(expand(fsn())),type(expand(fsn()))))")
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(bus)
 			.getSync();
