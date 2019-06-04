@@ -794,6 +794,7 @@ final class SaveJobRequest implements Request<BranchContext, Boolean> {
 		
 		final SnomedRelationshipUpdateRequestBuilder updateRequest = SnomedRequests
 				.prepareUpdateRelationship(relationship.getOriginId())
+				.setActive(true)
 				.setModuleId(namespaceAndModuleAssigner.getRelationshipModuleId(relationship.getSourceId()))
 				.setGroup(relationship.getGroup());
 		
