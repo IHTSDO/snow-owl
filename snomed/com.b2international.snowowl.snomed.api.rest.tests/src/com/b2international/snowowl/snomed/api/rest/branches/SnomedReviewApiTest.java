@@ -276,11 +276,14 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 
 		createNewConcept(branchPath);
 		
+		// wait 1s before checking review state
+		Thread.sleep(1000);
+		
 		getReview(reviewId).statusCode(200).body("status", equalTo(ReviewStatus.STALE.toString()));		
 	}
 	
 	@Test
-	public void setReviewStaleAfterParentRebase() {
+	public void setReviewStaleAfterParentRebase() throws Exception {
 		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
 		createBranch(a).statusCode(201);
 		IBranchPath b = BranchPathUtils.createPath(a, "b");
@@ -293,6 +296,9 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 
 		merge(branchPath, a, "Rebased child branch over new concept").body("status", equalTo(Merge.Status.COMPLETED.name()));
 
+		// wait 1s before checking review state
+		Thread.sleep(1000);
+				
 		getReview(reviewId).statusCode(200).body("status", equalTo(ReviewStatus.STALE.toString()));
 	}
 	
