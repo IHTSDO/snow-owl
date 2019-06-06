@@ -68,6 +68,7 @@ import com.b2international.snowowl.snomed.reasoner.domain.ReasonerRelationship;
 import com.b2international.snowowl.snomed.reasoner.domain.RelationshipChange;
 import com.b2international.snowowl.snomed.reasoner.domain.RelationshipChanges;
 import com.b2international.snowowl.snomed.reasoner.request.ClassificationRequests;
+import com.google.common.base.Strings;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -149,8 +150,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			throw new BadRequestException("External classification service is not configured properly");
 		}
 		
-		final ControllerLinkBuilder linkBuilder = linkTo(SnomedClassificationRestService.class)
-				.slash("classifications");
+		final ControllerLinkBuilder linkBuilder = linkTo(SnomedClassificationRestService.class).slash(branchPath).slash("classifications");
 		
 		return DeferredResults.wrap(ClassificationRequests.prepareCreateClassification()
 				.setReasonerId(request.getReasonerId())
@@ -359,6 +359,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
 		
 		RelationshipChanges relationshipChanges = ClassificationRequests.prepareSearchRelationshipChange()
+			.all()
 			.filterBySourceId(conceptId)
 			.filterByClassificationId(classificationId)
 			.setExpand("relationship(expand(destination(expand(fsn())),type(expand(fsn()))))")
@@ -379,14 +380,18 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			switch (relationshipChange.getChangeNature()) {
 			
 				case REDUNDANT:
-					relationships.removeIf(r -> r.getId().equals(relationship.getOriginId()));
+					relationships.removeIf(r -> !Strings.isNullOrEmpty(r.getId()) && r.getId().equals(relationship.getOriginId()));
 					break;
 				
 				case UPDATED:
 					relationships.stream()
-						.filter(r -> r.getId().equals(relationship.getOriginId()))
+						.filter(r -> !Strings.isNullOrEmpty(r.getId()) && r.getId().equals(relationship.getOriginId()))
 						.findFirst()
-						.ifPresent(r -> ((SnomedBrowserRelationship) r).setGroupId(relationship.getGroup()));
+						.ifPresent(r -> {
+							SnomedBrowserRelationship browserRelationship = (SnomedBrowserRelationship) r;
+							browserRelationship.setActive(true);
+							browserRelationship.setGroupId(relationship.getGroup());
+						});
 					break;
 					
 				case INFERRED:
