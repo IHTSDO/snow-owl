@@ -67,13 +67,17 @@ import io.swagger.annotations.ApiResponses;
 @Api(value = "Merge Reviews", description = "Merge Reviews", tags = { "merge-reviews" })
 @RestController
 @RequestMapping(value="/merge-reviews", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
-public class SnomedMergeReviewRestService extends AbstractSnomedRestService {
+public class SnomedMergeReviewRestService extends AbstractRestService {
 
 	@Autowired
 	private IEventBus bus;
 	
 	@Autowired
 	protected ISnomedMergeReviewService mergeReviewService;
+	
+	public SnomedMergeReviewRestService() {
+		super(MergeReview.Fields.ALL);
+	}
 
 	@ApiOperation(
 			value = "Create new merge review", 

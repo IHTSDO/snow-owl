@@ -14,8 +14,6 @@ package com.b2international.snowowl.snomed.api.rest.browser;
 
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
-import java.io.IOException;
-import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.Principal;
@@ -39,7 +37,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 import com.b2international.commons.CompareUtils;
-import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
@@ -53,13 +50,14 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParen
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionResults;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
+import com.b2international.snowowl.snomed.api.rest.AbstractRestService;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptBulkLoadRequest;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.google.common.collect.ImmutableList;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -74,7 +72,7 @@ import io.swagger.annotations.ApiResponses;
 @RequestMapping(
 		value="/browser",
 		produces={ SnomedBrowserRestService.IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
-public class SnomedBrowserRestService extends AbstractSnomedRestService {
+public class SnomedBrowserRestService extends AbstractRestService {
 
 	private static final String INFERRED_FORM = "inferred";
 	private static final String STATED_FORM = "stated";
@@ -90,6 +88,10 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@Autowired
 	private ISnomedBrowserValidationService validationService;
 
+	public SnomedBrowserRestService() {
+		super(Collections.emptySet());
+	}
+	
 	@ApiOperation(
 			value="Retrieve single concept properties",
 			notes="Retrieves a single concept and related information on a branch.")
@@ -109,18 +111,9 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage) {
+			final String languageSetting) {
 		
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return browserService.getConceptDetails(branchPath, conceptId, extendedLocales);
 	}
 
@@ -142,22 +135,13 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage) {
+			final String languageSetting) {
 
 		if (body.getConceptIds().size() > 1000) {
 			throw new BadRequestException("A maximum of 1000 concepts can be loaded at once.");
 		}
 		
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return browserService.getConceptDetailsInBulk(branchPath, body.getConceptIds(), extendedLocales);
 	}
 
@@ -185,16 +169,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			final Principal principal) {
 
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return browserService.createConcept(branchPath, concept, principal.getName(), extendedLocales);
 	}
 
@@ -213,21 +188,12 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage,
+			final String languageSetting,
 
 			@RequestBody
 			final SnomedBrowserConcept concept) {
 
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return validationService.validateConcepts(branchPath, Collections.singletonList(concept), extendedLocales);
 	}
 	
@@ -246,21 +212,12 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage,
+			final String languageSetting,
 
 			@RequestBody
 			final List<SnomedBrowserConcept> concepts) {
 
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return validationService.validateConcepts(branchPath, concepts, extendedLocales);
 	}
 
@@ -296,16 +253,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");
 		}
 		
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		browserService.updateConcept(branchPath, ImmutableList.of(concept), principal.getName(), extendedLocales);
 		return browserService.getConceptDetails(branchPath, concept.getConceptId(), extendedLocales);
 	}
@@ -340,17 +288,8 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final List<SnomedBrowserConcept> concepts,
 
 			final Principal principal) throws URISyntaxException {
-
-		final List<ExtendedLocale> extendedLocales;
 		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		final ISnomedBrowserBulkChangeRun bulkChangeRun = browserService.beginBulkChange(branchPath, concepts,
 				allowCreate, principal.getName(), extendedLocales);
 		return Responses.created(getBulkChangeRunUri(branchPath, bulkChangeRun)).build();
@@ -389,16 +328,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			expandOptions = Options.builder().build();
 		}
 		
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return browserService.getBulkChange(branchPath, bulkChangeId, extendedLocales, expandOptions);
 	}
 
@@ -434,16 +364,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestParam(value="form", defaultValue=INFERRED_FORM)
 			final String form) {
 		
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return browserService.getConceptParents(branchPath, conceptId, extendedLocales, STATED_FORM.equals(form), preferredDescriptionType);
 	}
 	
@@ -487,16 +408,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException("Form parameter should be either 'stated' or 'inferred'");
 		}
 		
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return browserService.getConceptChildren(branchPath, conceptId, extendedLocales, STATED_FORM.equals(form), preferredDescriptionType, limit);
 	}
 
@@ -536,15 +448,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
 			final String languageSetting) {
 
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		
 		return browserService.getDescriptions(branchPath, query, extendedLocales, preferredDescriptionType, searchAfter, limit);
 	}
@@ -566,16 +470,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String languageSetting) {
 		
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
 		return browserService.getConstants(branchPath, extendedLocales);
 	}
 

@@ -18,9 +18,9 @@ package com.b2international.snowowl.snomed.api.rest;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,7 +35,6 @@ import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.core.merge.MergeCollection;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
-import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.identity.domain.User;
 import com.b2international.snowowl.snomed.api.rest.domain.MergeRestRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
@@ -56,8 +55,9 @@ import io.swagger.annotations.ApiResponses;
 @RequestMapping(value="/merges", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
 public class SnomedBranchMergingRestService extends AbstractRestService {
 
-	@Autowired
-	private IEventBus bus;
+	public SnomedBranchMergingRestService() {
+		super(Collections.emptySet());
+	}
 	
 	@ApiOperation(
 			value = "Start branch merge or rebase", 

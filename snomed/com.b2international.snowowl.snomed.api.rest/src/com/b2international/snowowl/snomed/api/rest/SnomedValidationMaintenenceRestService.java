@@ -12,6 +12,8 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import java.util.Collections;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -34,7 +36,11 @@ import io.swagger.annotations.ApiResponses;
 @RequestMapping(
 		value="/validation-maintenence",
 		produces={ MediaType.APPLICATION_JSON_VALUE })
-public class SnomedValidationMaintenenceRestService extends AbstractSnomedRestService {
+public class SnomedValidationMaintenenceRestService extends AbstractRestService {
+
+	public SnomedValidationMaintenenceRestService() {
+		super(Collections.emptySet());
+	}
 
 	@Autowired
 	private ISnomedBrowserValidationService validationService;

@@ -19,16 +19,22 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
 import java.net.URI;
 import java.security.Principal;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,7 +46,10 @@ import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.StringUtils;
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
+import com.b2international.snowowl.core.request.SearchResourceRequest;
+import com.b2international.snowowl.core.request.SearchResourceRequest.Sort;
 import com.b2international.snowowl.core.request.SearchResourceRequest.SortField;
 import com.b2international.snowowl.datastore.request.SearchIndexResourceRequest;
 import com.b2international.snowowl.snomed.api.ISnomedExpressionService;
@@ -52,12 +61,14 @@ import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestSearc
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestUpdate;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionSearchRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.net.HttpHeaders;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -72,11 +83,18 @@ import springfox.documentation.annotations.ApiIgnore;
 @Api(value = "Concepts", description = "Concepts", tags = { "concepts" })
 @Controller
 @RequestMapping(produces={ AbstractRestService.SO_MEDIA_TYPE })
-public class SnomedConceptRestService extends AbstractSnomedRestService {
+public class SnomedConceptRestService extends AbstractRestService {
 
 	@Autowired
 	private ISnomedExpressionService expressionService;
 
+	public SnomedConceptRestService() {
+		super(ImmutableSet.<String>builder()
+				.addAll(SnomedConcept.Fields.ALL)
+				.add("term") // special term based sort for concepts
+				.build());
+	}
+	
 	@ApiOperation(
 			value="Retrieve Concepts from a branch", 
 			notes="Returns a list with all/filtered Concepts from a branch."
@@ -87,15 +105,25 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					+ "&bull; descriptions() &ndash; the list of descriptions for the concept<br>")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = PageableCollectionResource.class),
-		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
+		@ApiResponse(code = 400, message = "Invalid search config", response = RestApiError.class),
 		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/concepts", method=RequestMethod.GET, produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
-	public @ResponseBody DeferredResult<SnomedConcepts> search(
-			@ApiParam(value="The branch path")
+	@GetMapping(value="/{path:**}/concepts", produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
+	public @ResponseBody DeferredResult<SnomedConcepts> searchByGet(
+			
+			@ApiParam(value="The branch path", required = true)
 			@PathVariable(value="path")
 			final String branch,
 
+			@ApiParam(value="The Concept identifier(s) to match")
+			@RequestParam(value="conceptIds", required=false) 
+			final Set<String> conceptIds,
+			
+			@ApiParam(value="The effective time to match (yyyyMMdd, exact matches only)")
+			@RequestParam(value="effectiveTime", required=false) 
+			final String effectiveTimeFilter,
+			
+			
 			@ApiParam(value="The concept status to match")
 			@RequestParam(value="active", required=false) 
 			final Boolean activeFilter,
@@ -104,26 +132,15 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="module", required=false) 
 			final String moduleFilter,
 			
-			@ApiParam(value="The namespace to match")
-			@RequestParam(value="namespace", required=false) 
-			final String namespaceFilter,
-			
-			@ApiParam(value="The effective time to match (yyyyMMdd, exact matches only)")
-			@RequestParam(value="effectiveTime", required=false) 
-			final String effectiveTimeFilter,
-			
 			@ApiParam(value="The definition status to match")
 			@RequestParam(value="definitionStatus", required=false) 
 			final String definitionStatusFilter,
 			
-			@ApiParam(value="The description term to match")
-			@RequestParam(value="term", required=false) 
-			final String termFilter,
+			@ApiParam(value="The namespace to match")
+			@RequestParam(value="namespace", required=false) 
+			final String namespaceFilter,
+						
 			
-			@ApiParam(value="The description active state to match")
-			@RequestParam(value="termActive", required=false) 
-			final Boolean descriptionActiveFilter,
-
 			@ApiParam(value="The ECL expression to match on the inferred form")
 			@RequestParam(value="ecl", required=false) 
 			final String eclFilter,
@@ -132,21 +149,48 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="statedEcl", required=false) 
 			final String statedEclFilter,
 			
-			@ApiParam(value="A set of concept identifiers")
-			@RequestParam(value="conceptIds", required=false) 
-			final Set<String> conceptIds,
-			
 			@ApiParam(value="The SNOMED CT Query expression to match (inferred form only)")
 			@RequestParam(value="query", required=false) 
 			final String queryFilter,
+			
 			
 			@ApiParam(value="Description semantic tag(s) to match")
 			@RequestParam(value="semanticTag", required=false)
 			final String[] semanticTags,
 			
+			@ApiParam(value="The description term to match")
+			@RequestParam(value="term", required=false) 
+			final String termFilter,
+			
 			@ApiParam(value="Description type ECL expression to match")
 			@RequestParam(value="descriptionType", required=false) 
 			final String descriptionTypeFilter,
+			
+			@ApiParam(value="The description active state to match")
+			@RequestParam(value="termActive", required=false) 
+			final Boolean descriptionActiveFilter,
+
+			
+			@ApiParam(value = "The inferred parent(s) to match")
+			@RequestParam(value="parent", required=false)
+			final String[] parent,
+			
+			@ApiParam(value = "The inferred ancestor(s) to match")
+			@RequestParam(value="ancestor", required=false)
+			final String[] ancestor,
+			
+			@ApiParam(value = "The stated parent(s) to match")
+			@RequestParam(value="statedParent", required=false)
+			final String[] statedParent,
+			
+			@ApiParam(value = "The stated ancestor(s) to match")
+			@RequestParam(value="statedAncestor", required=false)
+			final String[] statedAncestor,
+			
+			
+			@ApiParam(value="Expansion parameters")
+			@RequestParam(value="expand", required=false)
+			final String expand,
 			
 			@ApiParam(value="The scrollKeepAlive to start a scroll using this query")
 			@RequestParam(value="scrollKeepAlive", required=false) 
@@ -160,49 +204,56 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="searchAfter", required=false) 
 			final String searchAfter,
 
+			@ApiParam(value = "Sort keys")
+			@RequestParam(value="sort", required=false)
+			final List<String> sort,
+			
 			@ApiParam(value="The maximum number of items to return")
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
-			
-			@ApiParam(value="Expansion parameters")
-			@RequestParam(value="expand", required=false)
-			final String expand,
 
+			
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value=HttpHeaders.ACCEPT_LANGUAGE, defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage,
+			final String languageSetting,
 			
 			@ApiIgnore
 			@RequestHeader(value=HttpHeaders.ACCEPT, required=false)
-			final String contentType) {
+			final String contentType
+			
+		) {
 		
 		return doSearch(branch,
+				conceptIds,
+				effectiveTimeFilter,
 				activeFilter,
 				moduleFilter,
-				namespaceFilter,
-				effectiveTimeFilter,
 				definitionStatusFilter,
-				termFilter,
-				descriptionActiveFilter,
+				namespaceFilter,
 				eclFilter,
 				statedEclFilter,
 				queryFilter,
 				semanticTags,
+				termFilter,
 				descriptionTypeFilter,
-				conceptIds,
+				descriptionActiveFilter,
+				parent,
+				ancestor,
+				statedParent,
+				statedAncestor,
+				expand,
 				scrollKeepAlive,
 				scrollId,
 				searchAfter,
+				sort,
 				limit,
-				expand,
-				acceptLanguage,
+				languageSetting,
 				contentType);
 	}
-
+	
 	@ApiOperation(
-			value="Alternate search endpoint. Retrieve Concepts from a branch", 
-			notes="This is an alternative to the standard {path}/concepts search endpoint.<br/>"
-					+ "Returns a list with all/filtered Concepts from a branch."
+			value="Retrieve Concepts from a branch", 
+			notes="Returns a list with all/filtered Concepts from a branch."
 					+ "<p>The following properties can be expanded:"
 					+ "<p>"
 					+ "&bull; pt() &ndash; the description representing the concept's preferred term in the given locale<br>"
@@ -210,115 +261,136 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					+ "&bull; descriptions() &ndash; the list of descriptions for the concept<br>")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = PageableCollectionResource.class),
-		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
+		@ApiResponse(code = 400, message = "Invalid search config", response = RestApiError.class),
 		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/concepts/search", method = RequestMethod.POST,  produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
-	public @ResponseBody DeferredResult<SnomedConcepts> searchViaPost(
+	@PostMapping(value="/{path:**}/concepts/search", produces={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.TEXT_CSV_MEDIA_TYPE })
+	public @ResponseBody DeferredResult<SnomedConcepts> searchByPost(
 			
-			@ApiParam(value="The branch path")
+			@ApiParam(value="The branch path", required = true)
 			@PathVariable(value="path")
 			final String branch,
 
-			@RequestBody
+			@RequestBody(required = false)
 			final SnomedConceptRestSearch body,
 			
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value=HttpHeaders.ACCEPT_LANGUAGE, defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage,
-		
+			final String languageSetting,
+			
 			@ApiIgnore
 			@RequestHeader(value=HttpHeaders.ACCEPT, defaultValue=AbstractRestService.SO_MEDIA_TYPE, required=false)
-			final String contentType){
+			final String contentType) {
 		
 		return doSearch(branch,
+				body.getConceptIds(),
+				body.getEffectiveTimeFilter(),
 				body.getActiveFilter(),
 				body.getModuleFilter(),
-				body.getNamespaceFilter(),
-				body.getEffectiveTimeFilter(),
 				body.getDefinitionStatusFilter(),
-				body.getTermFilter(),
-				body.getDescriptionActiveFilter(),
+				body.getNamespaceFilter(),
 				body.getEclFilter(),
 				body.getStatedEclFilter(),
 				body.getQueryFilter(),
 				body.getSemanticTags(),
+				body.getTermFilter(),
 				body.getDescriptionTypeFilter(),
-				body.getConceptIds(),
+				body.getDescriptionActiveFilter(),
+				body.getParent(),
+				body.getAncestor(),
+				body.getStatedParent(),
+				body.getStatedAncestor(),
+				body.getExpand(),
 				body.getScrollKeepAlive(),
 				body.getScrollId(),
 				body.getSearchAfter(),
+				body.getSort(),
 				body.getLimit(),
-				body.getExpand(),
-				acceptLanguage,
+				languageSetting,
 				contentType);
 	}
 
 	private DeferredResult<SnomedConcepts> doSearch(
 			final String branch,
+			final Set<String> conceptIds,
+			final String effectiveTimeFilter,
 			final Boolean activeFilter,
 			final String moduleFilter,
-			final String namespaceFilter,
-			final String effectiveTimeFilter,
 			final String definitionStatusFilter,
-			final String termFilter,
-			final Boolean descriptionActiveFilter,
+			final String namespaceFilter,
 			final String eclFilter,
 			final String statedEclFilter,
 			final String queryFilter,
 			final String[] semanticTags,
+			final String termFilter,
 			final String descriptionTypeFilter,
-			final Set<String> conceptIds,
+			final Boolean descriptionActiveFilter,
+			final String[] parent,
+			final String[] ancestor,
+			final String[] statedParent,
+			final String[] statedAncestor,
+			final String expandParams,
 			final String scrollKeepAlive,
 			final String scrollId,
 			final String searchAfter,
+			final List<String> sort,
 			final int limit,
-			final String expandParams,
-			final String acceptLanguage,
+			final String languageSetting,
 			final String contentType) {
 		
-		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
-		
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(languageSetting);
+
 		String expand = expandParams;
 		
 		if (AbstractRestService.TEXT_CSV_MEDIA_TYPE.equals(contentType)) {
+			
 			if (!Strings.isNullOrEmpty(expand) && expand.contains("pt") && !expand.contains("descriptions()")) {
 				expand = String.format("%s,descriptions()", expand);
 			}
+			
 		}
 		
-		final SortField sortField = StringUtils.isEmpty(termFilter) 
-				? SearchIndexResourceRequest.DOC_ID 
-				: SearchIndexResourceRequest.SCORE;
+		List<Sort> sorts = extractSortFields(sort, branch, extendedLocales);
+		
+		if (sorts.isEmpty()) {
+			final SortField sortField = StringUtils.isEmpty(termFilter) 
+					? SearchIndexResourceRequest.DOC_ID 
+					: SearchIndexResourceRequest.SCORE;
+			sorts = Collections.singletonList(sortField);
+		}
 		
 		return DeferredResults.wrap(
 				SnomedRequests
-					.prepareSearchConcept()
-					.setScroll(scrollKeepAlive)
-					.setScrollId(scrollId)
-					.setLimit(limit)
-					.setSearchAfter(searchAfter)
-					.filterByActive(activeFilter)
-					.filterByModule(moduleFilter)
-					.filterByEffectiveTime(effectiveTimeFilter)
-					.filterByDefinitionStatus(definitionStatusFilter)
-					.filterByNamespace(namespaceFilter)
-					.filterByTerm(Strings.emptyToNull(termFilter))
-					.filterByIds(conceptIds)
-					.filterByDescriptionActive(descriptionActiveFilter)
-					.filterByEcl(eclFilter)
-					.filterByStatedEcl(statedEclFilter)
-					.filterByQuery(queryFilter)
-					.filterByDescriptionLanguageRefSet(extendedLocales)
-					.filterByDescriptionType(descriptionTypeFilter)
-					.filterByDescriptionSemanticTags(semanticTags == null ? null : ImmutableSet.copyOf(semanticTags))
-					.setExpand(expand)
-					.setLocales(extendedLocales)
-					.sortBy(sortField)
-					.build(repositoryId, branch)
-					.execute(bus));
+				.prepareSearchConcept()
+				.setLimit(limit)
+				.setScroll(scrollKeepAlive)
+				.setScrollId(scrollId)
+				.setSearchAfter(searchAfter)
+				.filterByIds(conceptIds)
+				.filterByEffectiveTime(effectiveTimeFilter)
+				.filterByActive(activeFilter)
+				.filterByModule(moduleFilter)
+				.filterByDefinitionStatus(definitionStatusFilter)
+				.filterByNamespace(namespaceFilter)
+				.filterByParents(parent == null ? null : ImmutableSet.copyOf(parent))
+				.filterByAncestors(ancestor == null ? null : ImmutableSet.copyOf(ancestor))
+				.filterByStatedParents(statedParent == null ? null : ImmutableSet.copyOf(statedParent))
+				.filterByStatedAncestors(statedAncestor == null ? null : ImmutableSet.copyOf(statedAncestor))
+				.filterByEcl(eclFilter)
+				.filterByStatedEcl(statedEclFilter)
+				.filterByQuery(queryFilter)
+				.filterByTerm(Strings.emptyToNull(termFilter))
+				.filterByDescriptionLanguageRefSet(extendedLocales)
+				.filterByDescriptionType(descriptionTypeFilter)
+				.filterByDescriptionSemanticTags(semanticTags == null ? null : ImmutableSet.copyOf(semanticTags))
+				.filterByDescriptionActive(descriptionActiveFilter)
+				.setExpand(expand)
+				.setLocales(extendedLocales)
+				.sortBy(sorts)
+				.build(repositoryId, branch)
+				.execute(bus));
 	}
-
+	
 	@ApiOperation(
 			value="Retrieve Concept properties",
 			notes="Returns all properties of the specified Concept, including a summary of inactivation indicator and association members."
@@ -512,8 +584,33 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			.execute(bus)
 			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS);
 	}
-
+	
 	private URI getConceptLocationURI(String branchPath, String conceptId) {
 		return linkTo(SnomedConceptRestService.class).slash(branchPath).slash("concepts").slash(conceptId).toUri();
 	}
+	
+	@Override
+	protected Sort toSort(String field, boolean ascending, String branch, List<ExtendedLocale> extendedLocales) {
+		switch (field) {
+		case SnomedRf2Headers.FIELD_TERM:
+			return toTermSort(field, ascending, branch, extendedLocales);
+		}
+		return super.toSort(field, ascending, branch, extendedLocales);
+	}
+
+	private Sort toTermSort(String field, boolean ascending, String branchPath, List<ExtendedLocale> extendedLocales) {
+		final Set<String> synonymIds = SnomedRequests.prepareGetSynonyms()
+			.setFields(SnomedConcept.Fields.ID)
+			.build(repositoryId, branchPath)
+			.execute(bus)
+			.getSync()
+			.getItems()
+			.stream()
+			.map(IComponent::getId)
+			.collect(Collectors.toSet());
+	
+		final Map<String, Object> args = ImmutableMap.of("locales", SnomedDescriptionSearchRequestBuilder.getLanguageRefSetIds(extendedLocales), "synonymIds", synonymIds);
+		return SearchResourceRequest.SortScript.of("termSort", args, ascending);
+	}
+	
 }

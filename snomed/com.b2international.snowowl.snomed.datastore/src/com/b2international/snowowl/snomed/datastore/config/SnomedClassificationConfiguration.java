@@ -15,11 +15,14 @@
  */
 package com.b2international.snowowl.snomed.datastore.config;
 
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
@@ -66,10 +69,14 @@ public class SnomedClassificationConfiguration {
 	@JsonProperty(value = "cleanupInterval", required = false)
 	private long cleanupInterval = DEFAULT_CLEANUP_INTERVAL; 
 	
+	@NotNull
+	@JsonProperty(value = "reasonerExcludedModuleIds", required = false)
+	private Set<String> reasonerExcludedModuleIds = Collections.emptySet();
+	
 	@Valid
 	@JsonProperty(value = "externalService", required = false)
 	private SnomedClassificationServiceConfiguration externalService;
-
+	
 	/**
 	 * @return the currently set default reasoner ID 
 	 */
@@ -143,6 +150,14 @@ public class SnomedClassificationConfiguration {
 	
 	public void setCleanupInterval(long cleanupInterval) {
 		this.cleanupInterval = cleanupInterval;
+	}
+	
+	public Set<String> getReasonerExcludedModuleIds() {
+		return reasonerExcludedModuleIds;
+	}
+	
+	public void setReasonerExcludedModuleIds(Set<String> reasonerExcludedModuleIds) {
+		this.reasonerExcludedModuleIds = reasonerExcludedModuleIds;
 	}
 	
 	/**

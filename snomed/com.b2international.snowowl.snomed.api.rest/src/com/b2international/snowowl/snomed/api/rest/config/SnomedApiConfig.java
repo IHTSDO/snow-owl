@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -81,6 +82,7 @@ import com.b2international.snowowl.snomed.api.impl.validation.SnomedBrowserValid
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedManualConceptMergeReviewService;
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.rest.AntPathWildcardMatcher;
+import com.b2international.snowowl.snomed.api.rest.ModelAttributeParameterExpanderExt;
 import com.b2international.snowowl.snomed.api.rest.SnowOwlAuthenticationProvider;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchStateMixin;
@@ -100,10 +102,13 @@ import com.google.common.base.Joiner;
 import com.google.common.io.Files;
 
 import springfox.documentation.schema.AlternateTypeRule;
+import springfox.documentation.schema.property.field.FieldProvider;
 import springfox.documentation.service.ApiInfo;
 import springfox.documentation.service.Contact;
 import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spi.schema.EnumTypeDeterminer;
 import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.spring.web.readers.parameter.ModelAttributeParameterExpander;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 /**
@@ -172,6 +177,13 @@ public class SnomedApiConfig extends WebMvcConfigurerAdapter {
             .genericModelSubstitutes(ResponseEntity.class, DeferredResult.class)
             .alternateTypeRules(new AlternateTypeRule(resolver.resolve(UUID.class), resolver.resolve(String.class)))
             .apiInfo(new ApiInfo(apiTitle, readApiDescription(), apiVersion, apiTermsOfServiceUrl, new Contact("B2i Healthcare", apiLicenseUrl, apiContact), apiLicense, apiLicenseUrl, Collections.emptyList()));
+	}
+	
+	@Bean
+	public ModelAttributeParameterExpander modelAttributeParameterExpander(
+			@Autowired FieldProvider fieldProvider, 
+			@Autowired EnumTypeDeterminer enumTypeDeterminer) {
+		return new ModelAttributeParameterExpanderExt(fieldProvider, enumTypeDeterminer);
 	}
 
 	private String readApiDescription() {

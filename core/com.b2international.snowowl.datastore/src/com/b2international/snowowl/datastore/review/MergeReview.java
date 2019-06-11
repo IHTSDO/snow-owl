@@ -15,7 +15,10 @@
  */
 package com.b2international.snowowl.datastore.review;
 
+import java.util.Set;
+
 import com.b2international.index.Doc;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Represents a terminology review comparing bidirectional changes on branches while catering for manual merges.
@@ -23,6 +26,14 @@ import com.b2international.index.Doc;
 @Doc(type="merge_review")
 public class MergeReview {
 
+	public static final class Fields {
+		public static final String ID = "id";
+		public static final String STATUS = "status";
+		public static final String SOURCE_PATH = "sourcePath";
+		public static final String TARGET_PATH = "targetPath";
+		public static final Set<String> ALL = ImmutableSet.of(ID, SOURCE_PATH, TARGET_PATH, STATUS);
+	}
+	
 	private final String id;
 	private final String sourcePath;
 	private final String targetPath;

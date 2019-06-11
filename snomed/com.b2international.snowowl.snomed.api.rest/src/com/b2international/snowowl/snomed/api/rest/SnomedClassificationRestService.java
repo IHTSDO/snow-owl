@@ -82,11 +82,15 @@ import io.swagger.annotations.ApiResponses;
 @Api(value = "Classifications", description="Classifications", tags = { "classifications" })
 @Controller
 @RequestMapping(produces={ AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
-public class SnomedClassificationRestService extends AbstractSnomedRestService {
+public class SnomedClassificationRestService extends AbstractRestService {
 
 	@Autowired
 	protected ISnomedBrowserService browserService;
 
+	public SnomedClassificationRestService() {
+		super(ClassificationTask.Fields.ALL);
+	}
+	
 	@ApiOperation(
 			value="Retrieve classification runs from branch", 
 			notes="Returns a list of classification runs for a branch.")
@@ -107,13 +111,18 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="The user identifier")
 			@RequestParam(value="userId", required=false) 
-			final String userId) {
+			final String userId,
+			
+			@ApiParam(value="Sort keys")
+			@RequestParam(value="sort", required=false)
+			final List<String> sortKeys) {
 
 		return DeferredResults.wrap(ClassificationRequests.prepareSearchClassification()
 			.all()
 			.filterByBranch(branchPath)
 			.filterByUserId(userId)
 			.filterByStatus(status)
+			.sortBy(extractSortFields(sortKeys))
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(bus));
 	}

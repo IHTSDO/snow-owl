@@ -61,10 +61,14 @@ import io.swagger.annotations.ApiResponses;
 @RestController
 @RequestMapping(
 		produces={ AbstractRestService.SO_MEDIA_TYPE })
-public class SnomedConceptSubResourcesRestService extends AbstractSnomedRestService {
+public class SnomedConceptSubResourcesRestService extends AbstractRestService {
 
 	private static final String STATED_FORM = "stated";
 	private static final String INFERRED_FORM = "inferred";
+	
+	public SnomedConceptSubResourcesRestService() {
+		super(SnomedConcept.Fields.ALL);
+	}
 	
 	@ApiOperation(
 			value="Retrieve descriptions of a concept", 

@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.api.rest;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,10 +47,14 @@ import io.swagger.annotations.ApiResponses;
 @Api(value = "MRCM", description = "MRCM", tags = { "mrcm" })
 @RestController
 @RequestMapping(value="/mrcm", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
-public class SnomedMrcmRestService extends AbstractSnomedRestService {
+public class SnomedMrcmRestService extends AbstractRestService {
 
 	@Autowired
 	private SnomedMrcmService mrcmService;
+	
+	public SnomedMrcmRestService() {
+		super(Collections.emptySet());
+	}
 	
 	@ApiOperation(
 		value = "Retrieve MRCM relationship rules for a concept.", 
