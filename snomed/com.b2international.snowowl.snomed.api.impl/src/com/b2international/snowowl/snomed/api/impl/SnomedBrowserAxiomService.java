@@ -118,7 +118,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 
 						final String owlExpression = (String) axiomMember.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION);
 						final Long conceptId = Long.valueOf(concept.getId());
-						final AxiomRepresentation axiomRepresentation = conversionService.convertAxiomToRelationships(conceptId, owlExpression);
+						final AxiomRepresentation axiomRepresentation = conversionService.convertAxiomToRelationships(owlExpression);
 
 						if (axiomRepresentation != null) {// Will be null if the axiom is an Ontology Axiom for example a property chain or transitive axiom rather than a Class Axiom or GCI.
 							if (conceptId.equals(axiomRepresentation.getLeftHandSideNamedConcept())) {
