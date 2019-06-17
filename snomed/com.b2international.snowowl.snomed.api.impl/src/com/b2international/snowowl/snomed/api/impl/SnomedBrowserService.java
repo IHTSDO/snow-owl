@@ -84,7 +84,6 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ConceptEnum;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
-import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
@@ -153,13 +152,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.execute(getBus())
 			.getSync();
 
-		Set<String> hitIds = concepts.getItems().stream().map(SnomedComponent::getId).collect(toSet());
-		java.util.Optional<String> notFound = conceptIds.stream().filter(id -> !hitIds.contains(id)).findFirst();
-		
-		if (notFound.isPresent()) {
-			throw new ComponentNotFoundException(ComponentCategory.CONCEPT, notFound.get());
-		}
-		
 		Set<ISnomedBrowserConcept> browserConcepts = concepts.getItems().stream()
 			.map(concept -> {
 				
