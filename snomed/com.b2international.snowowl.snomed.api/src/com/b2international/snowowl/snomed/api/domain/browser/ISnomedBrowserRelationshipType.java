@@ -19,5 +19,7 @@ package com.b2international.snowowl.snomed.api.domain.browser;
  * Carries information about a relationship type concept.
  */
 public interface ISnomedBrowserRelationshipType extends IConceptIdWithFsnProvider {
-	// Empty interface body
+
+	public ISnomedBrowserTerm getPt();
+	
 }

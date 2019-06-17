@@ -21,5 +21,7 @@ import com.b2international.snowowl.snomed.core.domain.DefinitionStatusProvider;
  * Carries information about a relationship target concept.
  */
 public interface ISnomedBrowserRelationshipTarget extends ISnomedBrowserComponent, IConceptIdWithFsnProvider, DefinitionStatusProvider {
-	// Empty interface body
+	
+	public ISnomedBrowserTerm getPt();
+	
 }

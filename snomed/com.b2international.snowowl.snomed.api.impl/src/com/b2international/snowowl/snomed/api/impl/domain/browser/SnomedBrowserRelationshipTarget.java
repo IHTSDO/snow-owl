@@ -19,6 +19,7 @@ public class SnomedBrowserRelationshipTarget extends SnomedBrowserComponent impl
 
 	private String conceptId;
 	private SnomedBrowserTerm fsn;
+	private SnomedBrowserTerm pt;
 	private DefinitionStatus definitionStatus;
 
 	public SnomedBrowserRelationshipTarget() {
@@ -39,6 +40,11 @@ public class SnomedBrowserRelationshipTarget extends SnomedBrowserComponent impl
 	}
 
 	@Override
+	public SnomedBrowserTerm getPt() {
+		return pt;
+	}
+	
+	@Override
 	public DefinitionStatus getDefinitionStatus() {
 		return definitionStatus;
 	}
@@ -51,6 +57,10 @@ public class SnomedBrowserRelationshipTarget extends SnomedBrowserComponent impl
 		this.fsn = fsn;
 	}
 
+	public void setPt(SnomedBrowserTerm pt) {
+		this.pt = pt;
+	}
+	
 	public void setDefinitionStatus(final DefinitionStatus definitionStatus) {
 		this.definitionStatus = definitionStatus;
 	}
@@ -87,6 +97,8 @@ public class SnomedBrowserRelationshipTarget extends SnomedBrowserComponent impl
 		builder.append(conceptId);
 		builder.append(", fsn=");
 		builder.append(fsn);
+		builder.append(", pt=");
+		builder.append(pt);
 		builder.append(", definitionStatus=");
 		builder.append(definitionStatus);
 		builder.append(", getEffectiveTime()=");

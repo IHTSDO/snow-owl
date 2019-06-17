@@ -166,7 +166,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 			final SnomedConcepts conceptsFromStore = SnomedRequests.prepareSearchConcept()
 				.all()
 				.setLocales(locales)
-				.setExpand("fsn()")
+				.setExpand("fsn(),pt()")
 				.filterByIds(idsToFetch)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(getBus())
@@ -222,6 +222,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 
 			final SnomedConcept typeConcept = idToConceptMap.get(type.getConceptId());
 			type.setFsn(typeConcept.getFsn() == null ? new SnomedBrowserTerm(type.getConceptId()) : new SnomedBrowserTerm(typeConcept.getFsn()));
+			type.setPt(typeConcept.getPt() == null ? new SnomedBrowserTerm(type.getConceptId()) : new SnomedBrowserTerm(typeConcept.getPt()));
 
 		} else {
 			LOGGER.warn("Concept {} used in axiom attribute type but does not exist on this branch {}.", type.getConceptId(), branchPath);
@@ -233,6 +234,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 
 			final SnomedConcept targetConcept = idToConceptMap.get(target.getConceptId());
 			target.setFsn(targetConcept.getFsn() == null ? new SnomedBrowserTerm(target.getConceptId()) : new SnomedBrowserTerm(targetConcept.getFsn()));
+			target.setPt(targetConcept.getPt() == null ? new SnomedBrowserTerm(target.getConceptId()) : new SnomedBrowserTerm(targetConcept.getPt()));
 
 			target.setActive(targetConcept.isActive());
 			target.setEffectiveTime(targetConcept.getEffectiveTime());

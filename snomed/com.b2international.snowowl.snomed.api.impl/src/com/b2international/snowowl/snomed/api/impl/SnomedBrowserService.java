@@ -148,7 +148,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.setLimit(conceptIds.size())
 			.filterByIds(conceptIds)
 			.setLocales(extendedLocales)
-			.setExpand("fsn(),pt(),inactivationProperties(),descriptions(limit:"+Integer.MAX_VALUE+",expand(inactivationProperties())),relationships(limit:"+Integer.MAX_VALUE+",expand(type(expand(fsn())),destination(expand(fsn()))))")
+			.setExpand("fsn(),pt(),inactivationProperties(),descriptions(limit:"+Integer.MAX_VALUE+",expand(inactivationProperties())),relationships(limit:"+Integer.MAX_VALUE+",expand(type(expand(fsn(),pt())),destination(expand(fsn(),pt()))))")
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 			.execute(getBus())
 			.getSync();
@@ -843,6 +843,12 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		} else {
 			result.setFsn(new SnomedBrowserTerm(concept.getId()));
 		}
+	
+		if (concept.getPt() != null) {
+			result.setPt(new SnomedBrowserTerm(concept.getPt()));
+		} else {
+			result.setPt(new SnomedBrowserTerm(concept.getId()));
+		}
 		
 		return result;
 	}
@@ -855,6 +861,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		result.setDefinitionStatus(concept.getDefinitionStatus());
 		result.setEffectiveTime(concept.getEffectiveTime());
 		result.setFsn(concept.getFsn() != null ? new SnomedBrowserTerm(concept.getFsn()) : new SnomedBrowserTerm(concept.getId()));
+		result.setPt(concept.getPt() != null ? new SnomedBrowserTerm(concept.getPt()) : new SnomedBrowserTerm(concept.getId()));
 		result.setModuleId(concept.getModuleId());
 		result.setReleased(concept.isReleased());
 		
@@ -888,6 +895,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			target.setFsn(new SnomedBrowserTerm(fullySpecifiedName));
 		} else {
 			target.setFsn(new SnomedBrowserTerm(destinationConcept.getId()));
+		}
+		
+		SnomedDescription pt = descriptionService.getPreferredTerm(destinationConcept.getId(), locales);
+		if (pt != null) {
+			target.setPt(new SnomedBrowserTerm(pt));
+		} else {
+			target.setPt(new SnomedBrowserTerm(destinationConcept.getId()));
 		}
 		
 		return target;

@@ -13,11 +13,13 @@
 package com.b2international.snowowl.snomed.api.impl.domain.browser;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationshipType;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserTerm;
 
 public class SnomedBrowserRelationshipType implements ISnomedBrowserRelationshipType {
 
 	private String conceptId;
 	private SnomedBrowserTerm fsn;
+	private SnomedBrowserTerm pt;
 
 	public SnomedBrowserRelationshipType() {
 	}
@@ -35,6 +37,11 @@ public class SnomedBrowserRelationshipType implements ISnomedBrowserRelationship
 	public SnomedBrowserTerm getFsn() {
 		return fsn;
 	}
+	
+	@Override
+	public ISnomedBrowserTerm getPt() {
+		return pt;
+	}
 
 	public void setConceptId(final String conceptId) {
 		this.conceptId = conceptId;
@@ -42,6 +49,10 @@ public class SnomedBrowserRelationshipType implements ISnomedBrowserRelationship
 
 	public void setFsn(final SnomedBrowserTerm fsn) {
 		this.fsn = fsn;
+	}
+	
+	public void setPt(SnomedBrowserTerm pt) {
+		this.pt = pt;
 	}
 	
 	@Override
@@ -76,6 +87,8 @@ public class SnomedBrowserRelationshipType implements ISnomedBrowserRelationship
 		builder.append(conceptId);
 		builder.append(", fsn=");
 		builder.append(fsn);
+		builder.append(", pt=");
+		builder.append(pt);
 		builder.append("]");
 		return builder.toString();
 	}
