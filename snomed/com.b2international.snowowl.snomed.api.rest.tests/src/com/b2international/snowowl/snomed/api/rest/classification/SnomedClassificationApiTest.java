@@ -20,6 +20,7 @@ import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestR
 import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.beginClassification;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.beginClassificationSave;
+import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getClassification;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getClassificationJobId;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getEquivalentConceptSets;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getRelationshipChanges;
@@ -35,6 +36,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateRelationship;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
+import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -183,6 +185,52 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		}
 	}
 
+	@Test
+	public void testClassificationTaskInitialState() {
+		
+		createNewConcept(branchPath);
+		
+		String firstJobId = getClassificationJobId(beginClassification(branchPath));
+		
+		getClassification(branchPath, firstJobId)
+			.statusCode(200)
+			.body("status", anyOf(equalTo(ClassificationStatus.SCHEDULED.name()), equalTo(ClassificationStatus.RUNNING.name())));
+		
+		String secondJobId = getClassificationJobId(beginClassification(branchPath));
+		
+		getClassification(branchPath, secondJobId)
+			.statusCode(200)
+			.body("status", anyOf(equalTo(ClassificationStatus.SCHEDULED.name()), equalTo(ClassificationStatus.RUNNING.name())));
+	
+		waitForClassificationJob(branchPath, firstJobId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+		
+		waitForClassificationJob(branchPath, secondJobId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+		
+	}
+	
+	@Test
+	public void testClassificationTaskBecomesStale() {
+		
+		createNewConcept(branchPath);
+		
+		String firstJobId = getClassificationJobId(beginClassification(branchPath));
+		
+		waitForClassificationJob(branchPath, firstJobId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+		
+		createNewConcept(branchPath);
+		
+		getClassification(branchPath, firstJobId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.STALE.name()));
+		
+	}
+	
 	@Test
 	public void persistInferredRelationship() throws Exception {
 		String parentConceptId = createNewConcept(branchPath);
