@@ -394,10 +394,12 @@ public class SnomedRefSetMemberApiTest extends AbstractSnomedApiTest {
 		String conceptId = createNewConcept(branchPath);
 		
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, conceptId)
-				.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + Concepts.NAMESPACE_ROOT + ")")
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + Concepts.NAMESPACE_ROOT + ")")
+					.build())
 				.put("commitComment", "Created new OWL Axiom reference set member")
 				.build();
-
+		
 		String memberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
 				.statusCode(201)
 				.extract().header("Location"));

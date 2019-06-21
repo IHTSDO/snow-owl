@@ -728,9 +728,15 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		String responseString = response.extract().asString();
 		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
 		
+		String inferredNotStated = USE_EXTERNAL_SERVICE ? "false" : "true";
+		
 		Set<String> expectedRows = Sets.newHashSet(
-				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "changeNature", "sourceId", "sourceFsn", "typeId", "typeFsn", "destinationId", "destinationFsn", "destinationNegated", "characteristicTypeId", "group", "id", "unionGroup", "modifier", "inferredNotStated"),
-				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "INFERRED", sourceConcept, "\"FSN of concept\"", "116680003", "\"Is a (attribute)\"", "138875005", "\"SNOMED CT Concept (SNOMED RT+CTV3)\"", "false", "900000000000011006", "0", "", "0", "EXISTENTIAL", "false"));
+				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "changeNature", "sourceId", "sourceFsn", "typeId", "typeFsn",
+						"destinationId", "destinationFsn", "destinationNegated", "characteristicTypeId", "group", "id", "unionGroup", "modifier",
+						"inferredNotStated"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "INFERRED", sourceConcept, "\"FSN of concept\"", "116680003",
+						"\"Is a (attribute)\"", "138875005", "\"SNOMED CT Concept (SNOMED RT+CTV3)\"", "false", "900000000000011006", "0", "", "0",
+						"EXISTENTIAL", inferredNotStated));
 
 		assertEquals(expectedRows, responseRows);
 		
