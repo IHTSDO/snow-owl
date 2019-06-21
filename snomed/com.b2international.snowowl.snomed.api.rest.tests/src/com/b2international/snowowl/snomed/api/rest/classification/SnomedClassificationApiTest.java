@@ -36,6 +36,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateRelationship;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
+import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
@@ -230,6 +231,43 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 			.body("status", equalTo(ClassificationStatus.STALE.name()));
 		
 	}
+	
+	@Test
+	public void testInferredNotStatedFlag() throws Exception {
+		
+		if (USE_EXTERNAL_SERVICE) {
+			
+			final String parentConceptId = createNewConcept(branchPath);
+			final String targetConceptId = createNewConcept(branchPath);
+			final String childConceptId = createNewConcept(branchPath, parentConceptId);
+			
+			createNewRelationship(branchPath, parentConceptId, Concepts.MORPHOLOGY, targetConceptId);
+			
+			String classificationId = getClassificationJobId(beginClassification(branchPath, REASONER_ID, USE_EXTERNAL_SERVICE));
+			waitForClassificationJob(branchPath, classificationId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+			
+			Collection<RelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+					.extract()
+					.asInputStream(), RelationshipChanges.class)
+					.getItems();
+			
+			Set<RelationshipChange> relationshipChanges = changes.stream()
+					.filter(change -> change.getRelationship().getSourceId().equals(childConceptId) &&
+							change.getRelationship().getTypeId().equals(Concepts.MORPHOLOGY) &&
+							change.getRelationship().getDestinationId().equals(targetConceptId) &&
+							ChangeNature.INFERRED == change.getChangeNature())
+					.collect(toSet());
+			
+			assertEquals(1, relationshipChanges.size());
+			RelationshipChange relationshipChange = relationshipChanges.stream().findFirst().get();
+			assertTrue(relationshipChange.isInferredNotStated());
+			
+		}
+		
+	}
+	
 	
 	@Test
 	public void persistInferredRelationship() throws Exception {
@@ -691,8 +729,8 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		Set<String> responseRows = Sets.newHashSet(Splitter.on('\n').split(responseString)).stream().filter(row -> !Strings.isNullOrEmpty(row)).collect(Collectors.toSet());
 		
 		Set<String> expectedRows = Sets.newHashSet(
-				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "changeNature", "sourceId", "sourceFsn", "typeId", "typeFsn", "destinationId", "destinationFsn", "destinationNegated", "characteristicTypeId", "group", "id", "unionGroup", "modifier"),
-				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "INFERRED", sourceConcept, "\"FSN of concept\"", "116680003", "\"Is a (attribute)\"", "138875005", "\"SNOMED CT Concept (SNOMED RT+CTV3)\"", "false", "900000000000011006", "0", "", "0", "EXISTENTIAL"));
+				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "changeNature", "sourceId", "sourceFsn", "typeId", "typeFsn", "destinationId", "destinationFsn", "destinationNegated", "characteristicTypeId", "group", "id", "unionGroup", "modifier", "inferredNotStated"),
+				String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", "INFERRED", sourceConcept, "\"FSN of concept\"", "116680003", "\"Is a (attribute)\"", "138875005", "\"SNOMED CT Concept (SNOMED RT+CTV3)\"", "false", "900000000000011006", "0", "", "0", "EXISTENTIAL", "false"));
 
 		assertEquals(expectedRows, responseRows);
 		

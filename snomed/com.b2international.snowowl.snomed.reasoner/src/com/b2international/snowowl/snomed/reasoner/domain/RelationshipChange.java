@@ -34,6 +34,7 @@ public class RelationshipChange implements Serializable {
 	private String classificationId;
 	private ChangeNature changeNature;
 	private ReasonerRelationship relationship;
+	private boolean inferredNotStated;
 
 	@JsonIgnore
 	public String getClassificationId() {
@@ -59,6 +60,14 @@ public class RelationshipChange implements Serializable {
 	public void setRelationship(final ReasonerRelationship relationship) {
 		this.relationship = relationship;
 	}
+	
+	public boolean isInferredNotStated() {
+		return inferredNotStated;
+	}
+	
+	public void setInferredNotStated(boolean inferredNotStated) {
+		this.inferredNotStated = inferredNotStated;
+	}
 
 	@Override
 	public String toString() {
@@ -69,6 +78,8 @@ public class RelationshipChange implements Serializable {
 		builder.append(changeNature);
 		builder.append(", relationship=");
 		builder.append(relationship);
+		builder.append(", inferredNotStated=");
+		builder.append(inferredNotStated);
 		builder.append("]");
 		return builder.toString();
 	}

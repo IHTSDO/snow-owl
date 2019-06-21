@@ -79,10 +79,13 @@ extends BaseResourceConverter<RelationshipChangeDocument, RelationshipChange, Re
 
 	@Override
 	protected RelationshipChange toResource(final RelationshipChangeDocument entry) {
+		
 		final RelationshipChange resource = new RelationshipChange();
+		
 		resource.setClassificationId(entry.getClassificationId());
 		resource.setChangeNature(entry.getNature());
-
+		resource.setInferredNotStated(entry.isInferredNotStated());
+		
 		/*
 		 * Inferred IS A relationships: ID is null (information is coming from the reasoner)
 		 * Inferred non-IS A relationships: ID refers to the "origin" relationship's ID

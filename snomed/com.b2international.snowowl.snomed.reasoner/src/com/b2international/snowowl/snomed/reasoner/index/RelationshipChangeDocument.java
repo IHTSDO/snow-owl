@@ -81,6 +81,7 @@ public final class RelationshipChangeDocument {
 		private Integer unionGroup;
 		private Boolean released;
 		private String characteristicTypeId;
+		private Boolean inferredNotStated;
 
 		@JsonCreator
 		private Builder() {
@@ -136,6 +137,11 @@ public final class RelationshipChangeDocument {
 			this.characteristicTypeId = characteristicTypeId;
 			return this;
 		}
+		
+		public Builder inferredNotStated(Boolean inferredNotStated) {
+			this.inferredNotStated = inferredNotStated;
+			return this;
+		}
 
 		public RelationshipChangeDocument build() {
 			return new RelationshipChangeDocument(classificationId, 
@@ -147,7 +153,8 @@ public final class RelationshipChangeDocument {
 					group, 
 					unionGroup,
 					released,
-					characteristicTypeId);
+					characteristicTypeId,
+					inferredNotStated);
 		}
 	}
 
@@ -159,6 +166,8 @@ public final class RelationshipChangeDocument {
 	private final String relationshipId; 
 	/** {@code true} if the description has been released, {@code false} otherwise */
 	private final Boolean released;
+	/** {@code true} if the inferred statement has no stated counterpart, {@code false} otherwise */
+	private final Boolean inferredNotStated;
 	
 	// Values that should be changed on the "origin" CD member, before saving/presenting it as an inference
 
@@ -178,7 +187,8 @@ public final class RelationshipChangeDocument {
 			final Integer group, 
 			final Integer unionGroup,
 			final Boolean released, 
-			final String characteristicTypeId) {
+			final String characteristicTypeId,
+			final Boolean inferredNotStated) {
 
 		this.classificationId = classificationId;
 		this.nature = nature;
@@ -190,6 +200,7 @@ public final class RelationshipChangeDocument {
 		this.unionGroup = unionGroup;
 		this.released = released;
 		this.characteristicTypeId = characteristicTypeId;
+		this.inferredNotStated = inferredNotStated;
 	}
 
 	public String getClassificationId() {
@@ -231,6 +242,10 @@ public final class RelationshipChangeDocument {
 	public String getCharacteristicTypeId() {
 		return characteristicTypeId;
 	}
+	
+	public Boolean isInferredNotStated() {
+		return inferredNotStated;
+	}
 
 	@Override
 	public String toString() {
@@ -255,6 +270,8 @@ public final class RelationshipChangeDocument {
 		builder.append(released);
 		builder.append(", characteristicTypeId=");
 		builder.append(characteristicTypeId);
+		builder.append(", inferredNotStated=");
+		builder.append(inferredNotStated);
 		builder.append("]");
 		return builder.toString();
 	}

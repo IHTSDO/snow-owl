@@ -15,18 +15,22 @@
  */
 package com.b2international.snowowl.snomed.reasoner.external;
 
+import static java.util.Collections.singleton;
+
 import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 
 import com.b2international.commons.BooleanUtils;
+import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.datastore.ConcreteDomainFragment;
 import com.b2international.snowowl.snomed.datastore.StatementFragment;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberSearchRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.INormalFormGenerator;
 import com.b2international.snowowl.snomed.reasoner.diff.OntologyChangeProcessor;
@@ -59,9 +63,9 @@ public class ExternalClassificationNormalFormGenerator implements INormalFormGen
 			int group = Integer.valueOf(elements.get(6));
 			String typeId = elements.get(7);
 			boolean isUniversal = RelationshipModifier.UNIVERSAL.getConceptId().equals(elements.get(9));
+			boolean hasStatedPair = hasStatedPair(sourceId, typeId, destinationId, group);
 			
 			if (active) { // active -> INFERRED or UPDATED
-				
 				
 				if (Strings.isNullOrEmpty(relationshipId)) { // INFERRED
 					
@@ -74,7 +78,7 @@ public class ExternalClassificationNormalFormGenerator implements INormalFormGen
 						isUniversal,
 						-1L, // relationship id
 						false, // is released
-						false); // has stated pair
+						hasStatedPair);
 					
 					statementProcessor.handleAddedSubject(sourceId, statementFragment);
 					
@@ -89,7 +93,7 @@ public class ExternalClassificationNormalFormGenerator implements INormalFormGen
 						isUniversal,
 						Long.valueOf(relationshipId), // relationship id
 						false, // is released
-						false); // has stated pair
+						hasStatedPair);
 					
 					statementProcessor.handleUpdatedSubject(sourceId, statementFragment);
 					
@@ -106,7 +110,7 @@ public class ExternalClassificationNormalFormGenerator implements INormalFormGen
 						isUniversal,
 						Long.valueOf(relationshipId),
 						isReleased(relationshipId),
-						isStatedRelationshipPairExists(sourceId, typeId, destinationId, group));
+						hasStatedPair);
 				
 				statementProcessor.handleRemovedSubject(sourceId, statementFragment);
 				
@@ -114,6 +118,10 @@ public class ExternalClassificationNormalFormGenerator implements INormalFormGen
 			
 		});
 		
+	}
+
+	private boolean hasStatedPair(String sourceId, String typeId, String destinationId, int group) {
+		return hasStatedAxiomPair(sourceId, typeId, destinationId) || hasStatedRelationshipPair(sourceId, typeId, destinationId, group);
 	}
 
 	private boolean isReleased(String relationshipId) {
@@ -124,7 +132,21 @@ public class ExternalClassificationNormalFormGenerator implements INormalFormGen
 				.isReleased();
 	}
 
-	private boolean isStatedRelationshipPairExists(String sourceId, String typeId, String destinationId, int group) {
+	private boolean hasStatedAxiomPair(String sourceId, String typeId, String destinationId) {
+		return SnomedRequests.prepareSearchMember()
+					.setLimit(0)
+					.filterByActive(true)
+					.filterByReferencedComponent(sourceId)
+					.filterByProps(Options.builder()
+							.put(SnomedRefSetMemberSearchRequestBuilder.OWL_EXPRESSION_TYPEID, singleton(typeId))
+							.put(SnomedRefSetMemberSearchRequestBuilder.OWL_EXPRESSION_DESTINATIONID, singleton(destinationId))
+							.build())
+					.build()
+					.execute(context)
+					.getTotal() > 0;
+	}
+	
+	private boolean hasStatedRelationshipPair(String sourceId, String typeId, String destinationId, int group) {
 		return SnomedRequests.prepareSearchRelationship()
 					.setLimit(0)
 					.filterByActive(true)

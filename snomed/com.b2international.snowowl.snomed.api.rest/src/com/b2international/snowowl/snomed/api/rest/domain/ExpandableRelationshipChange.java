@@ -10,7 +10,7 @@ import com.google.common.base.Strings;
 
 
 @JsonPropertyOrder({ "changeNature", "sourceId", "sourceFsn", "typeId", "typeFsn", "destinationId",
-		"destinationFsn", "destinationNegated", "characteristicTypeId", "group","id", "unionGroup", "modifier" })
+		"destinationFsn", "destinationNegated", "characteristicTypeId", "group","id", "unionGroup", "modifier", "inferredNotStated" })
 public class ExpandableRelationshipChange extends RelationshipChange {
 
 	private String id;
@@ -22,6 +22,7 @@ public class ExpandableRelationshipChange extends RelationshipChange {
 	private int group;
 	private int unionGroup;
 	private RelationshipModifier modifier;
+	private boolean inferredNotStated;
 	
 	public ExpandableRelationshipChange(RelationshipChange change) {
 		setId(Strings.isNullOrEmpty(change.getRelationship().getOriginId()) ? "" : change.getRelationship().getOriginId());
@@ -35,6 +36,7 @@ public class ExpandableRelationshipChange extends RelationshipChange {
 		setUnionGroup(change.getRelationship().getUnionGroup());
 		setModifier(change.getRelationship().getModifier());
 		setRelationship(change.getRelationship());
+		setInferredNotStated(change.isInferredNotStated());
 	}
 	
 	@JsonIgnore
@@ -77,6 +79,10 @@ public class ExpandableRelationshipChange extends RelationshipChange {
 
 	public RelationshipModifier getModifier() {
 		return modifier;
+	}
+	
+	public boolean isInferredNotStated() {
+		return inferredNotStated;
 	}
 
 	@JsonProperty("sourceFsn")
@@ -139,4 +145,8 @@ public class ExpandableRelationshipChange extends RelationshipChange {
 		this.modifier = modifier;
 	}
 
+	public void setInferredNotStated(boolean inferredNotStated) {
+		this.inferredNotStated = inferredNotStated;
+	}
+	
 }

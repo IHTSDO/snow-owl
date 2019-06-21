@@ -54,6 +54,8 @@ public final class RelationshipWriter extends OntologyChangeWriter<StatementFrag
 				} else {
 					builder.typeId(Long.toString(fragment.getTypeId()));
 				}
+				
+				builder.inferredNotStated(!fragment.hasStatedPair());
 
 				break;
 				
@@ -61,11 +63,13 @@ public final class RelationshipWriter extends OntologyChangeWriter<StatementFrag
 				builder.group(fragment.getGroup());
 				builder.released(fragment.isReleased());
 				builder.relationshipId(Long.toString(fragment.getStatementId()));
+				builder.inferredNotStated(!fragment.hasStatedPair());
 				break;
 				
 			case REDUNDANT:
 				builder.released(fragment.isReleased());
 				builder.relationshipId(Long.toString(fragment.getStatementId()));
+				builder.inferredNotStated(Boolean.FALSE);
 				break;
 				
 			default:
