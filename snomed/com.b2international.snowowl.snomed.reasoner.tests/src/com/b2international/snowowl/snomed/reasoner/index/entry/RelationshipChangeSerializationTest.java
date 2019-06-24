@@ -63,6 +63,7 @@ public class RelationshipChangeSerializationTest extends BaseRevisionIndexTest {
 				.sourceId("sourceId")
 				.typeId("typeId")
 				.unionGroup(2)
+				.inferredNotStated(Boolean.TRUE)
 				.build();
 
 		indexDocument(id, expected);
@@ -86,6 +87,7 @@ public class RelationshipChangeSerializationTest extends BaseRevisionIndexTest {
 				.relationshipId("12345678901")
 				.released(Boolean.TRUE)
 				.sourceId("sourceId")
+				.inferredNotStated(true)
 				.build();
 		
 		indexDocument(id, expected);
@@ -108,6 +110,7 @@ public class RelationshipChangeSerializationTest extends BaseRevisionIndexTest {
 				.relationshipId("12345678901")
 				.released(Boolean.TRUE)
 				.sourceId("sourceId")
+				.inferredNotStated(Boolean.FALSE)
 				.build();
 		
 		indexDocument(id, expected);
