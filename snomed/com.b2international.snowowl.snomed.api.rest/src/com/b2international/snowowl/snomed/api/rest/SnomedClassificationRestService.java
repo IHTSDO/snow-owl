@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.api.rest;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
@@ -40,10 +41,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import com.b2international.commons.CompareUtils;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.request.SearchResourceRequest.Sort;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
@@ -117,12 +120,20 @@ public class SnomedClassificationRestService extends AbstractRestService {
 			@RequestParam(value="sort", required=false)
 			final List<String> sortKeys) {
 
+		List<Sort> sortFields;
+		
+		if (CompareUtils.isEmpty(sortKeys)) {
+			sortFields = extractSortFields(singletonList(ClassificationTask.Fields.CREATION_DATE));
+		} else {
+			sortFields = extractSortFields(sortKeys);
+		}
+		
 		return DeferredResults.wrap(ClassificationRequests.prepareSearchClassification()
 			.all()
 			.filterByBranch(branchPath)
 			.filterByUserId(userId)
 			.filterByStatus(status)
-			.sortBy(extractSortFields(sortKeys))
+			.sortBy(sortFields)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(bus));
 	}
