@@ -58,17 +58,17 @@ public final class SnomedOWLExpressionConverter {
 		Stopwatch watch = Stopwatch.createStarted();
 		
 		Set<Long> ungroupedAttributes = getUngroupedAttributes();
-		Set<Long> objectAttributes = getObjectAttributes();
-		Set<Long> dataAttributes = getDataAttributes();
+//		Set<Long> objectAttributes = getObjectAttributes();
+//		Set<Long> dataAttributes = getDataAttributes();
 		
 		AxiomRelationshipConversionService conversionService = new AxiomRelationshipConversionService(
-				ungroupedAttributes,
-				objectAttributes,
-				dataAttributes);
+				ungroupedAttributes);
+//				objectAttributes,
+//				dataAttributes);
 		
 		LOG.info(
-				"SNOMED OWL Toolkit axiom conversion service initialization took {} (ungrouped attributes {}, model objects {}, model attributes {})",
-				TimeUtil.toString(watch), ungroupedAttributes.size(), objectAttributes.size(), dataAttributes.size());
+				"SNOMED OWL Toolkit axiom conversion service initialization took {} (ungrouped attributes {})",
+				TimeUtil.toString(watch), ungroupedAttributes.size());
 		
 		return conversionService;
 		
