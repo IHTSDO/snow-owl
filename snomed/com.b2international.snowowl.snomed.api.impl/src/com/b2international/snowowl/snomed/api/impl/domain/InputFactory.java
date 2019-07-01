@@ -31,7 +31,7 @@ public class InputFactory {
 				new ConceptInputCreator(), 
 				new DescriptionInputCreator(), 
 				new RelationshipInputCreator(),
-				new AxiomInputCreator(branch));
+				new AxiomInputCreator(branch.path()));
 	}
 
 	public <I extends SnomedComponentCreateRequest> I createComponentInput(ISnomedBrowserComponentWithId component, Class<I> inputType) {

@@ -38,7 +38,7 @@
 		<jaxb.api.version>2.3.0</jaxb.api.version>
 		<javax.activation.version>1.2.0</javax.activation.version>
 		
-		<snomed.owl.toolkit.version>2.6.0</snomed.owl.toolkit.version>
+		<snomed.owl.toolkit.version>2.7.0-SNAPSHOT</snomed.owl.toolkit.version>
 		<snomed-drools-engine.version>2.1.2</snomed-drools-engine.version>
 		
 		<!-- Build tool/compiler versions -->
@@ -84,6 +84,16 @@
         	</releases>
         	<snapshots>
           		<enabled>false</enabled>
+        	</snapshots>
+     	</repository>
+     	<repository>
+        	<id>snomed-international-snapshots</id>
+        	<url>https://maven.ihtsdotools.org/content/repositories/snapshots/</url>
+        	<releases>
+           		<enabled>false</enabled>
+        	</releases>
+        	<snapshots>
+          		<enabled>true</enabled>
         	</snapshots>
      	</repository>
 	</repositories>

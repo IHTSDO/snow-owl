@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ import org.snomed.otf.owltoolkit.domain.AxiomRepresentation;
 import org.snomed.otf.owltoolkit.domain.Relationship;
 
 import com.b2international.commons.CompareUtils;
+import com.b2international.commons.Triple;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.commons.time.TimeUtil;
@@ -59,6 +61,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
@@ -73,16 +76,33 @@ import com.google.common.collect.Sets;
 public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserAxiomService.class);
-
-	private final LoadingCache<Set<String>, AxiomRelationshipConversionService> conversionServiceCache = CacheBuilder.newBuilder().build(new CacheLoader<Set<String>, AxiomRelationshipConversionService>() {
-		@Override
-		public AxiomRelationshipConversionService load(final Set<String> ungroupedAttributeIds) throws Exception {
-			Stopwatch watch = Stopwatch.createStarted();
-			AxiomRelationshipConversionService conversionService = new AxiomRelationshipConversionService(ungroupedAttributeIds.stream().map(Long::valueOf).collect(toSet()));
-			LOGGER.info("SNOMED OWL Toolkit axiom conversion service initialization took {} (ungrouped attributes {})", TimeUtil.toString(watch), ungroupedAttributeIds.size());
-			return conversionService;
-		}
-	});
+	
+	private final LoadingCache<Set<Long>, AxiomRelationshipConversionService> simpleConversionServiceCache = CacheBuilder.newBuilder()
+			.expireAfterAccess(1L, TimeUnit.HOURS)
+			.build(new CacheLoader<Set<Long>, AxiomRelationshipConversionService>() {
+				@Override
+				public AxiomRelationshipConversionService load(final Set<Long> ungroupedAttributeIds) throws Exception {
+					Stopwatch watch = Stopwatch.createStarted();
+					AxiomRelationshipConversionService conversionService = new AxiomRelationshipConversionService(ungroupedAttributeIds);
+					LOGGER.info("SNOMED OWL Toolkit axiom conversion service initialization took {} (ungrouped attributes '{}')",
+							TimeUtil.toString(watch), ungroupedAttributeIds.size());
+					return conversionService;
+				}
+			});
+	
+	private final LoadingCache<Triple<Set<Long>, Set<Long>, Set<Long>>, AxiomRelationshipConversionService> advancedConversionServiceCache = CacheBuilder.newBuilder()
+			.expireAfterAccess(1L, TimeUnit.HOURS)
+			.build(new CacheLoader<Triple<Set<Long>, Set<Long>, Set<Long>>, AxiomRelationshipConversionService>() {
+				@Override
+				public AxiomRelationshipConversionService load(final Triple<Set<Long>, Set<Long>, Set<Long>> ids) throws Exception {
+					Stopwatch watch = Stopwatch.createStarted();
+					AxiomRelationshipConversionService conversionService = new AxiomRelationshipConversionService(ids.getA(), ids.getB(), ids.getC());
+					LOGGER.info(
+							"SNOMED OWL Toolkit axiom conversion service initialization took {} (ungrouped attributes '{}', model objects '{}', model attributes '{}')",
+							TimeUtil.toString(watch), ids.getA().size(), ids.getB().size(), ids.getC().size());
+					return conversionService;
+				}
+			});
 
 	@Override
 	public Collection<? extends ISnomedBrowserConcept> expandAxioms(final Collection<? extends ISnomedBrowserConcept> concepts, final String branchPath, final List<ExtendedLocale> locales) {
@@ -100,8 +120,6 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		if (axiomMembers.getItems().isEmpty()) {
 			return concepts;
 		}
-
-		final AxiomRelationshipConversionService conversionService = getConversionService(branchPath);
 
 		final Multimap<String, SnomedReferenceSetMember> membersByReferencedComponentId = Multimaps.index(axiomMembers, input -> input.getReferencedComponentId());
 
@@ -122,7 +140,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 
 						final String owlExpression = (String) axiomMember.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION);
 						final Long conceptId = Long.valueOf(concept.getId());
-						final AxiomRepresentation axiomRepresentation = conversionService.convertAxiomToRelationships(owlExpression);
+						final AxiomRepresentation axiomRepresentation = convertAxiomToRelationships(owlExpression, branchPath);
 
 						if (axiomRepresentation != null) {// Will be null if the axiom is an Ontology Axiom for example a property chain or transitive axiom rather than a Class Axiom or GCI.
 							if (conceptId.equals(axiomRepresentation.getLeftHandSideNamedConcept())) {
@@ -135,7 +153,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 						}
 					}
 
-				} catch (ConversionException | NumberFormatException e) {
+				} catch (ConversionException e) {
 					LOGGER.error("Failed to deserialise concept axioms for conept {}.", concept.getId(), e);
 				}
 
@@ -199,25 +217,93 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 	}
 
 	@Override
-	public AxiomRelationshipConversionService getConversionService(final String branchPath) {
-
-		Set<String> ungroupedAttributeIds = SnomedRequests.prepareSearchMember()
-			.all()
-			.filterByActive(true)
-			.filterByProps(Options.builder()
-					.put(SnomedRefSetMemberIndexEntry.Fields.MRCM_GROUPED, false)
-					.build())
-			.filterByRefSetType(SnomedRefSetType.MRCM_ATTRIBUTE_DOMAIN)
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-			.get()
-			.stream()
-			.map(SnomedReferenceSetMember::getReferencedComponent)
-			.map(SnomedCoreComponent::getId)
-			.collect(Collectors.toSet());
+	public AxiomRepresentation convertAxiomToRelationships(String owlExpression, String branchPath) throws ConversionException {
 		
-		return conversionServiceCache.getUnchecked(ungroupedAttributeIds);
+		Stopwatch watch = Stopwatch.createStarted();
+		
+		Set<Long> ungroupedAttributeIds = SnomedRequests.prepareSearchMember()
+				.all()
+				.filterByActive(true)
+				.filterByProps(Options.builder()
+						.put(SnomedRefSetMemberIndexEntry.Fields.MRCM_GROUPED, false)
+						.build())
+				.filterByRefSetType(SnomedRefSetType.MRCM_ATTRIBUTE_DOMAIN)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(getBus())
+				.getSync()
+				.stream()
+				.map(SnomedReferenceSetMember::getReferencedComponent)
+				.map(SnomedCoreComponent::getId)
+				.map(Long::valueOf)
+				.collect(Collectors.toSet());
+		
+		LOGGER.info("Ungrouped attributes query took {}", TimeUtil.toString(watch));
+		
+		return simpleConversionServiceCache.getUnchecked(ungroupedAttributeIds).convertAxiomToRelationships(owlExpression);
 	}
-
+	
+	@Override
+	public String convertRelationshipsToAxiom(AxiomRepresentation axiomRepresentation, String branchPath) {
+		
+		Stopwatch watch = Stopwatch.createStarted();
+		
+		Set<Long> ungroupedAttributes = SnomedRequests.prepareSearchMember()
+				.all()
+				.filterByActive(true)
+				.filterByProps(Options.builder()
+						.put(SnomedRefSetMemberIndexEntry.Fields.MRCM_GROUPED, false)
+						.build())
+				.filterByRefSetType(SnomedRefSetType.MRCM_ATTRIBUTE_DOMAIN)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(getBus())
+				.getSync()
+				.stream()
+				.map(SnomedReferenceSetMember::getReferencedComponent)
+				.map(SnomedCoreComponent::getId)
+				.map(Long::valueOf)
+				.collect(Collectors.toSet());
+		
+		LOGGER.info("Ungrouped attributes query took {}", TimeUtil.toString(watch));
+		
+		watch.reset();
+		watch.start();
+		
+		Set<Long> objectAttributes = SnomedRequests.prepareSearchConcept()
+				.all()
+				.filterByActive(true)
+				.filterByStatedAncestor(Concepts.CONCEPT_MODEL_OBJECT_ATTRIBUTE)
+				.setFields(SnomedConceptDocument.Fields.ID)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(getBus())
+				.getSync()
+				.stream()
+				.map(SnomedConcept::getId)
+				.map(Long::valueOf)
+				.collect(toSet());
+		
+		LOGGER.info("Object attributes query took {}", TimeUtil.toString(watch));
+		
+		watch.reset();
+		watch.start();
+		
+		Set<Long> dataAttributes = SnomedRequests.prepareSearchConcept()
+				.all()
+				.filterByActive(true)
+				.filterByStatedAncestor(Concepts.CONCEPT_MODEL_DATA_ATTRIBUTE)
+				.setFields(SnomedConceptDocument.Fields.ID)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(getBus())
+				.getSync()
+				.stream()
+				.map(SnomedConcept::getId)
+				.map(Long::valueOf)
+				.collect(toSet());
+		
+		LOGGER.info("Data attributes query took {}", TimeUtil.toString(watch));
+		
+		return advancedConversionServiceCache.getUnchecked(Triple.of(ungroupedAttributes, objectAttributes, dataAttributes)).convertRelationshipsToAxiom(axiomRepresentation);
+	}
+	
 	private void updateRelationshipAttributes(final ISnomedBrowserRelationship relationship, final Map<String, SnomedConcept> idToConceptMap, final String branchPath) {
 
 		final SnomedBrowserRelationshipType type = (SnomedBrowserRelationshipType) relationship.getType();

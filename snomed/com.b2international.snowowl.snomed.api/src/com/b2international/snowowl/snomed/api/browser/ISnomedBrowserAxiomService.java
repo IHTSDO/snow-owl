@@ -18,7 +18,8 @@ package com.b2international.snowowl.snomed.api.browser;
 import java.util.Collection;
 import java.util.List;
 
-import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
+import org.snomed.otf.owltoolkit.conversion.ConversionException;
+import org.snomed.otf.owltoolkit.domain.AxiomRepresentation;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
@@ -27,6 +28,8 @@ public interface ISnomedBrowserAxiomService {
 
 	public Collection<? extends ISnomedBrowserConcept> expandAxioms(Collection<? extends ISnomedBrowserConcept> concepts, String branchPath, List<ExtendedLocale> locales);
 
-	public AxiomRelationshipConversionService getConversionService(String branchPath);
+	public AxiomRepresentation convertAxiomToRelationships(String owlExpression, String branchPath) throws ConversionException;
+	
+	public String convertRelationshipsToAxiom(AxiomRepresentation axiomRepresentation, String branchPath);
 
 }

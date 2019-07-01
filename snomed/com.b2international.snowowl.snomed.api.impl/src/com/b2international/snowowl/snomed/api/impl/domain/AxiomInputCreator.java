@@ -15,12 +15,10 @@
  */
 package com.b2international.snowowl.snomed.api.impl.domain;
 
-import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
 import org.snomed.otf.owltoolkit.domain.AxiomRepresentation;
 import org.snomed.otf.owltoolkit.domain.Relationship;
 
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -39,11 +37,10 @@ import com.google.common.collect.Multimaps;
 
 public class AxiomInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedRefSetMemberCreateRequest, SnomedRefSetMemberUpdateRequest, ISnomedBrowserAxiom> {
 
-	private AxiomRelationshipConversionService conversionService;
-	private Branch branch;
+	private String branchPath;
 
-	public AxiomInputCreator(final Branch branch) {
-		this.branch = branch;
+	public AxiomInputCreator(final String branchPath) {
+		this.branchPath = branchPath;
 	}
 
 	@Override
@@ -110,14 +107,12 @@ public class AxiomInputCreator extends AbstractInputCreator implements Component
 			axiomRepresentation.setLeftHandSideRelationships(Multimaps.asMap(relationships));
 		}
 
-		return getConversionService().convertRelationshipsToAxiom(axiomRepresentation);
+		return getBrowserAxiomService().convertRelationshipsToAxiom(axiomRepresentation, branchPath);
+		
 	}
 
-	public AxiomRelationshipConversionService getConversionService() {
-		if (conversionService == null) {
-			conversionService = ApplicationContext.getServiceForClass(ISnomedBrowserAxiomService.class).getConversionService(branch.path());
-		}
-		return conversionService;
+	private ISnomedBrowserAxiomService getBrowserAxiomService() {
+		return ApplicationContext.getServiceForClass(ISnomedBrowserAxiomService.class);
 	}
 
 }
