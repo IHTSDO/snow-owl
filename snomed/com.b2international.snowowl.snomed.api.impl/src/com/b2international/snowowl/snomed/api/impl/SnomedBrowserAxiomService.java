@@ -24,7 +24,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -78,7 +77,6 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserAxiomService.class);
 	
 	private final LoadingCache<Set<Long>, AxiomRelationshipConversionService> simpleConversionServiceCache = CacheBuilder.newBuilder()
-			.expireAfterAccess(1L, TimeUnit.HOURS)
 			.build(new CacheLoader<Set<Long>, AxiomRelationshipConversionService>() {
 				@Override
 				public AxiomRelationshipConversionService load(final Set<Long> ungroupedAttributeIds) throws Exception {
@@ -91,7 +89,6 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 			});
 	
 	private final LoadingCache<Triple<Set<Long>, Set<Long>, Set<Long>>, AxiomRelationshipConversionService> advancedConversionServiceCache = CacheBuilder.newBuilder()
-			.expireAfterAccess(1L, TimeUnit.HOURS)
 			.build(new CacheLoader<Triple<Set<Long>, Set<Long>, Set<Long>>, AxiomRelationshipConversionService>() {
 				@Override
 				public AxiomRelationshipConversionService load(final Triple<Set<Long>, Set<Long>, Set<Long>> ids) throws Exception {
