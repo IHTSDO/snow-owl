@@ -360,19 +360,20 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		});
 		
 		browserAxiom.setNamedConceptIds(namedConceptIds);
-		browserAxiom.setRelationships(convertToBrowserRelationships(axiomRelationships, axiomMember.isActive()));
+		browserAxiom.setRelationships(convertToBrowserRelationships(axiomRelationships, axiomMember));
 
 		return browserAxiom;
 	}
 
-	private List<ISnomedBrowserRelationship> convertToBrowserRelationships(final List<Relationship> axiomRelationships, final boolean active) {
+	private List<ISnomedBrowserRelationship> convertToBrowserRelationships(final List<Relationship> axiomRelationships, final SnomedReferenceSetMember axiomMember) {
 		return axiomRelationships.stream()
 				.map(relationship -> {
 
 					final SnomedBrowserRelationship browserRelationship = new SnomedBrowserRelationship();
-					browserRelationship.setActive(active);
+					browserRelationship.setActive(axiomMember.isActive());
 					browserRelationship.setGroupId(relationship.getGroup());
 					browserRelationship.setCharacteristicType(CharacteristicType.STATED_RELATIONSHIP);
+					browserRelationship.setSourceId(axiomMember.getReferencedComponentId());
 					browserRelationship.setType(new SnomedBrowserRelationshipType(Long.toString(relationship.getTypeId())));
 					browserRelationship.setTarget(new SnomedBrowserRelationshipTarget(Long.toString(relationship.getDestinationId())));
 
