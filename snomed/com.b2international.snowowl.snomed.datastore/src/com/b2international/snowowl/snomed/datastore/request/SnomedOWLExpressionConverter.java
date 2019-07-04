@@ -29,14 +29,12 @@ import org.snomed.otf.owltoolkit.domain.AxiomRepresentation;
 import org.snomed.otf.owltoolkit.domain.Relationship;
 
 import com.b2international.commons.options.Options;
-import com.b2international.commons.time.TimeUtil;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedOWLRelationshipDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
-import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
@@ -49,16 +47,9 @@ public final class SnomedOWLExpressionConverter {
 	private static final Logger LOG = LoggerFactory.getLogger(SnomedOWLExpressionConverter.class);
 	
 	private final BranchContext context;
+	
 	private final Supplier<AxiomRelationshipConversionService> conversionService = Suppliers.memoize(() -> {
-		
-		Stopwatch watch = Stopwatch.createStarted();
-		Set<Long> ungroupedAttributes = getUngroupedAttributes();
-		AxiomRelationshipConversionService conversionService = new AxiomRelationshipConversionService(ungroupedAttributes);
-		LOG.info("SNOMED OWL Toolkit axiom conversion service initialization took {} (ungrouped attributes '{}')", TimeUtil.toString(watch),
-				ungroupedAttributes.size());
-		
-		return conversionService;
-		
+		return new AxiomRelationshipConversionService(getUngroupedAttributes());
 	});
 	
 	public SnomedOWLExpressionConverter(BranchContext context) {
