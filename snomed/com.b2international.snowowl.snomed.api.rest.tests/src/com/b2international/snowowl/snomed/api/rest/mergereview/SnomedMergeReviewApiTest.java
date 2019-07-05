@@ -265,7 +265,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		// assert that after review the correct content is merged to second task
 		getComponent(secondBranchPath, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()")
 		.body("active", equalTo(false))
-		.body("descriptions.total", equalTo(3));
+		.body("descriptions.total", equalTo(2));
 
 	}
 

@@ -15,19 +15,19 @@
  */
 package com.b2international.snowowl.snomed.api.impl.mergereview;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponentWithId;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedBrowserMergeReviewDetail;
+import com.google.common.collect.Maps;
 
 /**
  * @since 4.5
@@ -77,49 +77,64 @@ public class ComputeMergeReviewCallable extends MergeReviewCallable<ISnomedBrows
 			final List<ExtendedLocale> locales) {
 
 		final SnomedBrowserConcept mergedConcept = new SnomedBrowserConcept();
-		// If one of the concepts is unpublished, then it's values are newer.  If both are unpublished, source would win
+
+		// If one of the concepts is unpublished, then it's values are newer. If both are unpublished, source would win
 		ISnomedBrowserConcept winner = sourceConcept;
-		if (targetConcept.getEffectiveTime() == null && sourceConcept.getEffectiveTime() != null) {
+		ISnomedBrowserConcept looser = targetConcept; 
+		
+		if (sourceConcept.getEffectiveTime() != null && targetConcept.getEffectiveTime() == null) {
 			winner = targetConcept;
+			looser = sourceConcept;
 		}
+		
 		// Set directly owned values
 		mergedConcept.setConceptId(winner.getConceptId());
+		
 		mergedConcept.setActive(winner.isActive());
-		mergedConcept.setDefinitionStatus(winner.getDefinitionStatus());
+		mergedConcept.setReleased(winner.isReleased());
 		mergedConcept.setEffectiveTime(winner.getEffectiveTime());
 		mergedConcept.setModuleId(winner.getModuleId());
+		
+		mergedConcept.setDefinitionStatus(winner.getDefinitionStatus());
 		mergedConcept.setIsLeafInferred(winner.getIsLeafInferred());
 		mergedConcept.setIsLeafStated(winner.getIsLeafStated());
 
 		mergedConcept.setInactivationIndicator(winner.getInactivationIndicator());
 		mergedConcept.setAssociationTargets(winner.getAssociationTargets());
-
-		// Merge Descriptions - take all the descriptions from source, and add in from target
-		// if they're unpublished, which will cause an overwrite in the Set if the Description Id matches
-		// TODO UNLESS the source description is also unpublished (Change to use map?)
-		final Set<ISnomedBrowserDescription> mergedDescriptions = new HashSet<ISnomedBrowserDescription>(sourceConcept.getDescriptions());
-		for (final ISnomedBrowserDescription thisDescription : targetConcept.getDescriptions()) {
-			if (thisDescription.getEffectiveTime() == null) {
-				mergedDescriptions.add(thisDescription);
-			}
-		}
-		mergedConcept.setDescriptions(new ArrayList<ISnomedBrowserDescription>(mergedDescriptions));
-
-		// Merge Relationships  - same process using Set to remove duplicated
-		final Set<ISnomedBrowserRelationship> mergedRelationships = new HashSet<ISnomedBrowserRelationship>(sourceConcept.getRelationships());
-		for (final ISnomedBrowserRelationship thisRelationship : targetConcept.getRelationships()) {
-			if (thisRelationship.getEffectiveTime() == null) {
-				mergedRelationships.add(thisRelationship);
-			}
-		}
-		mergedConcept.setRelationships(new ArrayList<ISnomedBrowserRelationship>(mergedRelationships));
+		
+		mergedConcept.setDescriptions(mergeBrowserCollections(winner.getDescriptions(), looser.getDescriptions()));
+		mergedConcept.setRelationships(mergeBrowserCollections(winner.getRelationships(), looser.getRelationships()));
+		mergedConcept.setClassAxioms(mergeBrowserCollections(winner.getClassAxioms(), looser.getClassAxioms()));
+		mergedConcept.setGciAxioms(mergeBrowserCollections(winner.getGciAxioms(), looser.getGciAxioms()));
 
 		return mergedConcept;
+		
 	}
 
 	@Override
 	protected ISnomedBrowserMergeReviewDetail onSkip() {
 		return ISnomedBrowserMergeReviewDetail.SKIP_DETAIL;
+	}
+	
+	private <T extends ISnomedBrowserComponentWithId> List<T> mergeBrowserCollections(List<T> sourceComponents, List<T> targetComponents) {
+		
+		List<T> mergedComponents = newArrayList();
+		
+		Map<String, T> sourceComponentsMap = Maps.uniqueIndex(sourceComponents, ISnomedBrowserComponentWithId::getId);
+		Map<String, T> targetComponentsMap = Maps.uniqueIndex(targetComponents, ISnomedBrowserComponentWithId::getId);
+		
+		sourceComponentsMap.forEach( (id, sourceComponent) -> {
+			
+			if (sourceComponent.getEffectiveTime() != null && targetComponentsMap.containsKey(id) && targetComponentsMap.get(id).getEffectiveTime() == null) {
+				mergedComponents.add(targetComponentsMap.get(id));
+			} else {
+				mergedComponents.add(sourceComponent);
+			}
+			
+		});
+		
+		return mergedComponents;
+		
 	}
 
 }
