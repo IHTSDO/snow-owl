@@ -24,6 +24,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.updateComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRefSetRestRequests.updateRefSetComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.*;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -56,6 +57,8 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
@@ -447,6 +450,48 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 		assertEquals(attribute.toDisplayName(), Iterables.getOnlyElement(conflict.getConflictingAttributes()).toDisplayName());
 	}
 
+	@Test
+	public void noRebaseNewOwlExpressionOverInactivation() {
+		
+		String conceptId = createNewConcept(branchPath);
+		String targetConceptId = createNewConcept(branchPath);
+
+		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
+		createBranch(a).statusCode(201);
+
+		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, conceptId)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + targetConceptId + ")")
+					.build())
+				.put("commitComment", "Created new OWL Axiom reference set member")
+				.build();
+		
+		String memberId = lastPathSegment(createComponent(a, SnomedComponentType.MEMBER, requestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		inactivateConcept(branchPath, targetConceptId);
+		
+		Collection<MergeConflict> conflicts = merge(branchPath, a, "Rebased new owl expression member over inactivation")
+				.body("status", equalTo(Merge.Status.CONFLICTS.name()))
+				.extract().as(Merge.class)
+				.getConflicts();
+
+		assertEquals(1, conflicts.size());
+
+		ConflictingAttribute attribute = ConflictingAttributeImpl.builder()
+				.property("destinationId")
+				.value(targetConceptId)
+				.build();
+
+		MergeConflict conflict = Iterables.getOnlyElement(conflicts);
+
+		assertEquals(memberId, conflict.getComponentId());
+		assertEquals("SnomedOWLExpressionRefSetMember", conflict.getComponentType());
+		assertEquals(ConflictType.HAS_INACTIVE_REFERENCE, conflict.getType());
+		assertEquals(attribute.toDisplayName(), Iterables.getOnlyElement(conflict.getConflictingAttributes()).toDisplayName());
+	}
+	
 	@Test
 	public void noRebaseNewRelationshipOverInactivation() {
 		String conceptId = createNewConcept(branchPath);

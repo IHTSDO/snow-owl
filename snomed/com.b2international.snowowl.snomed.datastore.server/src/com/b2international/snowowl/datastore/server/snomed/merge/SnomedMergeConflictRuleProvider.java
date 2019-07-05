@@ -19,6 +19,7 @@ import java.util.Collection;
 
 import com.b2international.snowowl.datastore.cdo.IMergeConflictRule;
 import com.b2international.snowowl.datastore.cdo.IMergeConflictRuleProvider;
+import com.b2international.snowowl.datastore.server.snomed.merge.rules.SnomedInvalidOwlExpressionMergeConflictRule;
 import com.b2international.snowowl.datastore.server.snomed.merge.rules.SnomedInvalidRelationshipMergeConflictRule;
 import com.b2international.snowowl.datastore.server.snomed.merge.rules.SnomedRefsetMemberReferencingDetachedComponentRule;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -35,6 +36,7 @@ public class SnomedMergeConflictRuleProvider implements IMergeConflictRuleProvid
 		rules = ImmutableList.<IMergeConflictRule>builder()
 				.add(new SnomedRefsetMemberReferencingDetachedComponentRule())
 				.add(new SnomedInvalidRelationshipMergeConflictRule())
+				.add(new SnomedInvalidOwlExpressionMergeConflictRule())
 				.build();
 	}
 	
