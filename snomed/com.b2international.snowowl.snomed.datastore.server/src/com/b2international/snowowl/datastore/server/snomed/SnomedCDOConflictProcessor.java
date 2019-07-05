@@ -249,8 +249,17 @@ public class SnomedCDOConflictProcessor extends AbstractCDOConflictProcessor imp
 				
 			}
 			
-			// Fall-through
+		} else if (SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER__OWL_EXPRESSION.equals(feature)) {
+			
+			if (isRebase) {
+				return targetFeatureDelta;
+			} else {
+				return sourceFeatureDelta;
+			}
+			
 		}
+		
+		// Fall-through
 		
 		return super.changedInSourceAndTargetSingleValued(targetDelta, targetFeatureDelta, sourceDelta, sourceFeatureDelta);
 	}

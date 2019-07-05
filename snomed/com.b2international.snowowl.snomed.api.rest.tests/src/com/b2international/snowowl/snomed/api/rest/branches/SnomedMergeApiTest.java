@@ -33,8 +33,10 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRefSetMember;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewTextDefinition;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.merge;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.not;
@@ -57,6 +59,8 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
@@ -881,6 +885,68 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		// rebase task branch with deletion over new relationships
 		merge(branchPath, a, "Rebase task").body("status", equalTo(Merge.Status.CONFLICTS.name()));
 				
+	}
+	
+	@Test
+	public void overrideConflictingOwlExpressionFieldDuringRebase() {
+		
+		String conceptId = createNewConcept(branchPath);
+		
+		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, conceptId)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + Concepts.NAMESPACE_ROOT + ")")
+					.build())
+				.put("commitComment", "Created new OWL Axiom reference set member")
+				.build();
+		
+		String memberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
+		createBranch(a).statusCode(201);
+		
+		IBranchPath b = BranchPathUtils.createPath(branchPath, "b");
+		createBranch(b).statusCode(201);
+		
+		Map<?, ?> updateRequestA = ImmutableMap.builder()
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + Concepts.MODULE_ROOT + ")")
+					.build())
+				.put("commitComment", "Updated reference set member on task A")
+				.build();
+
+		updateRefSetComponent(a, SnomedComponentType.MEMBER, memberId, updateRequestA, false).statusCode(204);
+		
+		merge(a, branchPath, "Merged axiom change to parent").body("status", equalTo(Merge.Status.COMPLETED.name()));
+		
+		getComponent(branchPath, SnomedComponentType.MEMBER, memberId)
+			.statusCode(200)
+			.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + SnomedRf2Headers.FIELD_OWL_EXPRESSION,
+					equalTo("SubClassOf(:" + conceptId + " :" + Concepts.MODULE_ROOT + ")"));
+		
+		Map<?, ?> updateRequestB = ImmutableMap.builder()
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + Concepts.MODULE_SCT_CORE + ")")
+					.build())
+				.put("commitComment", "Updated reference set member on task B")
+				.build();
+
+		updateRefSetComponent(b, SnomedComponentType.MEMBER, memberId, updateRequestB, false).statusCode(204);
+		
+		getComponent(b, SnomedComponentType.MEMBER, memberId)
+			.statusCode(200)
+			.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + SnomedRf2Headers.FIELD_OWL_EXPRESSION,
+					equalTo("SubClassOf(:" + conceptId + " :" + Concepts.MODULE_SCT_CORE + ")"));
+		
+		merge(branchPath, b, "Rebase task branch over parent").body("status", equalTo(Merge.Status.COMPLETED.name()));
+		
+		// member must have the project version after rebase
+		getComponent(b, SnomedComponentType.MEMBER, memberId)
+			.statusCode(200)
+			.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + SnomedRf2Headers.FIELD_OWL_EXPRESSION,
+					equalTo("SubClassOf(:" + conceptId + " :" + Concepts.MODULE_ROOT + ")"));
+		
 	}
 	
 }
