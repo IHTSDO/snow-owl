@@ -23,7 +23,18 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.getComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.updateComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRefSetRestRequests.updateRefSetComponent;
-import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.*;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.changeCaseSignificance;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.changeToAcceptable;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.changeToDefining;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewDescription;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewLanguageRefSetMember;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRefSetMember;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewTextDefinition;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.merge;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -489,6 +500,49 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 		assertEquals(memberId, conflict.getComponentId());
 		assertEquals("SnomedOWLExpressionRefSetMember", conflict.getComponentType());
 		assertEquals(ConflictType.HAS_INACTIVE_REFERENCE, conflict.getType());
+		assertEquals(attribute.toDisplayName(), Iterables.getOnlyElement(conflict.getConflictingAttributes()).toDisplayName());
+	}
+	
+	@Test
+	public void noRebaseInactivationOverOwlExpression() {
+		
+		String conceptId = createNewConcept(branchPath);
+		String targetConceptId = createNewConcept(branchPath);
+
+		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
+		createBranch(a).statusCode(201);
+
+		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, conceptId)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + targetConceptId + ")")
+					.build())
+				.put("commitComment", "Created new OWL Axiom reference set member")
+				.build();
+		
+		lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		inactivateConcept(a, targetConceptId);
+		
+		Collection<MergeConflict> conflicts = merge(branchPath, a, "Rebased new owl expression member over inactivation")
+				.body("status", equalTo(Merge.Status.CONFLICTS.name()))
+				.extract().as(Merge.class)
+				.getConflicts();
+
+		assertEquals(1, conflicts.size());
+
+		ConflictingAttribute attribute = ConflictingAttributeImpl.builder()
+				.property("active")
+				.oldValue("true")
+				.value("false")
+				.build();
+
+		MergeConflict conflict = Iterables.getOnlyElement(conflicts);
+
+		assertEquals(targetConceptId, conflict.getComponentId());
+		assertEquals("Concept", conflict.getComponentType());
+		assertEquals(ConflictType.CAUSES_INACTIVE_REFERENCE, conflict.getType());
 		assertEquals(attribute.toDisplayName(), Iterables.getOnlyElement(conflict.getConflictingAttributes()).toDisplayName());
 	}
 	
