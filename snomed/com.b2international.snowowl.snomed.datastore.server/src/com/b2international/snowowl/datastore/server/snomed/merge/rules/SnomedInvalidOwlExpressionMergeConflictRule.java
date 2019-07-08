@@ -30,7 +30,6 @@ import org.eclipse.emf.cdo.transaction.CDOTransaction;
 import com.b2international.commons.options.OptionsBuilder;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.domain.IComponent;
-import com.b2international.snowowl.core.merge.ConflictingAttributeImpl;
 import com.b2international.snowowl.core.merge.MergeConflict;
 import com.b2international.snowowl.core.merge.MergeConflict.ConflictType;
 import com.b2international.snowowl.core.merge.MergeConflictImpl;
@@ -160,16 +159,16 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 			for (SnomedOWLExpressionRefSetMember member : newOrDirtyOwlMembers) {
 				
 				memberToTypeIdsMap.get(member.getUuid()).stream()
-				.filter(existingInactivateConceptIds::contains)
-				.forEach( typeId -> {
-					conflicts.add(buildMemberConflict(member.getUuid(), typeId, false));
-				});
+					.filter(existingInactivateConceptIds::contains)
+					.forEach( typeId -> {
+						conflicts.add(buildMemberConflict(member, typeId, false));
+					});
 				
 				memberToDestinationIdsMap.get(member.getUuid()).stream()
-				.filter(existingInactivateConceptIds::contains)
-				.forEach( destinationId -> {
-					conflicts.add(buildMemberConflict(member.getUuid(), destinationId, true));
-				});
+					.filter(existingInactivateConceptIds::contains)
+					.forEach( destinationId -> {
+						conflicts.add(buildMemberConflict(member, destinationId, true));
+					});
 				
 			}
 			
@@ -201,13 +200,13 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 							if (newInactivateConceptIds.contains(relationship.getDestinationId())) {
 								if (conflicts.stream().noneMatch(conflict -> conflict.getComponentId().equals(relationship.getDestinationId())
 										&& conflict.getType() == ConflictType.CAUSES_INACTIVE_REFERENCE)) {
-									conflicts.add(buildConceptConflict(relationship.getDestinationId()));
+									conflicts.add(buildConceptConflict(member, relationship.getDestinationId(), true));
 									break;
 								}
 							} else if (newInactivateConceptIds.contains(relationship.getTypeId())) {
 								if (conflicts.stream().noneMatch(conflict -> conflict.getComponentId().equals(relationship.getTypeId())
 										&& conflict.getType() == ConflictType.CAUSES_INACTIVE_REFERENCE)) {
-									conflicts.add(buildConceptConflict(relationship.getTypeId()));
+									conflicts.add(buildConceptConflict(member, relationship.getTypeId(), false));
 									break;
 								}
 							}
@@ -221,13 +220,13 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 							if (newInactivateConceptIds.contains(relationship.getDestinationId())) {
 								if (conflicts.stream().noneMatch(conflict -> conflict.getComponentId().equals(relationship.getDestinationId())
 										&& conflict.getType() == ConflictType.CAUSES_INACTIVE_REFERENCE)) {
-									conflicts.add(buildConceptConflict(relationship.getDestinationId()));
+									conflicts.add(buildConceptConflict(member, relationship.getDestinationId(), true));
 									break;
 								}
 							} else if (newInactivateConceptIds.contains(relationship.getTypeId())) {
 								if (conflicts.stream().noneMatch(conflict -> conflict.getComponentId().equals(relationship.getTypeId())
 										&& conflict.getType() == ConflictType.CAUSES_INACTIVE_REFERENCE)) {
-									conflicts.add(buildConceptConflict(relationship.getTypeId()));
+									conflicts.add(buildConceptConflict(member, relationship.getTypeId(), false));
 									break;
 								}
 							}
@@ -245,35 +244,40 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 		return conflicts;
 	}
 
-	private MergeConflictImpl buildMemberConflict(String memberId, String referencedId, boolean isDestinationId) {
+	private MergeConflictImpl buildMemberConflict(SnomedOWLExpressionRefSetMember member, String referencedId, boolean isDestinationId) {
 		
-		ConflictingAttributeImpl attribute = ConflictingAttributeImpl.builder()
-				.property(isDestinationId ? "destinationId" : "typeId")
-				.value(referencedId)
-				.build();
+		String memberConflictMessage = String.format(MergeConflictImpl.DEFAULT_CONFLICT_MESSAGE,
+						SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER.getName(),
+						member.getUuid(),
+						ConflictType.HAS_INACTIVE_REFERENCE,
+						String.format(", OWL expression '%s' is referencing inactive concept: %s -> %s", member.getOwlExpression(),
+							isDestinationId ? "destinationId" : "typeId", referencedId));
 		
 		return MergeConflictImpl.builder()
-				.componentId(memberId)
+				.componentId(member.getUuid())
 				.componentType(SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER.getName())
-				.conflictingAttribute(attribute)
 				.type(ConflictType.HAS_INACTIVE_REFERENCE)
+				.message(memberConflictMessage)
 				.build();
 		
 	}
 	
-	private MergeConflictImpl buildConceptConflict(String conceptId) {
+	private MergeConflictImpl buildConceptConflict(SnomedReferenceSetMember member, String conceptId, boolean isDestinationId) {
 		
-		ConflictingAttributeImpl attribute = ConflictingAttributeImpl.builder()
-				.property("active")
-				.oldValue("true")
-				.value("false")
-				.build();
+		String conceptConflictMessage = String.format(MergeConflictImpl.DEFAULT_CONFLICT_MESSAGE,
+				SnomedPackage.Literals.CONCEPT.getName(),
+				conceptId,
+				ConflictType.CAUSES_INACTIVE_REFERENCE,
+				String.format(", OWL expression with ID '%s' is referencing it as '%s' -> '%s'",
+					member.getId(),
+					isDestinationId ? "destinationId" : "typeId",
+					member.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION)));
 		
 		return MergeConflictImpl.builder()
 				.componentId(conceptId)
 				.componentType(SnomedPackage.Literals.CONCEPT.getName())
-				.conflictingAttribute(attribute)
 				.type(ConflictType.CAUSES_INACTIVE_REFERENCE)
+				.message(conceptConflictMessage)
 				.build();
 		
 	}

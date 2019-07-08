@@ -63,8 +63,10 @@ import com.b2international.snowowl.core.merge.ConflictingAttributeImpl;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.core.merge.MergeConflict;
 import com.b2international.snowowl.core.merge.MergeConflict.ConflictType;
+import com.b2international.snowowl.core.merge.MergeConflictImpl;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
@@ -74,6 +76,7 @@ import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConst
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -470,9 +473,11 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
 		createBranch(a).statusCode(201);
 
+		String owlExpression = "SubClassOf(:" + conceptId + " :" + targetConceptId + ")";
+		
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, conceptId)
 				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + targetConceptId + ")")
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlExpression)
 					.build())
 				.put("commitComment", "Created new OWL Axiom reference set member")
 				.build();
@@ -490,17 +495,20 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 
 		assertEquals(1, conflicts.size());
 
-		ConflictingAttribute attribute = ConflictingAttributeImpl.builder()
-				.property("destinationId")
-				.value(targetConceptId)
-				.build();
-
 		MergeConflict conflict = Iterables.getOnlyElement(conflicts);
 
 		assertEquals(memberId, conflict.getComponentId());
 		assertEquals("SnomedOWLExpressionRefSetMember", conflict.getComponentType());
 		assertEquals(ConflictType.HAS_INACTIVE_REFERENCE, conflict.getType());
-		assertEquals(attribute.toDisplayName(), Iterables.getOnlyElement(conflict.getConflictingAttributes()).toDisplayName());
+		
+		String memberConflictMessage = String.format(MergeConflictImpl.DEFAULT_CONFLICT_MESSAGE,
+				SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER.getName(),
+				memberId,
+				ConflictType.HAS_INACTIVE_REFERENCE,
+				String.format(", OWL expression '%s' is referencing inactive concept: %s -> %s", owlExpression, "destinationId", targetConceptId));
+		
+		assertEquals(memberConflictMessage, conflict.getMessage());
+		
 	}
 	
 	@Test
@@ -512,14 +520,16 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
 		createBranch(a).statusCode(201);
 
+		String owlExpression = "SubClassOf(:" + conceptId + " :" + targetConceptId + ")";
+		
 		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, conceptId)
 				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
-					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + conceptId + " :" + targetConceptId + ")")
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlExpression)
 					.build())
 				.put("commitComment", "Created new OWL Axiom reference set member")
 				.build();
 		
-		lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
+		String memberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
 				.statusCode(201)
 				.extract().header("Location"));
 		
@@ -532,18 +542,19 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 
 		assertEquals(1, conflicts.size());
 
-		ConflictingAttribute attribute = ConflictingAttributeImpl.builder()
-				.property("active")
-				.oldValue("true")
-				.value("false")
-				.build();
-
 		MergeConflict conflict = Iterables.getOnlyElement(conflicts);
 
 		assertEquals(targetConceptId, conflict.getComponentId());
 		assertEquals("Concept", conflict.getComponentType());
 		assertEquals(ConflictType.CAUSES_INACTIVE_REFERENCE, conflict.getType());
-		assertEquals(attribute.toDisplayName(), Iterables.getOnlyElement(conflict.getConflictingAttributes()).toDisplayName());
+		
+		String conceptConflictMessage = String.format(MergeConflictImpl.DEFAULT_CONFLICT_MESSAGE,
+				SnomedPackage.Literals.CONCEPT.getName(),
+				targetConceptId,
+				ConflictType.CAUSES_INACTIVE_REFERENCE,
+				String.format(", OWL expression with ID '%s' is referencing it as '%s' -> '%s'", memberId, "destinationId", owlExpression));
+		
+		assertEquals(conceptConflictMessage, conflict.getMessage());
 	}
 	
 	@Test

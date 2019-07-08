@@ -34,10 +34,11 @@ import com.google.common.collect.FluentIterable;
 @JsonDeserialize(builder = MergeConflictImpl.Builder.class)
 public class MergeConflictImpl implements MergeConflict {
 
+	public static final String DEFAULT_CONFLICT_MESSAGE = "%s with ID '%s' has a conflict of type '%s' on target branch%s";
+	
 	private static final String ATTRIBUTE_SEPARATOR = "; ";
 	private static final String END_OF_LINE_CHAR = ".";
 	private static final String DEFAULT_ATTRIBUTES_MESSAGE = ", conflicting attributes are: [%s].";
-	private static final String DEFAULT_CONFLICT_MESSAGE = "%s with ID '%s' has a conflict of type '%s' on target branch%s";
 
 	private String componentId;
 	private String componentType;
