@@ -49,11 +49,13 @@ public abstract class OntologyChangeWriter<T extends Serializable> extends Ontol
 
 	@Override
 	public final void handleRemovedSubject(final String conceptId, final T removedSubject) {
+		hasInferredChanges = true;
 		indexChange(conceptId, removedSubject, ChangeNature.REDUNDANT);
 	}
 	
 	@Override
 	public void handleUpdatedSubject(String conceptId, T updatedSubject) {
+		hasInferredChanges = true;
 		indexChange(conceptId, updatedSubject, ChangeNature.UPDATED);
 	}
 
