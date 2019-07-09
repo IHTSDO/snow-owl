@@ -96,6 +96,7 @@ final class SnomedDescriptionAcceptabilityUpdateRequest implements Request<Trans
 			}
 			
 			if (acceptability.equals(newLanguageMembersToCreate.get(languageReferenceSetId))) {
+				ensureMemberActive(context, existingMember);
 				newLanguageMembersToCreate.remove(languageReferenceSetId);
 			} else if (newLanguageMembersToCreate.containsKey(languageReferenceSetId)) {
 				final Acceptability newAcceptability = newLanguageMembersToCreate.get(languageReferenceSetId);
