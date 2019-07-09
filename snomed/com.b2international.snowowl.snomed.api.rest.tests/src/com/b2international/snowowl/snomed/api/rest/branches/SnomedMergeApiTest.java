@@ -34,6 +34,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewTextDefinition;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.merge;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
@@ -946,6 +947,41 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 			.statusCode(200)
 			.body(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS + "." + SnomedRf2Headers.FIELD_OWL_EXPRESSION,
 					equalTo("SubClassOf(:" + conceptId + " :" + Concepts.MODULE_ROOT + ")"));
+		
+	}
+	
+	@Test
+	public void mergeConceptWithChangedOwlExpressionCausingInactiveReference() {
+		
+		String conceptId = createNewConcept(branchPath);
+		String childConceptId = createNewConcept(branchPath);
+		
+		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, childConceptId)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + childConceptId + " :" + conceptId + ")")
+					.build())
+				.put("commitComment", "Created new OWL Axiom reference set member")
+				.build();
+		
+		String memberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
+		createBranch(a).statusCode(201);
+		
+		Map<?, ?> updateRequestA = ImmutableMap.builder()
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, "SubClassOf(:" + childConceptId + " :" + Concepts.MODULE_ROOT + ")")
+					.build())
+				.put("commitComment", "Updated reference set member on task A")
+				.build();
+
+		updateRefSetComponent(a, SnomedComponentType.MEMBER, memberId, updateRequestA, false).statusCode(204);
+		
+		inactivateConcept(a, conceptId);
+		
+		merge(a, branchPath, "Merged axiom change to parent").body("status", equalTo(Merge.Status.COMPLETED.name()));
 		
 	}
 	
