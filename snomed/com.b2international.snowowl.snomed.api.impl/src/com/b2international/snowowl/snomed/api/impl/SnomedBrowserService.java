@@ -637,29 +637,29 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
 
-		// additional axioms
+		// class axioms
 		if (!existingVersionConcept.getClassAxioms().isEmpty() || !newVersionConcept.getClassAxioms().isEmpty()) {
 			
-			List<ISnomedBrowserAxiom> newAdditionalAxioms = newVersionConcept.getClassAxioms();
-			List<ISnomedBrowserAxiom> existingAdditionalAxioms = existingVersionConcept.getClassAxioms();
+			List<ISnomedBrowserAxiom> newClassAxioms = newVersionConcept.getClassAxioms();
+			List<ISnomedBrowserAxiom> existingClassAxioms = existingVersionConcept.getClassAxioms();
 			
-			// additional axiom delete
-			Set<String> additionalAxiomIdsToDelete = inputFactory.getComponentDeletions(existingAdditionalAxioms, newAdditionalAxioms);
+			// class axiom delete
+			Set<String> classAxiomIdsToDelete = inputFactory.getComponentDeletions(existingClassAxioms, newClassAxioms);
 			
-			setOptionalProperties(newAdditionalAxioms, true, newVersionConcept.getModuleId(), existingVersionConcept.getConceptId());
-			reuseInactiveIds(existingAdditionalAxioms, newAdditionalAxioms);
+			setOptionalProperties(newClassAxioms, true, existingVersionConcept.getConceptId());
+			unsetOrReuseIds(existingClassAxioms, newClassAxioms);
 			
-			// additional axiom create
-			List<SnomedRefSetMemberCreateRequest> newAdditionalAxiomRequests = inputFactory.createComponentInputs(newAdditionalAxioms, SnomedRefSetMemberCreateRequest.class);
+			// class axiom create
+			List<SnomedRefSetMemberCreateRequest> newClassAxiomRequests = inputFactory.createComponentInputs(newClassAxioms, SnomedRefSetMemberCreateRequest.class);
 			
-			// additional axiom update
-			Map<String, SnomedRefSetMemberUpdateRequest> updateAdditionalAxiomRequests = inputFactory.createComponentUpdates(existingAdditionalAxioms, newAdditionalAxioms, SnomedRefSetMemberUpdateRequest.class);
+			// class axiom update
+			Map<String, SnomedRefSetMemberUpdateRequest> updateClassAxiomRequests = inputFactory.createComponentUpdates(existingClassAxioms, newClassAxioms, SnomedRefSetMemberUpdateRequest.class);
 			
-			LOGGER.info("Got additional axiom changes +{} -{} m{}, {}", newAdditionalAxiomRequests.size(), additionalAxiomIdsToDelete.size(), updateAdditionalAxiomRequests.size(), newVersionConcept.getFsn());
+			LOGGER.info("Got class axiom changes +{} -{} m{}, {}", newClassAxiomRequests.size(), classAxiomIdsToDelete.size(), updateClassAxiomRequests.size(), newVersionConcept.getFsn());
 			
-			additionalAxiomIdsToDelete.stream().map(SnomedRequests::prepareDeleteMember).forEach(bulkRequest::add);
-			newAdditionalAxiomRequests.forEach(bulkRequest::add);
-			updateAdditionalAxiomRequests.keySet().forEach(id -> bulkRequest.add(updateAdditionalAxiomRequests.get(id)));
+			classAxiomIdsToDelete.stream().map(SnomedRequests::prepareDeleteMember).forEach(bulkRequest::add);
+			newClassAxiomRequests.forEach(bulkRequest::add);
+			updateClassAxiomRequests.keySet().forEach(id -> bulkRequest.add(updateClassAxiomRequests.get(id)));
 			
 		}
 		
@@ -672,8 +672,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			// gci axiom delete
 			Set<String> gciAxiomIdsToDelete = inputFactory.getComponentDeletions(existingGciAxioms, newGciAxioms);
 			
-			setOptionalProperties(newGciAxioms, false, newVersionConcept.getModuleId(), existingVersionConcept.getConceptId());
-			reuseInactiveIds(existingGciAxioms, newGciAxioms);
+			setOptionalProperties(newGciAxioms, false, existingVersionConcept.getConceptId());
+			unsetOrReuseIds(existingGciAxioms, newGciAxioms);
 			
 			// gci axiom create
 			List<SnomedRefSetMemberCreateRequest> newGciAxiomRequests = inputFactory.createComponentInputs(newGciAxioms, SnomedRefSetMemberCreateRequest.class);
@@ -713,18 +713,17 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		
 	}
 
-	private void setOptionalProperties(List<ISnomedBrowserAxiom> axioms, boolean isNamedConceptOnLeft, String moduleId, String conceptId) {
+	private void setOptionalProperties(List<ISnomedBrowserAxiom> axioms, boolean isNamedConceptOnLeft, String conceptId) {
 		axioms.stream()
 			.filter(SnomedBrowserAxiom.class::isInstance)
 			.map(SnomedBrowserAxiom.class::cast)
 			.forEach(axiom -> {
 				axiom.setNamedConceptOnLeft(isNamedConceptOnLeft);
-				axiom.setModuleId(moduleId);
 				axiom.setReferencedComponentId(conceptId);
 			});
 	}
 
-	private void reuseInactiveIds(List<ISnomedBrowserAxiom> existingAxioms, List<ISnomedBrowserAxiom> newAxioms) {
+	private void unsetOrReuseIds(List<ISnomedBrowserAxiom> existingAxioms, List<ISnomedBrowserAxiom> newAxioms) {
 		Set<String> existingIds = existingAxioms.stream().map(ISnomedBrowserAxiom::getAxiomId).collect(toSet());
 		Iterator<String> inactiveIds = existingAxioms.stream().filter(axiom -> !axiom.isActive()).map(ISnomedBrowserAxiom::getAxiomId).collect(toSet()).iterator();
 		

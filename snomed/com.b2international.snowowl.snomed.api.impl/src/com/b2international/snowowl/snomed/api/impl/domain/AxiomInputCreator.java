@@ -57,19 +57,27 @@ public class AxiomInputCreator extends AbstractInputCreator implements Component
 
 	@Override
 	public SnomedRefSetMemberUpdateRequest createUpdate(final ISnomedBrowserAxiom existingAxiom, final ISnomedBrowserAxiom updatedAxiom) {
-		if (updatedAxiom.getAxiomId() != null) {
-
-			final SnomedBrowserAxiom updatedBrowserAxiom = (SnomedBrowserAxiom) updatedAxiom;
-
+		
+		final SnomedBrowserAxiom updatedBrowserAxiom = (SnomedBrowserAxiom) updatedAxiom;
+		String updatedOwlExpression = toOwlExpression(updatedBrowserAxiom);
+		
+		boolean changed = false;
+		
+		changed |= existingAxiom.isActive() ^ updatedBrowserAxiom.isActive();
+		changed |= !existingAxiom.getModuleId().equals(updatedBrowserAxiom.getModuleId());
+		changed |= !existingAxiom.getOwlExpression().equals(updatedOwlExpression);
+		
+		if (changed) {
+			
 			return (SnomedRefSetMemberUpdateRequest) SnomedRequests.prepareUpdateMember()
-				.setMemberId(updatedBrowserAxiom.getAxiomId())
-				.setSource(ImmutableMap.<String, Object>builder()
-						.put(SnomedRf2Headers.FIELD_ACTIVE, updatedBrowserAxiom.isActive())
-						.put(SnomedRf2Headers.FIELD_MODULE_ID, updatedBrowserAxiom.getModuleId())
-						.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, toOwlExpression(updatedBrowserAxiom))
-						.build())
-				.build();
-
+					.setMemberId(updatedBrowserAxiom.getAxiomId())
+					.setSource(ImmutableMap.<String, Object>builder()
+							.put(SnomedRf2Headers.FIELD_ACTIVE, updatedBrowserAxiom.isActive())
+							.put(SnomedRf2Headers.FIELD_MODULE_ID, updatedBrowserAxiom.getModuleId())
+							.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, updatedOwlExpression)
+							.build())
+					.build();
+			
 		}
 
 		return null;

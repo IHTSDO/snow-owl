@@ -105,10 +105,10 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 						if (axiomRepresentation != null) {// Will be null if the axiom is an Ontology Axiom for example a property chain or transitive axiom rather than a Class Axiom or GCI.
 							if (conceptId.equals(axiomRepresentation.getLeftHandSideNamedConcept())) {
 								// Concept ID on the left means it's a class axiom
-								classAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getRightHandSideRelationships()));
+								classAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getRightHandSideRelationships(), true));
 							} else if (conceptId.equals(axiomRepresentation.getRightHandSideNamedConcept())) {
 								// Concept ID on the right means it's a GCI axiom
-								gciAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getLeftHandSideRelationships()));
+								gciAxioms.add(convertToBrowserAxiom(axiomMember, axiomRepresentation.isPrimitive(), axiomRepresentation.getLeftHandSideRelationships(), false));
 							}
 						}
 					}
@@ -224,7 +224,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		return ApplicationContext.getServiceForClass(IEventBus.class);
 	}
 
-	private ISnomedBrowserAxiom convertToBrowserAxiom(final SnomedReferenceSetMember axiomMember, final boolean primitive, final Map<Integer, List<Relationship>> relationships) {
+	private ISnomedBrowserAxiom convertToBrowserAxiom(final SnomedReferenceSetMember axiomMember, final boolean primitive, final Map<Integer, List<Relationship>> relationships, boolean isNamedConceptOnLeft) {
 
 		final SnomedBrowserAxiom browserAxiom = new SnomedBrowserAxiom();
 		browserAxiom.setAxiomId(axiomMember.getId());
@@ -235,6 +235,7 @@ public class SnomedBrowserAxiomService implements ISnomedBrowserAxiomService {
 		browserAxiom.setReferencedComponentId(axiomMember.getReferencedComponentId());
 		browserAxiom.setDefinitionStatus(primitive ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
 		browserAxiom.setOwlExpression((String) axiomMember.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION));
+		browserAxiom.setNamedConceptOnLeft(isNamedConceptOnLeft);
 		
 		List<Relationship> axiomRelationships = relationships.values().stream().flatMap(List::stream).collect(toList());
 		
