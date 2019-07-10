@@ -55,7 +55,7 @@ public final class SnomedOWLExpressionConverter {
 	private final Supplier<AxiomRelationshipConversionService> conversionService = Suppliers.memoize(() -> {
 		Stopwatch stopwatch = Stopwatch.createStarted();
 		AxiomRelationshipConversionService service = withTccl(() -> new AxiomRelationshipConversionService(getUngroupedAttributes()));
-		LOG.info("SNOMED OWL Toolkit conversion service initialization took {}", TimeUtil.toString(stopwatch));
+		LOG.debug("SNOMED OWL Toolkit conversion service initialization took {}", TimeUtil.toString(stopwatch));
 		return service;
 	});
 	

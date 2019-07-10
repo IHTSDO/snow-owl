@@ -56,7 +56,7 @@ public class SnomedBrowserAxiomConverter {
 				.collect(Collectors.toSet());
 
 		final AxiomRelationshipConversionService conversionService = withTccl(() -> new AxiomRelationshipConversionService(ungroupedAttributeIds));
-		LOGGER.info("SNOMED OWL Toolkit axiom conversion service initialization took {}", TimeUtil.toString(watch));
+		LOGGER.debug("SNOMED OWL Toolkit axiom conversion service initialization took {}", TimeUtil.toString(watch));
 
 		return conversionService.convertAxiomToRelationships(owlExpression);
 	}
@@ -108,7 +108,7 @@ public class SnomedBrowserAxiomConverter {
 				.collect(toSet());
 
 		final AxiomRelationshipConversionService conversionService = withTccl(() -> new AxiomRelationshipConversionService(ungroupedAttributes, objectAttributes, dataAttributes));
-		LOGGER.info("SNOMED OWL Toolkit complex axiom conversion service initialization took {}", TimeUtil.toString(watch));
+		LOGGER.debug("SNOMED OWL Toolkit complex axiom conversion service initialization took {}", TimeUtil.toString(watch));
 
 		return conversionService.convertRelationshipsToAxiom(axiomRepresentation);
 	}
