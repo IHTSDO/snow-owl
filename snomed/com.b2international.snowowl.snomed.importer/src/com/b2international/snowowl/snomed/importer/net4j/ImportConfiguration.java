@@ -48,7 +48,7 @@ public final class ImportConfiguration {
 		FILES;
 	}
 	
-	private final String branchPath;
+	private String branchPath;
 	private String codeSystemShortName;
 	private boolean createVersions;
 	private boolean releasePatch;
@@ -70,10 +70,6 @@ public final class ImportConfiguration {
 	private final Set<String> excludedRefSetIds = Sets.newHashSet();
 	
 	private final Map<String, String> releaseFileNameMappings = Maps.newHashMap();
-
-	public ImportConfiguration(final String branchPath) {
-		this.branchPath = branchPath;
-	}
 
 	public boolean isCreateVersions() {
 		return createVersions;
@@ -248,6 +244,10 @@ public final class ImportConfiguration {
 		this.patchReleaseVersion = patchReleaseVersion;
 	}
 
+	public void setBranchPath(String branchPath) {
+		this.branchPath = branchPath;
+	}
+	
 	public String getCodeSystemShortName() {
 		return codeSystemShortName;
 	}

@@ -174,7 +174,8 @@ public final class ImportUtil {
 
 		checkArgument(BranchPathUtils.exists(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath()));
 		
-		final ImportConfiguration config = new ImportConfiguration(branchPath.getPath());
+		final ImportConfiguration config = new ImportConfiguration();
+		config.setBranchPath(branchPath.getPath());
 		config.setCodeSystemShortName(codeSystemShortName);
 		config.setContentSubType(contentSubType);
 		config.setCreateVersions(shouldCreateVersions);
