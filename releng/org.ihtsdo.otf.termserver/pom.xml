@@ -5,14 +5,14 @@
 	<groupId>org.ihtsdo.otf</groupId>
 	<artifactId>termserver</artifactId>
 	<name>IHTSDO Terminology Server</name>
-	<version>6.16.3-SNAPSHOT</version>
+	<version>6.16.3</version>
 	<description>IHTSDO Terminology Server</description>
 	<url>https://www.snomed.org/</url>
 	
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>releng-parent</artifactId>
-		<version>6.16.3-SNAPSHOT</version>
+		<version>6.16.3</version>
 	</parent>
 
 	<properties>
