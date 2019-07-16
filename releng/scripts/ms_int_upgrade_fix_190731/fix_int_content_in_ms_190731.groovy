@@ -21,10 +21,9 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemb
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests
 
-def bus = ApplicationContext.getServiceForClass(IEventBus)
+// Configurable parameters
 
 def offset = 3000
-
 def branchesToFix = [ "MAIN" ]
 
 def scriptLocation = "/opt/termserver/ms_upgrade/" // update the path if necessary
@@ -33,8 +32,11 @@ def relationshipIdsToDeletePath = scriptLocation + "relationship_ids_to_remove.t
 def refsetMemberIdsToDeletePath = scriptLocation + "member_ids_to_remove.txt"
 def relationshipsToUpdatePath = scriptLocation + "relationships_to_update.txt"
 
-def rf2DeltaArchivePath = scriptLocation + "SnomedCT_RF2Release_INT_20190714T105930_v6.10.zip"
+def rf2DeltaArchivePath = scriptLocation + "SnomedCT_RF2Release_INT_20190715T090216_v6.10.zip"
 
+
+
+def bus = ApplicationContext.getServiceForClass(IEventBus)
 def snomedImporterBundle = Platform.getBundle("com.b2international.snowowl.snomed.importer.rf2")
 def importUtil = snomedImporterBundle.loadClass("com.b2international.snowowl.snomed.importer.rf2.util.ImportUtil").newInstance()
 
@@ -54,20 +56,26 @@ def getRF2LinesFromFile = { filePath ->
 	return lines
 }
 
+def getExistingRelationshipIds = { branchPath, relationshipIds -> 
+	
+	return SnomedRequests.prepareSearchRelationship()
+			.all()
+			.filterByIds(relationshipIds)
+			.setFields(SnomedRelationshipIndexEntry.Fields.ID)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+			.execute(bus)
+			.getSync()
+			.getItems()
+			.collect { relationship -> relationship.getId() }
+			.toSet()
+	
+}
+
 def deleteRelationshipsWithId = { branchPath, relationshipIds ->
 
 	def relationshipBulk = BulkRequest.create()
 	
-	def existingRelationshipIds = SnomedRequests.prepareSearchRelationship()
-		.all()
-		.filterByIds(relationshipIds)
-		.setFields(SnomedRelationshipIndexEntry.Fields.ID)
-		.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-		.execute(bus)
-		.getSync()
-		.getItems()
-		.collect { relationship -> relationship.getId() }
-		.toSet()
+	def existingRelationshipIds = getExistingRelationshipIds(branchPath, relationshipIds)
 	
 	if (!existingRelationshipIds.isEmpty()) {
 		
@@ -97,16 +105,18 @@ def deleteRelationshipsWithId = { branchPath, relationshipIds ->
 		
 }
 
-def validateRelationshipDeletion = { branchPath, relationshipIds ->
+def getExistingMemberIds = { branchPath, memberIds ->
 	
-	return SnomedRequests.prepareSearchRelationship()
-		.all()
-		.filterByIds(relationshipIds)
-		.setFields(SnomedRelationshipIndexEntry.Fields.ID)
-		.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-		.execute(bus)
-		.getSync()
-		.getTotal() == 0
+	return SnomedRequests.prepareSearchMember()
+			.all()
+			.filterByIds(memberIds)
+			.setFields(SnomedRefSetMemberIndexEntry.Fields.ID)
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+			.execute(bus)
+			.getSync()
+			.getItems()
+			.collect { member -> member.getId() }
+			.toSet()
 	
 }
 
@@ -114,16 +124,7 @@ def deleteMembersWithId = { branchPath, memberIds ->
 
 	def memberBulk = BulkRequest.create();
 	
-	def existingMemberIds = SnomedRequests.prepareSearchMember()
-		.all()
-		.filterByIds(memberIds)
-		.setFields(SnomedRefSetMemberIndexEntry.Fields.ID)
-		.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-		.execute(bus)
-		.getSync()
-		.getItems()
-		.collect { member -> member.getId() }
-		.toSet()
+	def existingMemberIds = getExistingMemberIds(branchPath, memberIds)
 	
 	if (!existingMemberIds.isEmpty()) {
 		
@@ -153,19 +154,6 @@ def deleteMembersWithId = { branchPath, memberIds ->
 	
 }
 
-def validateMemberDeletion = { branchPath, memberIds ->
-	
-	return SnomedRequests.prepareSearchMember()
-		.all()
-		.filterByIds(memberIds)
-		.setFields(SnomedRefSetMemberIndexEntry.Fields.ID)
-		.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-		.execute(bus)
-		.getSync()
-		.getTotal() == 0
-	
-}
-
 def deleteComponents = { branchPath ->
 	
 	def relationshipIds = getIdsFromFile(relationshipIdsToDeletePath)
@@ -176,7 +164,15 @@ def deleteComponents = { branchPath ->
 		deleteRelationshipsWithId(branchPath, ids)
 	}
 	
-	def relationshipResult = validateRelationshipDeletion(branchPath, relationshipIds)
+	def existingRelationshipIds = getExistingRelationshipIds(branchPath, relationshipIds)
+	
+	if (!existingRelationshipIds.isEmpty()) {
+		
+		existingRelationshipIds.each { id ->
+			println("Failed to delete relationship with ID '${id}'")
+		}
+		
+	}
 	
 	def memberIds = getIdsFromFile(refsetMemberIdsToDeletePath)
 	
@@ -186,9 +182,17 @@ def deleteComponents = { branchPath ->
 		deleteMembersWithId(branchPath, ids)
 	}
 	
-	def memberResult = validateMemberDeletion(branchPath, memberIds)
+	def existingMemberIds = getExistingMemberIds(branchPath, memberIds)
 	
-	return relationshipResult && memberResult
+	if (!existingMemberIds.isEmpty()) {
+		
+		existingMemberIds.each { id ->
+			println("Failed to delete reference set member with ID '${id}'")
+		}
+		
+	}
+	
+	return existingRelationshipIds.isEmpty() && existingMemberIds.isEmpty()
 }
 
 def changeRelationshipsToUnpublished = { branchPath, lines ->
