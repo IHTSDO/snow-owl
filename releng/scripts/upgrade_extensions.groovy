@@ -39,7 +39,7 @@ def targetVersionPath = "MAIN/2019-07-31"
 // specify the short name of the target version (used for metadata)
 def targetVersionShortName = "20190731"
 // specify the name of the SNAPSHOT RF2 archive that contains the content of the new INT version branch
-def dependencyPackage = "uat-ms_2019-07-31_20190716_094756.zip"
+def dependencyPackage = "prod-ms_main_20190731_20190717205238.zip"
 
 // specify the short name of the extension and the name of the related project branches here that need to be handled during the upgrade
 def extensionsAndProjects = ImmutableListMultimap.builder()

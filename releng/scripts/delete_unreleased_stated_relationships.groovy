@@ -85,6 +85,24 @@ def getUnpublishedStatedRelationshipIds = { branchPath ->
 	
 }
 
+def writeRelationshipIdsToFile = { branchPath, ids ->
+	
+	def fileName = "deleted_relationship_ids_" + branchPath.toString().replaceAll('/', '_')
+	def destinationFile = new File(System.getProperty("user.home") + "/${fileName}_" + new Date().format("yyyyMMdd_HHmmss") + ".txt")
+	def writer = new FileWriter(destinationFile)
+	
+	ids.each { id ->
+		writer.append id
+		writer.append '\r\n'
+	}
+	
+	writer.flush()
+	writer.close()
+	
+	println("Deleted unreleased stated relationships IDs can be found at '$destinationFile.absolutePath'.")
+	
+}
+
 def deleteComponents = { branchPath ->
 	
 	def relationshipIds = getUnpublishedStatedRelationshipIds(branchPath)
@@ -94,8 +112,10 @@ def deleteComponents = { branchPath ->
 		return true
 	}
 	
-	println("Deleting ${relationshipIds.size()} relationships in batches of ${offset} ...")
-	
+	if (relationshipIds.size() > offset) {
+		println("Deleting ${relationshipIds.size()} unreleased stated relationships in batches of ${offset} ...")
+	}
+		
 	relationshipIds.collate(offset).each { ids -> 
 		deleteRelationshipsWithId(branchPath, ids)
 	}
@@ -107,6 +127,10 @@ def deleteComponents = { branchPath ->
 		existingRelationshipIds.each { id ->
 			println("Failed to delete relationship with ID '${id}'")
 		}
+		
+	} else {
+		
+		writeRelationshipIdsToFile(branchPath, relationshipIds)
 		
 	}
 	
