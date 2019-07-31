@@ -309,7 +309,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 				convertedConcept.setConceptId(parentConceptId);
 				convertedConcept.setDefinitionStatus(DefinitionStatus.getByConceptId(conceptEntry.getDefinitionStatusId()));
-				convertedConcept.setAcitve(conceptEntry.isActive());
+				convertedConcept.setActive(conceptEntry.isActive());
 				convertedConcept.setModuleId(conceptEntry.getModuleId());
 				
 				SnomedBrowserTerm term = descriptionOptional.transform(description -> new SnomedBrowserTerm(description)).or(new SnomedBrowserTerm(conceptEntry.getId()));

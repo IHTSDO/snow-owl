@@ -73,7 +73,7 @@ public class SnomedBrowserParentConcept implements ISnomedBrowserParentConcept {
 		this.definitionStatus = definitionStatus;
 	}
 	
-	public void setAcitve(boolean acitve) {
+	public void setActive(boolean acitve) {
 		this.active = acitve;
 	}
 	
