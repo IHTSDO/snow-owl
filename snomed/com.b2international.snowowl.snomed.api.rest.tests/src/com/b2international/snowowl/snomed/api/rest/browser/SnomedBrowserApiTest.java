@@ -52,6 +52,8 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserBulkChangeStatus;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserBulkChangeRun;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserChildConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests;
 import com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests;
@@ -459,18 +461,74 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		String pt = "Special finding context";
 		requestBody.put("descriptions", createDefaultDescriptions(pt, fsn));
 		
-		SnomedBrowserRestRequests.createBrowserConcept(branchPath, requestBody)
-									.assertThat().statusCode(200);
+		SnomedBrowserRestRequests.createBrowserConcept(branchPath, requestBody).assertThat().statusCode(200);
 		
-		SnomedBrowserRestRequests.getBrowserConceptChildren(branchPath, FINDING_CONTEXT, "stated&preferredDescriptionType=FSN")
-				.assertThat().statusCode(200)		
-				.and().body("size()", equalTo(1))		
-				.and().body("[0].fsn.term", equalTo(fsn));
+		List<SnomedBrowserChildConcept> childConceptsFsn = SnomedBrowserRestRequests
+				.getBrowserConceptChildren(branchPath, FINDING_CONTEXT, "stated&preferredDescriptionType=FSN")
+				.assertThat().statusCode(200)
+				.extract().body().jsonPath().getList(".", SnomedBrowserChildConcept.class);
 		
-		SnomedBrowserRestRequests.getBrowserConceptChildren(branchPath, FINDING_CONTEXT, "stated&preferredDescriptionType=SYNONYM")
-				.assertThat().statusCode(200)		
-				.and().body("size()", equalTo(1))		
-				.and().body("[0].preferredSynonym.term", equalTo(pt));
+		assertEquals(1, childConceptsFsn.size());
+		assertEquals(fsn, childConceptsFsn.get(0).getFsn().getTerm());
+		assertTrue(childConceptsFsn.get(0).isActive());
+				
+		List<SnomedBrowserChildConcept> childConceptsPt = SnomedBrowserRestRequests
+				.getBrowserConceptChildren(branchPath, FINDING_CONTEXT, "stated&preferredDescriptionType=SYNONYM")
+				.assertThat().statusCode(200)
+				.extract().body().jsonPath().getList(".", SnomedBrowserChildConcept.class);
+		
+		assertEquals(1, childConceptsPt.size());
+		assertEquals(pt, childConceptsPt.get(0).getPreferredSynonym().getTerm());
+		assertTrue(childConceptsPt.get(0).isActive());
+		
+	}
+	
+	@Test
+	@SuppressWarnings("unchecked")
+	public void getConceptParents() throws IOException {		
+		
+		String fsn = "Special finding context (attribute)";
+		String pt = "Special finding context";
+		
+		Map<String, Object> conceptCreateRequestBody = newHashMap(createBrowserConceptRequest());
+		conceptCreateRequestBody.put("relationships", createIsaRelationship(FINDING_CONTEXT, CharacteristicType.STATED_RELATIONSHIP));
+		conceptCreateRequestBody.put("descriptions", createDefaultDescriptions(pt, fsn));
+		
+		Map<String, Object> conceptResponse = SnomedBrowserRestRequests.createBrowserConcept(branchPath, conceptCreateRequestBody)
+			.statusCode(200)
+			.extract().as(Map.class);
+
+		String parentConceptId = (String) conceptResponse.get("conceptId");
+		
+		Map<String, Object> childConceptCreateRequestBody = newHashMap(createBrowserConceptRequest());
+		childConceptCreateRequestBody.put("relationships", createIsaRelationship(parentConceptId, CharacteristicType.STATED_RELATIONSHIP));
+		
+		Map<String, Object> childConceptResponse = SnomedBrowserRestRequests.createBrowserConcept(branchPath, childConceptCreateRequestBody)
+			.statusCode(200)
+			.extract().as(Map.class);
+		
+		String childConceptId = (String) childConceptResponse.get("conceptId");
+		
+		List<SnomedBrowserParentConcept> parentConceptsFsn = SnomedBrowserRestRequests
+				.getBrowserConceptParents(branchPath, childConceptId, "stated&preferredDescriptionType=FSN")
+				.assertThat().statusCode(200)
+				.extract().body().jsonPath().getList(".", SnomedBrowserParentConcept.class);
+		
+		assertEquals(1, parentConceptsFsn.size());
+		assertEquals(parentConceptId, parentConceptsFsn.get(0).getConceptId());
+		assertEquals(fsn, parentConceptsFsn.get(0).getFsn().getTerm());
+		assertTrue(parentConceptsFsn.get(0).isActive());
+				
+		List<SnomedBrowserParentConcept> parentConceptsPt = SnomedBrowserRestRequests
+				.getBrowserConceptParents(branchPath, childConceptId, "stated&preferredDescriptionType=SYNONYM")
+				.assertThat().statusCode(200)
+				.extract().body().jsonPath().getList(".", SnomedBrowserParentConcept.class);
+		
+		assertEquals(1, parentConceptsPt.size());
+		assertEquals(parentConceptId, parentConceptsPt.get(0).getConceptId());
+		assertEquals(pt, parentConceptsPt.get(0).getPreferredSynonym().getTerm());
+		assertTrue(parentConceptsPt.get(0).isActive());
+		
 	}
 	
 	@Test		

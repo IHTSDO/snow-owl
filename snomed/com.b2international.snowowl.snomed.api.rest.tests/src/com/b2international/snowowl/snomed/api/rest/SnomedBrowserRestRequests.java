@@ -81,6 +81,14 @@ public abstract class SnomedBrowserRestRequests {
 				.then();
 	}
 	
+	public static ValidatableResponse getBrowserConceptParents(final IBranchPath branchPath, final String conceptId, final String form) {
+		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
+				.with().contentType(JSON_CONTENT_UTF8_CHARSET)
+				.when().get("/browser/{path}/concepts/{conceptId}/parents?form={form}", branchPath.getPath(), conceptId, form)
+				.then();
+	}
+	
 	public static ValidatableResponse searchDescriptionsReturnPT(final IBranchPath branchPath, final String query) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
