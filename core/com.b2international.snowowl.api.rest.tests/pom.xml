@@ -68,7 +68,7 @@
 				</configuration>
 				<executions>
 					<execution>
-						<id>snowowl-api-tests</id>
+						<id>default-test</id>
 						<goals>
 							<goal>test</goal>
 						</goals>
