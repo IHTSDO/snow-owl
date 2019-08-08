@@ -17,10 +17,14 @@ package com.b2international.snowowl.identity;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+
+import javax.validation.constraints.NotNull;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Identity module configuration. Use to configure the underlying identity services (authentication, authorization, tokens, etc.).
@@ -29,7 +33,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class IdentityConfiguration {
 
+	public static final String REQUEST_HEADER_USERNAME = "X-AUTH-username";
+    public static final String REQUEST_HEADER_ROLES = "X-AUTH-roles";
+    public static final String DEFAULT_ROLE = "ROLE_USER";
+	
 	private boolean adminParty = false;
+	
+	@NotNull
+	private Set<String> roles = ImmutableSet.of(DEFAULT_ROLE);
 	
 	@NotEmpty
 	private List<IdentityProviderConfig> providerConfigurations = Collections.emptyList();
@@ -49,6 +60,16 @@ public class IdentityConfiguration {
 	
 	public void setProviderConfigurations(List<IdentityProviderConfig> providerConfigurations) {
 		this.providerConfigurations = providerConfigurations;
+	}
+	
+	@JsonProperty
+	public Set<String> getRoles() {
+		return roles;
+	}
+	
+	@JsonProperty
+	public void setRoles(Set<String> roles) {
+		this.roles = roles;
 	}
 	
 }

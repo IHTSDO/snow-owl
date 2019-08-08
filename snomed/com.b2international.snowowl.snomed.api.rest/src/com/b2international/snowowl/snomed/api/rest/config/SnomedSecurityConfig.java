@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.api.rest.config;
 
+import java.util.Set;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +32,9 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 import org.springframework.security.web.firewall.HttpFirewall;
 import org.springframework.security.web.firewall.StrictHttpFirewall;
 
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.config.SnowOwlConfiguration;
+import com.b2international.snowowl.identity.IdentityConfiguration;
 import com.b2international.snowowl.snomed.api.rest.RequestHeaderAuthenticationDecorator;
 
 /**
@@ -51,21 +56,19 @@ public class SnomedSecurityConfig extends WebSecurityConfigurerAdapter {
 	
 	@Override
 	protected void configure(final HttpSecurity http) throws Exception {
+		
+		// common config
 		http
 			.sessionManagement()
 				.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
 			.and()
-			.csrf().disable();
+				.csrf().disable();
 		
 		// auth
 		http
 			.authorizeRequests()
-				.antMatchers("/", "/static/**", "/api-docs")
-				.permitAll()
-			.and()
-			.authorizeRequests()
-				.antMatchers("/**")
-				.hasAuthority("ROLE_USER")
+				.antMatchers("/", "/static/**", "/api-docs").permitAll()
+				.antMatchers("/**").hasAnyAuthority(getRoles())
 			.and()
 				.httpBasic()
 			.and()
@@ -86,6 +89,11 @@ public class SnomedSecurityConfig extends WebSecurityConfigurerAdapter {
 	@Override
 	public AuthenticationManager authenticationManagerBean() throws Exception {
 		return super.authenticationManagerBean();
+	}
+	
+	private String[] getRoles() {
+		Set<String> roles = ApplicationContext.getServiceForClass(SnowOwlConfiguration.class).getModuleConfig(IdentityConfiguration.class).getRoles();
+		return roles.toArray(new String[roles.size()]);
 	}
 
 }

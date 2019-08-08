@@ -66,6 +66,30 @@
 					<useUIThread>false</useUIThread>
 					<argLine>-Xms1g -Xmx1g -XX:+AlwaysLockClassLoader -Dosgi.classloader.type=nonparallel -Djetty.home.bundle=org.eclipse.jetty.osgi.boot -Djetty.port=9090</argLine>
 				</configuration>
+				<executions>
+					<execution>
+						<id>snowowl-api-tests</id>
+						<goals>
+							<goal>test</goal>
+						</goals>
+						<configuration>
+							<includes>
+								<include>**/AllSnowOwlApiTests.java</include>
+							</includes>
+						</configuration>
+					</execution>
+					<execution>
+						<id>role-based-authentication-tests</id>
+						<goals>
+							<goal>test</goal>
+						</goals>
+						<configuration>
+							<includes>
+								<include>**/RoleBasedAuthenticationTest.java</include>
+							</includes>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
