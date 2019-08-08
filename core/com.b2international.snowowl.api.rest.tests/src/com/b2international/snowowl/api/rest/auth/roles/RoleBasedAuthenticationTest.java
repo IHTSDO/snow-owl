@@ -123,7 +123,6 @@ public class RoleBasedAuthenticationTest {
 
 	}
 
-
 	private void assertResponseStatus(final RequestSpecification request, final int statusCode) {
 		request.when().get("/repositories").then().assertThat().statusCode(statusCode);
 	}

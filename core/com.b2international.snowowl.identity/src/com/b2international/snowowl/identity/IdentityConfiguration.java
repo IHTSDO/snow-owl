@@ -34,8 +34,8 @@ import com.google.common.collect.ImmutableSet;
 public class IdentityConfiguration {
 
 	public static final String REQUEST_HEADER_USERNAME = "X-AUTH-username";
-    public static final String REQUEST_HEADER_ROLES = "X-AUTH-roles";
-    public static final String DEFAULT_ROLE = "ROLE_USER";
+	public static final String REQUEST_HEADER_ROLES = "X-AUTH-roles";
+	public static final String DEFAULT_ROLE = "ROLE_USER";
 	
 	private boolean adminParty = false;
 	
