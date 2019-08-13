@@ -48,7 +48,6 @@ import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionCreationTe
 import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionDowngradeTest;
 import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionUpgradeTest;
 import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionVersioningTest;
-import com.b2international.snowowl.snomed.api.rest.id.SnomedIdentifierApiTest;
 import com.b2international.snowowl.snomed.api.rest.io.SnomedExportApiTest;
 import com.b2international.snowowl.snomed.api.rest.io.SnomedImportApiExtensionImportTest;
 import com.b2international.snowowl.snomed.api.rest.io.SnomedImportApiTest;
@@ -89,7 +88,6 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	SnomedVersioningApiTest.class,
 	SnomedImportApiTest.class,
 	SnomedImportApiExtensionImportTest.class,
-	SnomedIdentifierApiTest.class,
 	SnomedConceptApiTest.class,
 	SnomedConceptCreatePerformanceTest.class,
 	SnomedDescriptionApiTest.class,

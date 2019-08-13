@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bundle-Version: 6.17.1.qualifier
+Bundle-Version: 6.18.0
 Bundle-Name: Snow Owl SNOMED CT REST Service
 Bundle-ManifestVersion: 2
 Bundle-SymbolicName: com.b2international.snowowl.snomed.api.rest;singleton:=true
@@ -25,8 +25,6 @@ Import-Package: com.amazonaws;version="2.1.0",
  com.b2international.snowowl.snomed.core.domain.refset,
  com.b2international.snowowl.snomed.datastore,
  com.b2international.snowowl.snomed.datastore.config,
- com.b2international.snowowl.snomed.datastore.id.domain,
- com.b2international.snowowl.snomed.datastore.id.request,
  com.b2international.snowowl.snomed.datastore.index.entry,
  com.b2international.snowowl.snomed.datastore.request,
  com.b2international.snowowl.snomed.datastore.request.rf2,
@@ -80,3 +78,4 @@ Bundle-ClassPath: .,
  WEB-INF/lib/springfox-swagger-common-2.8.0.jar,
  WEB-INF/lib/springfox-swagger2-2.8.0.jar
 Export-Package: com.b2international.snowowl.snomed.api.rest.domain
+Bundle-Vendor: B2i Healthcare

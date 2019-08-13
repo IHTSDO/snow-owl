@@ -69,6 +69,9 @@ import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
+import com.b2international.snowowl.snomed.cis.ISnomedIdentifierService;
+import com.b2international.snowowl.snomed.cis.domain.IdentifierStatus;
+import com.b2international.snowowl.snomed.cis.domain.SctId;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
@@ -79,9 +82,6 @@ import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetM
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
-import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
-import com.b2international.snowowl.snomed.datastore.id.domain.IdentifierStatus;
-import com.b2international.snowowl.snomed.datastore.id.domain.SctId;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
@@ -165,7 +165,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		
 		SctId descriptionSctId = SnomedRequests.identifiers().prepareGet()
 				.setComponentId(descriptionId)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.buildAsync()
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 				.getSync()
 				.first()

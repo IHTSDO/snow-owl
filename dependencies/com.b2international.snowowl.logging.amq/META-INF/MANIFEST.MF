@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Snow Owl ActiveMQ logging support
 Bundle-SymbolicName: com.b2international.snowowl.logging.amq
-Bundle-Version: 6.17.1.qualifier
+Bundle-Version: 6.18.0
 Bundle-Vendor: B2i Healthcare Ltd.
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ClassPath: .,

@@ -1,5 +1,5 @@
 #
-# Copyright 2011-2018 B2i Healthcare Pte Ltd, http://b2i.sg
+# Copyright 2011-2019 B2i Healthcare Pte Ltd, http://b2i.sg
 #
 
 # Redirects configuration directory to a random directory under OSGI installation directory
@@ -28,8 +28,14 @@ snomed:
       password: classification
       numberOfPollTries: 20
       timeBetweenPollTries: 3000
-  ids:
-    strategy : EMBEDDED
+cis:
+  strategy : EMBEDDED
+
+# cis:
+#  strategy : CIS
+#  cisBaseUrl: http://localhost:9090/snowowl/cis/
+#  cisUserName: snowowl
+#  cisPassword: snowowl
   
 metrics:
   enabled: true

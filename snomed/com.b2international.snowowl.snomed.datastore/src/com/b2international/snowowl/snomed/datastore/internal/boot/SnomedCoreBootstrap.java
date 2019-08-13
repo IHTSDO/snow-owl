@@ -22,6 +22,7 @@ import org.eclipse.xtext.validation.IResourceValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.setup.DefaultBootstrapFragment;
 import com.b2international.snowowl.core.setup.Environment;
@@ -29,6 +30,8 @@ import com.b2international.snowowl.core.setup.ModuleConfig;
 import com.b2international.snowowl.core.validation.eval.ValidationRuleEvaluator;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
+import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.cis.reservations.ISnomedIdentifierReservationService;
 import com.b2international.snowowl.snomed.core.ecl.DefaultEclParser;
 import com.b2international.snowowl.snomed.core.ecl.DefaultEclSerializer;
 import com.b2international.snowowl.snomed.core.ecl.EclParser;
@@ -42,6 +45,7 @@ import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationS
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedDroolsConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.assigner.SnomedNamespaceAndModuleAssignerProvider;
+import com.b2international.snowowl.snomed.datastore.internal.id.reservations.UniqueInStoreReservation;
 import com.b2international.snowowl.snomed.ecl.EclStandaloneSetup;
 import com.b2international.snowowl.snomed.ql.QLStandaloneSetup;
 import com.b2international.snowowl.snomed.validation.SnomedQueryValidationRuleEvaluator;
@@ -55,6 +59,8 @@ import com.google.inject.Injector;
 public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger("bootstrap");
+
+	private static final String STORE_RESERVATIONS = "store_reservations";
 
 	@Override
 	public void init(SnowOwlConfiguration configuration, Environment env) throws Exception {
@@ -81,6 +87,10 @@ public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
 			}
 		}
 		
+		if (coreConfig.getIds() != null) {
+			throw new SnowOwlApplication.InitializationException("SNOMED CT Identifier Service configuration cannot be configured through 'snomed.ids' configuration node. Use the new 'cis' configuration key for that.");
+		}
+		
 		final Injector eclInjector = new EclStandaloneSetup().createInjectorAndDoEMFRegistration();
 		env.services().registerService(EclParser.class, new DefaultEclParser(eclInjector.getInstance(IParser.class), eclInjector.getInstance(IResourceValidator.class)));
 		env.services().registerService(EclSerializer.class, new DefaultEclSerializer(eclInjector.getInstance(ISerializer.class)));
@@ -98,6 +108,11 @@ public class SnomedCoreBootstrap extends DefaultBootstrapFragment {
 	@Override
 	public void run(SnowOwlConfiguration configuration, Environment env, IProgressMonitor monitor) throws Exception {
 		if (env.isServer() || env.isEmbedded()) {
+			// register store as reservation service
+			final UniqueInStoreReservation storeReservation = new UniqueInStoreReservation(env.provider(IEventBus.class));
+			env.service(ISnomedIdentifierReservationService.class).create(STORE_RESERVATIONS, storeReservation);
+			
+			// configure DB reader/writer capacity
 			final SnomedCoreConfiguration snomedConfig = configuration.getModuleConfig(SnomedCoreConfiguration.class);
 			final ICDORepository repository = env.service(ICDORepositoryManager.class).getByUuid(SnomedDatastoreActivator.REPOSITORY_UUID);
 			repository.setReaderPoolCapacity(snomedConfig.getReaderPoolCapacity());

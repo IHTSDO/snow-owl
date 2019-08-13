@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.b2international.snowowl</groupId>
 	<artifactId>snowowl-parent</artifactId>
-	<version>6.17.1-SNAPSHOT</version>
+	<version>6.18.0</version>
 	<packaging>pom</packaging>
 
 	<properties>
@@ -59,6 +59,7 @@
 		<module>core</module>
 		<module>net4j</module>
 		<module>snomed</module>
+		<module>cis</module>
 		<module>tests</module>
 		<module>releng</module>
 	</modules>

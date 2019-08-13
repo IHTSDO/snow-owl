@@ -39,6 +39,7 @@ import com.b2international.snowowl.core.exceptions.NotImplementedException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.request.TransactionalRequest;
+import com.b2international.snowowl.snomed.cis.action.IdActionRecorder;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.core.domain.ConstantIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.MetadataIdStrategy;

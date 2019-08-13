@@ -25,8 +25,9 @@ repository:
 snomed:
   classification:
     maxReasonerCount: 1
-  ids:
-    strategy : MEMORY
-  
+
+cis:
+  strategy: MEMORY
+
 metrics:
   enabled: true
