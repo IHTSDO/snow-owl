@@ -88,4 +88,9 @@ public class BranchMetadataNamespaceAndModuleAssigner implements SnomedNamespace
 		}
 		
 	}
+
+	@Override
+	public String getName() {
+		return "branch-metadata";
+	}
 }

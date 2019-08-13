@@ -91,7 +91,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
+import com.b2international.snowowl.snomed.cis.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;

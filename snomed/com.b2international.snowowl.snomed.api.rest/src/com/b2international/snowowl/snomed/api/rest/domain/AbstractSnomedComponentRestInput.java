@@ -19,7 +19,7 @@ import com.b2international.snowowl.snomed.core.domain.ConstantIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.IdGenerationStrategy;
 import com.b2international.snowowl.snomed.core.domain.MetadataIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.NamespaceIdStrategy;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
+import com.b2international.snowowl.snomed.cis.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequestBuilder;
 import com.google.common.base.Strings;
 

@@ -31,9 +31,9 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Collections.emptyMap;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -45,9 +45,11 @@ import java.util.Optional;
 
 import org.junit.Test;
 
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserBulkChangeStatus;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
@@ -61,13 +63,14 @@ import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
-import com.b2international.snowowl.snomed.api.rest.SnomedIdentifierRestRequests;
+import com.b2international.snowowl.snomed.cis.domain.SctId;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.test.commons.rest.RestExtensions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableList;
@@ -176,11 +179,19 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 	@Test		
   	public void createConceptWithGeneratedId() {
   		
-  		String componentId = SnomedIdentifierRestRequests.generateSctId(SnomedComponentType.CONCEPT, null).statusCode(201)
-  					.body("id", notNullValue())
-  					.extract().body()
-  					.path("id");
-  		
+		String componentId = SnomedRequests.identifiers()
+			.prepareGenerate()
+			.setCategory(ComponentCategory.CONCEPT)
+			.setQuantity(1)
+			.buildAsync()
+			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+			.getSync()
+			.first()
+			.map(SctId::getSctid)
+			.orElse(null);
+		
+		assertNotNull(componentId);
+		
   		Map<String, Object> requestBody = Maps.newHashMap(createBrowserConceptRequest());
   		requestBody.put("conceptId", componentId);
   		SnomedBrowserRestRequests.createBrowserConcept(branchPath, requestBody).statusCode(200);

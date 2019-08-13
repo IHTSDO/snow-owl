@@ -28,30 +28,34 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.Map;
 import java.util.Set;
 
 import org.junit.Test;
 
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.mergereview.ISnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
-import com.b2international.snowowl.snomed.api.rest.SnomedIdentifierRestRequests;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
+import com.b2international.snowowl.snomed.cis.domain.SctId;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -67,11 +71,19 @@ public class SnomedMergeReviewConcurrentChangesTest extends AbstractSnomedApiTes
 		final IBranchPath childBranch = BranchPathUtils.createPath(branchPath, "a");
 		createBranch(childBranch);
 
-		final String conceptId = SnomedIdentifierRestRequests.generateSctId(SnomedComponentType.CONCEPT, null).statusCode(201)
-				.body("id", notNullValue())
-				.extract().body()
-				.path("id");
-
+		String conceptId = SnomedRequests.identifiers()
+				.prepareGenerate()
+				.setCategory(ComponentCategory.CONCEPT)
+				.setQuantity(1)
+				.buildAsync()
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.getSync()
+				.first()
+				.map(SctId::getSctid)
+				.orElse(null);
+			
+		assertNotNull(conceptId);
+		
 		final Map<String, Object> requestBody = Maps.newHashMap(createBrowserConceptRequest());
 		requestBody.put("conceptId", conceptId);
 
