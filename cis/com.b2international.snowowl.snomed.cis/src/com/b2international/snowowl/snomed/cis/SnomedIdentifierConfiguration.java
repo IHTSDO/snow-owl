@@ -48,10 +48,10 @@ public class SnomedIdentifierConfiguration {
 	private String cisClientSoftwareKey = "Snow Owl";
 	@Min(1)
 	@JsonProperty(value = "cisNumberOfPollTries", required = false)
-	private long cisNumberOfPollTries = 240;
+	private long cisNumberOfPollTries = 1;
 	@Min(1)
 	@JsonProperty(value = "cisTimeBetweenPollTries", required = false)
-	private long cisTimeBetweenPollTries = 500;
+	private long cisTimeBetweenPollTries = 1000;
 	
 	@JsonProperty(required = false)
 	private int cisMaxConnections = 100;
@@ -65,7 +65,7 @@ public class SnomedIdentifierConfiguration {
 
 	@Min(1000)
 	@Max(50000)
-	private int requestBulkLimit = 50_000;
+	private int requestBulkLimit = 1000;
 	
 	public IdGenerationStrategy getStrategy() {
 		return strategy;

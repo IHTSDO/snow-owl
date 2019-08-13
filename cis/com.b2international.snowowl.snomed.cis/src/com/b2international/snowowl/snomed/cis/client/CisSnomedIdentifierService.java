@@ -57,7 +57,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
-import com.google.common.base.Predicates;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
@@ -110,6 +109,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 	@Override
 	public Map<String, SctId> generateSctIds(String namespace, ComponentCategory category, int quantity) {
+		
 		checkNotNull(category, "Component category must not be null.");
 		checkArgument(quantity > 0, "Number of requested IDs should be non-negative.");
 		checkCategory(category);
@@ -118,22 +118,39 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		HttpPost generateRequest = null;
 		HttpGet recordsRequest = null;
+		
 		try {
 
 			if (quantity > 1) {
+				
 				LOGGER.debug("Sending {} ID bulk generation request.", category.getDisplayName());
 				
-				generateRequest = httpPost(String.format("sct/bulk/generate?token=%s", getToken()), createBulkGenerationData(namespace, category, quantity));
-				final String response = execute(generateRequest);
-				final String jobId = mapper.readValue(response, JsonNode.class).get("id").asText();
-				joinBulkJobPolling(jobId, quantity, getToken());
-	
-				recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
-				final String recordsResponse = execute(recordsRequest);
-				final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
-				return readSctIds(getComponentIds(records));
+				final Set<String> componentIds = Sets.newHashSet();
+				
+				while (componentIds.size() != quantity) {
+					
+					int difference = quantity - componentIds.size();
+					int offset = difference >= requestBulkLimit ? requestBulkLimit : difference;
+					
+					LOGGER.debug("Sending bulk generation request for namespace '{}' with size {}.", namespace, offset);
+					
+					generateRequest = httpPost(String.format("sct/bulk/generate?token=%s", getToken()), createBulkGenerationData(namespace, category, offset));
+					final String response = execute(generateRequest);
+					final String jobId = mapper.readValue(response, JsonNode.class).get("id").asText();
+					joinBulkJobPolling(jobId, getToken());
+					
+					recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
+					final String recordsResponse = execute(recordsRequest);
+					final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
+					
+					componentIds.addAll(getComponentIds(records));
+					
+				}
+				
+				return readSctIds(componentIds);
 				
 			} else {
+				
 				LOGGER.debug("Sending {} ID single generation request.", category.getDisplayName());
 				
 				generateRequest = httpPost(String.format("sct/generate?token=%s", getToken()), createGenerationData(namespace, category));
@@ -141,6 +158,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				final SctId sctid = mapper.readValue(response, SctId.class);
 				
 				return readSctIds(Collections.singleton(sctid.getSctid()));
+				
 			}
 			
 		} catch (IOException e) {
@@ -153,6 +171,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	
 	@Override
 	public Map<String, SctId> register(final Set<String> componentIds) {
+		
 		if (CompareUtils.isEmpty(componentIds)) {
 			return Collections.emptyMap();
 		}
@@ -160,18 +179,13 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		LOGGER.debug("Registering {} component IDs.", componentIds.size());
 
 		final Map<String, SctId> sctIds = getSctIds(componentIds);
-		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.<SctId>not(Predicates.or(
-				SctId::isAvailable, 
-				SctId::isReserved, 
-				SctId::isAssigned))));
+		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, id -> !id.isAvailable() && !id.isReserved() && !id.isAssigned()));
 		
 		if (!problemSctIds.isEmpty()) {
 			throw new SctIdStatusException("Cannot register %s component IDs because they are not available, reserved, or already assigned.", problemSctIds);
 		}
 
-		final Map<String, SctId> availableOrReservedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.or(
-				SctId::isAvailable, 
-				SctId::isReserved)));
+		final Map<String, SctId> availableOrReservedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, id -> id.isAvailable() || id.isReserved()));
 		
 		if (availableOrReservedSctIds.isEmpty()) {
 			return Collections.emptyMap();
@@ -183,12 +197,15 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		try {
 			
 			if (availableOrReservedSctIds.size() > 1) {
+				
 				final Multimap<String, String> componentIdsByNamespace = toNamespaceMultimap(availableOrReservedSctIds.keySet());
+				
 				for (final Entry<String, Collection<String>> entry : componentIdsByNamespace.asMap().entrySet()) {
+					
 					currentNamespace = entry.getKey();
 					
 					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), requestBulkLimit)) {
-						LOGGER.debug("Sending bulk registration request for namespace {} with size {}.", currentNamespace, bulkIds.size());
+						LOGGER.debug("Sending bulk registration request for namespace '{}' with size {}.", currentNamespace, bulkIds.size());
 						registerRequest = httpPost(String.format("sct/bulk/register?token=%s", getToken()), createBulkRegistrationData(bulkIds));
 						execute(registerRequest);
 					}
@@ -200,6 +217,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
 				registerRequest = httpPost(String.format("sct/register?token=%s", getToken()), createRegistrationData(componentId));
 				execute(registerRequest);
+				
 			}
 		
 			return ImmutableMap.copyOf(availableOrReservedSctIds);
@@ -218,6 +236,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	
 	@Override
 	public Map<String, SctId> reserveSctIds(String namespace, ComponentCategory category, int quantity) {
+		
 		checkNotNull(category, "Component category must not be null.");
 		checkArgument(quantity > 0, "Number of requested IDs should be non-negative.");
 		checkCategory(category);
@@ -226,22 +245,39 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		HttpPost reserveRequest = null;
 		HttpGet recordsRequest = null;
+		
 		try {
 
 			if (quantity > 1) {
+				
 				LOGGER.debug("Sending {} ID bulk reservation request.", category.getDisplayName());
+				
+				final Set<String> componentIds = Sets.newHashSet();
+				
+				while (componentIds.size() != quantity) {
+					
+					int difference = quantity - componentIds.size();
+					int offset = difference >= requestBulkLimit ? requestBulkLimit : difference;
+					
+					LOGGER.debug("Sending bulk reservation request for namespace '{}' with size {}.", namespace, offset);
+					
+					reserveRequest = httpPost(String.format("sct/bulk/reserve?token=%s", getToken()), createBulkReservationData(namespace, category, offset));
+					final String bulkResponse = execute(reserveRequest);
+					final String jobId = mapper.readValue(bulkResponse, JsonNode.class).get("id").asText();
+					joinBulkJobPolling(jobId, getToken());
+					
+					recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
+					final String recordsResponse = execute(recordsRequest);
+					final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
+					
+					componentIds.addAll(getComponentIds(records));
+					
+				}
 	
-				reserveRequest = httpPost(String.format("sct/bulk/reserve?token=%s", getToken()), createBulkReservationData(namespace, category, quantity));
-				final String bulkResponse = execute(reserveRequest);
-				final String jobId = mapper.readValue(bulkResponse, JsonNode.class).get("id").asText();
-				joinBulkJobPolling(jobId, quantity, getToken());
-	
-				recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
-				final String recordsResponse = execute(recordsRequest);
-				final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
-				return readSctIds(getComponentIds(records));
+				return readSctIds(componentIds);
 			
 			} else {
+				
 				LOGGER.debug("Sending {} ID reservation request.", category.getDisplayName());
 
 				reserveRequest = httpPost(String.format("sct/reserve?token=%s", getToken()), createReservationData(namespace, category));
@@ -261,21 +297,17 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 	@Override
 	public Map<String, SctId> release(final Set<String> componentIds) {
+
 		LOGGER.debug("Releasing {} component IDs.", componentIds.size());
 
 		final Map<String, SctId> sctIds = getSctIds(componentIds);
-		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.<SctId>not(Predicates.or(
-				SctId::isAssigned, 
-				SctId::isReserved, 
-				SctId::isAvailable))));
-
+		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, id -> !id.isAssigned() && !id.isReserved() && !id.isAvailable()));
+		
 		if (!problemSctIds.isEmpty()) {
 			throw new SctIdStatusException("Cannot release %s component IDs because they are not assigned, reserved, or already available.", problemSctIds);
 		}
 
-		final Map<String, SctId> assignedOrReservedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.or(
-				SctId::isAssigned, 
-				SctId::isReserved)));
+		final Map<String, SctId> assignedOrReservedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, id -> id.isAssigned() || id.isReserved()));
 		
 		// if there is no IDs to release, then just return the current sctIds set as a response
 		if (assignedOrReservedSctIds.isEmpty()) {
@@ -288,15 +320,19 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		try {
 			
 			if (assignedOrReservedSctIds.size() > 1) {
+				
 				final Multimap<String, String> componentIdsByNamespace = toNamespaceMultimap(assignedOrReservedSctIds.keySet());
+				
 				for (final Entry<String, Collection<String>> entry : componentIdsByNamespace.asMap().entrySet()) {
+					
 					currentNamespace = entry.getKey();
 					
 					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), requestBulkLimit)) {
-						LOGGER.debug("Sending bulk release request for namespace {} with size {}.", currentNamespace, bulkIds.size());
+						LOGGER.debug("Sending bulk release request for namespace '{}' with size {}.", currentNamespace, bulkIds.size());
 						releaseRequest = httpPut(String.format("sct/bulk/release?token=%s", getToken()), createBulkReleaseData(currentNamespace, bulkIds));
 						execute(releaseRequest);
 					}
+					
 				}
 				
 			} else {
@@ -305,6 +341,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
 				releaseRequest = httpPut(String.format("sct/release?token=%s", getToken()), createReleaseData(componentId));
 				execute(releaseRequest);
+				
 			}
 			
 			return ImmutableMap.copyOf(assignedOrReservedSctIds);
@@ -313,26 +350,23 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			throw new SnowowlRuntimeException(String.format("Exception while releasing IDs for namespace %s.", currentNamespace), e);
 		} finally {
 			release(releaseRequest);
-		}		
+		}
+		
 	}
 
 	@Override
 	public Map<String, SctId> deprecate(final Set<String> componentIds) {
+		
 		LOGGER.debug("Deprecating {} component IDs.", componentIds.size());
 
 		final Map<String, SctId> sctIds = getSctIds(componentIds);
-		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.<SctId>not(Predicates.or(
-				SctId::isAssigned, 
-				SctId::isPublished, 
-				SctId::isDeprecated))));
+		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, id -> !id.isAssigned() && !id.isPublished() && !id.isDeprecated()));
 		
 		if (!problemSctIds.isEmpty()) {
 			throw new SctIdStatusException("Cannot deprecate %s component IDs because they are not assigned, published, or already deprecated.", problemSctIds);
 		}
 
-		final Map<String, SctId> assignedOrPublishedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.or(
-				SctId::isAssigned, 
-				SctId::isPublished)));
+		final Map<String, SctId> assignedOrPublishedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, id -> id.isAssigned() || id.isPublished()));
 		
 		if (assignedOrPublishedSctIds.isEmpty()) {
 			return Collections.emptyMap();
@@ -344,15 +378,19 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		try {
 			
 			if (assignedOrPublishedSctIds.size() > 1) {
+				
 				final Multimap<String, String> componentIdsByNamespace = toNamespaceMultimap(assignedOrPublishedSctIds.keySet());
+				
 				for (final Entry<String, Collection<String>> entry : componentIdsByNamespace.asMap().entrySet()) {
+					
 					currentNamespace = entry.getKey();
 					
 					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), requestBulkLimit)) {
-						LOGGER.debug("Sending bulk deprecation request for namespace {} with size {}.", currentNamespace, bulkIds.size());
+						LOGGER.debug("Sending bulk deprecation request for namespace '{}' with size {}.", currentNamespace, bulkIds.size());
 						deprecateRequest = httpPut(String.format("sct/bulk/deprecate?token=%s", getToken()), createBulkDeprecationData(currentNamespace, bulkIds));
 						execute(deprecateRequest);
 					}
+					
 				}
 				
 			} else {
@@ -361,6 +399,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
 				deprecateRequest = httpPut(String.format("sct/deprecate?token=%s", getToken()), createDeprecationData(componentId));
 				execute(deprecateRequest);
+				
 			}
 			
 			return ImmutableMap.copyOf(assignedOrPublishedSctIds);
@@ -374,12 +413,11 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 	@Override
 	public Map<String, SctId> publish(final Set<String> componentIds) {
+		
 		LOGGER.debug("Publishing {} component IDs.", componentIds.size());
 		
 		final Map<String, SctId> sctIds = getSctIds(componentIds);
-		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.<SctId>not(Predicates.or(
-				SctId::isAssigned, 
-				SctId::isPublished))));
+		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, id -> !id.isAssigned() && !id.isPublished()));
 		
 		HttpPut deprecateRequest = null;
 		String currentNamespace = null;
@@ -387,17 +425,25 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		try {
 			
 			final Map<String, SctId> assignedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, SctId::isAssigned));
+			
 			if (!assignedSctIds.isEmpty()) {
+				
 				if (assignedSctIds.size() > 1) {
+					
 					final Multimap<String, String> componentIdsByNamespace = toNamespaceMultimap(assignedSctIds.keySet());
+					
 					for (final Entry<String, Collection<String>> entry : componentIdsByNamespace.asMap().entrySet()) {
+						
 						currentNamespace = entry.getKey();
 						
 						for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), requestBulkLimit)) {
-							LOGGER.debug("Sending bulk publication request for namespace {} with size {}.", currentNamespace, bulkIds.size());
+							
+							LOGGER.debug("Sending bulk publication request for namespace '{}' with size {}.", currentNamespace, bulkIds.size());
 							deprecateRequest = httpPut(String.format("sct/bulk/publish?token=%s", getToken()), createBulkPublishData(currentNamespace, bulkIds));
 							execute(deprecateRequest);
+							
 						}
+						
 					}
 					
 				} else {
@@ -406,7 +452,9 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 					currentNamespace = SnomedIdentifiers.getNamespace(componentId);
 					deprecateRequest = httpPut(String.format("sct/publish?token=%s", getToken()), createPublishData(componentId));
 					execute(deprecateRequest);
+					
 				}
+				
 			}
 			
 			if (!problemSctIds.isEmpty()) {
@@ -459,6 +507,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	}
 
 	private Map<String, SctId> readSctIds(final Set<String> componentIds) {
+		
 		if (CompareUtils.isEmpty(componentIds)) {
 			return Collections.emptyMap();
 		}
@@ -469,10 +518,13 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		try {
 
 			if (componentIds.size() > 1) {
+				
 				LOGGER.debug("Sending bulk component ID get request.");
+				
 				final ImmutableMap.Builder<String, SctId> resultBuilder = ImmutableMap.builder();
 				
 				for (final Collection<String> ids : Iterables.partition(componentIds, requestBulkLimit)) {
+					
 					final String idsAsString = Joiner.on(',').join(ids);
 					final ObjectNode idsAsJson = mapper.createObjectNode().put("sctids", idsAsString);
 					bulkRequest = client.httpPost(String.format("sct/bulk/ids/?token=%s", getToken()), idsAsJson);
@@ -506,7 +558,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	
 	@Override
 	public boolean importSupported() {
-		return true;
+		return false; // TODO make this configurable. If Snow Owl is used as a standalone ID service this should be true? 
 	}
 
 	private void login() {
@@ -526,18 +578,24 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	}
 
 	private String execute(final HttpRequestBase request) throws IOException {
+		
 		CisClientException last = null;
 		
 		long remainingAttempts = numberOfReauthTries;
+		
 		do {
+			
 			try {
 				return client.execute(request);
 			} catch (CisClientException e) {
 				
 				if (e.getStatusCode() == HttpStatus.SC_UNAUTHORIZED || e.getStatusCode() == HttpStatus.SC_FORBIDDEN) {
+					
 					last = e;
+					
 					remainingAttempts--;
 					LOGGER.warn("Unauthorized response from CIS, retrying request ({} attempt(s) left).", remainingAttempts);
+					
 					login();
 					
 					// Update the corresponding query parameter in the request, then retry
@@ -559,6 +617,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 					throw new BadRequestException(e.getReasonPhrase(), e);
 				}
 			}
+			
 		} while (remainingAttempts > 0);
 		
 		// Re-throw the last captured exception otherwise
@@ -571,16 +630,19 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		}
 	}
 
-	private void joinBulkJobPolling(final String jobId, final int quantity, final String token) {
+	private void joinBulkJobPolling(final String jobId, final String token) {
+		
 		HttpGet request = null;
 		JobStatus status = JobStatus.PENDING;
 
 		try {
-			LOGGER.debug("Polling job status with ID {}.", jobId);
+			
+			LOGGER.debug("Polling job status with ID '{}'", jobId);
 
 			request = httpGet(String.format("bulk/jobs/%s?token=%s", jobId, token));
 
 			for (long pollTry = numberOfPollTries; pollTry > 0; pollTry--) {
+				
 				final String response = execute(request);
 				final JsonNode node = mapper.readValue(response, JsonNode.class);
 				status = JobStatus.get(node.get("status").asInt());
@@ -592,6 +654,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				} else {
 					Thread.sleep(timeBetweenPollTries);
 				}
+				
 			}
 
 		} catch (Exception e) {

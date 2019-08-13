@@ -89,7 +89,7 @@ public class SnomedCoreConfiguration extends ConnectionPoolConfiguration {
 	private String defaultModule = DEFAULT_MODULE;
 	
 	@NotNull
-	private String namespaceModuleAssigner = "default";
+	private String namespaceModuleAssigner = "branch-metadata";
 
 	@JsonProperty("concreteDomainSupport")
 	public boolean isConcreteDomainSupported() {
