@@ -15,8 +15,12 @@
  */
 package com.b2international.snowowl.datastore.server.reindex;
 
+import java.util.Optional;
+
 import org.eclipse.emf.cdo.server.StoreThreadLocal;
 import org.eclipse.emf.cdo.spi.server.InternalSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.index.Hits;
 import com.b2international.index.Index;
@@ -26,12 +30,17 @@ import com.b2international.index.query.SortBy;
 import com.b2international.index.query.SortBy.Order;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.RepositoryInfo.Health;
+import com.b2international.snowowl.core.date.DateFormats;
+import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.core.ft.Features;
+import com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument;
 import com.b2international.snowowl.datastore.internal.InternalRepository;
 import com.b2international.snowowl.datastore.internal.branch.BranchDocument;
+import com.b2international.snowowl.datastore.replicate.BranchReplicator;
+import com.b2international.snowowl.datastore.replicate.BranchReplicator.SkipBranchException;
 import com.google.common.collect.Iterables;
 
 /**
@@ -40,7 +49,10 @@ import com.google.common.collect.Iterables;
 @SuppressWarnings("restriction")
 public final class ReindexRequest implements Request<RepositoryContext, ReindexResult> {
 	
+	private static final Logger LOGGER = LoggerFactory.getLogger("reindex");
+	
 	private static final String CDO_BRANCH_ID = "cdoBranchId";
+	private static final String TIMESTAMP = "timeStamp";
 	
 	private long failedCommitTimestamp = 1;
 
@@ -75,12 +87,18 @@ public final class ReindexRequest implements Request<RepositoryContext, ReindexR
 		try {
 			repository.setHealth(Health.YELLOW, "Reindex is in progress...");
 			features.enable(reindexToggle);
+			
 			//set the session on the StoreThreadlocal for later access
 			StoreThreadLocal.setSession(session);
+
 			//for partial replication get the last branch id and commit time from the index
 			//right now index is fully recreated
 			final IndexMigrationReplicationContext replicationContext = new IndexMigrationReplicationContext(context, maxCdoBranchId, failedCommitTimestamp - 1, session);
 			cdoRepository.replicate(replicationContext);
+			
+			// reindex untouched branches that were created after the very last commit
+			reindexUntouchedBranches(context, index, cdoRepository);
+			
 			// update repository state after the re-indexing
 			return new ReindexResult(replicationContext.getFailedCommitTimestamp(),
 					replicationContext.getProcessedCommits(), replicationContext.getSkippedCommits(), replicationContext.getException());
@@ -90,6 +108,48 @@ public final class ReindexRequest implements Request<RepositoryContext, ReindexR
 			session.close();
 			repository.checkHealth();
 		}
+	}
+
+	private void reindexUntouchedBranches(RepositoryContext context, Index index, final org.eclipse.emf.cdo.internal.server.Repository cdoRepository) {
+		
+		Optional<Long> lastCommitTimeStamp = getLastCommitTimestamp(index);
+		
+		if (lastCommitTimeStamp.isPresent()) {
+			
+			cdoRepository.getBranchManager().getBranches(1, Integer.MAX_VALUE, cdoBranch -> {
+				
+				// if there is a branch that was created after the very last commit then recreate the branch document via the BranchReplicator
+				
+				if (cdoBranch.getBase().getTimeStamp() > lastCommitTimeStamp.get()) {
+					
+					LOGGER.info("Replicating branch (after last commit): " + cdoBranch.getName() + " at " + prettyPrint(cdoBranch.getBase().getTimeStamp()));
+					
+					try {
+						context.service(BranchReplicator.class).replicateBranch(cdoBranch);
+					} catch (SkipBranchException e) {
+						LOGGER.warn("Skipping branch: {}", cdoBranch.getID());
+					}
+					
+				}
+			});
+			
+		}
+	}
+
+	private Optional<Long> getLastCommitTimestamp(Index index) {
+		return Optional.ofNullable(Iterables.getOnlyElement(index.read(searcher -> {
+			return searcher.search(Query.select(Long.class)
+					.from(CommitInfoDocument.class)
+					.fields(TIMESTAMP)
+					.where(Expressions.matchAll())
+					.sortBy(SortBy.field(TIMESTAMP, Order.DESC))
+					.limit(1)
+					.build());
+		}), null));
+	}
+	
+	private String prettyPrint(long timestamp) {
+		return timestamp > 0 ? Dates.formatByGmt(timestamp, DateFormats.LONG) : String.valueOf(timestamp);
 	}
 
 	public static ReindexRequestBuilder builder() {

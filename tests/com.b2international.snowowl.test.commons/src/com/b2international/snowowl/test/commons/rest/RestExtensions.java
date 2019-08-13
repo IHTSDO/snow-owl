@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.test.commons.rest;
 
+import static com.b2international.snowowl.identity.IdentityConfiguration.REQUEST_HEADER_ROLES;
+import static com.b2international.snowowl.identity.IdentityConfiguration.REQUEST_HEADER_USERNAME;
 import static io.restassured.RestAssured.given;
 
 import java.lang.reflect.Field;
@@ -77,8 +79,8 @@ public class RestExtensions {
 	public static final String DEFAULT_PASS = "snowowl";
 	public static final String WRONG_PASS = "wrong";
 	
-	static final String USER;
-	static final String PASS; 
+	public static final String USER;
+	public static final String PASS; 
 	
 	static {
 		if (!Strings.isNullOrEmpty(System.getProperty("test.user"))) {
@@ -128,6 +130,14 @@ public class RestExtensions {
 
 	public static RequestSpecification givenAuthenticatedRequest(String api) {
 		return givenRequestWithPassword(api, PASS);
+	}
+	
+	public static RequestSpecification givenAuthenticatedRequestWithRole(String api, String role) {
+		return givenAuthenticatedRequestWithRoleAndUser(api, role, USER);
+	}
+	
+	public static RequestSpecification givenAuthenticatedRequestWithRoleAndUser(String api, String role, String user) {
+		return givenRequestWithPassword(api, PASS).header(REQUEST_HEADER_ROLES, role).header(REQUEST_HEADER_USERNAME, user);
 	}
 	
 	public static RequestSpecification givenInvalidPasswordRequest(String api) {

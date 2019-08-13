@@ -15,6 +15,10 @@
  */
 package com.b2international.commons.test.config.data;
 
+import static java.util.Collections.emptySet;
+
+import java.util.Set;
+
 /**
  * @since 7.0 
  */
@@ -33,6 +37,8 @@ public class AllParamsTestConfig {
 	private Long longAttribute;
 	
 	private String stringAttribute;
+	
+	private Set<String> stringCollection = emptySet();
 	
 	public Double getDoubleAttribute() {
 		return doubleAttribute;
@@ -88,6 +94,14 @@ public class AllParamsTestConfig {
 	
 	public void setStringAttribute(String stringAttribute) {
 		this.stringAttribute = stringAttribute;
+	}
+
+	public Set<String> getStringCollection() {
+		return stringCollection;
+	}
+	
+	public void setStringCollection(Set<String> stringCollection) {
+		this.stringCollection = stringCollection;
 	}
 	
 }

@@ -26,6 +26,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.datastore.session.IApplicationSessionManager;
+import com.b2international.snowowl.identity.IdentityConfiguration;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -44,7 +45,7 @@ public class SnowOwlAuthenticationProvider implements AuthenticationProvider {
 
 		try {
 			ApplicationContext.getServiceForClass(IApplicationSessionManager.class).authenticate(username, password);
-			return new UsernamePasswordAuthenticationToken(username, password, ImmutableList.of(new SimpleGrantedAuthority("ROLE_USER")));
+			return new UsernamePasswordAuthenticationToken(username, password, ImmutableList.of(new SimpleGrantedAuthority(IdentityConfiguration.DEFAULT_ROLE)));
 		} catch (LoginException e) {
 			throw new BadCredentialsException("Incorrect user name or password.");
 		}

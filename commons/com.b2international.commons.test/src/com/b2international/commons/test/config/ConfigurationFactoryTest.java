@@ -16,6 +16,7 @@
 package com.b2international.commons.test.config;
 
 import static com.google.common.collect.Maps.newHashMap;
+import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -24,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Map;
+import java.util.Set;
 
 import javax.validation.Validator;
 
@@ -96,13 +98,37 @@ public class ConfigurationFactoryTest {
 	}
 	
 	@Test
-	public void build_FromYamlFileNoValdidation_ShouldExtractGlobalStringEnvVariable() throws Exception {
+	public void build_FromYamlFileNoValidation_ShouldExtractGlobalStringEnvVariable() throws Exception {
 		final String expectedValue = "globalTest";
 		environmentVariables.set(SOME_ATTRIBUTE_ENVIRONMENT_VARIABLE, expectedValue);
 		
-		final AllParamsTestConfig config = parse(AllParamsTestConfig.class, "conifg-stringEnvVar.yml");
+		final AllParamsTestConfig config = parse(AllParamsTestConfig.class, "config-stringEnvVar.yml");
 		assertNotNull(config);
 		assertEquals(expectedValue, config.getStringAttribute());
+	}
+	
+	@Test
+	public void build_FromYamlFileNoValidation_ShouldExtractStringCollectionSingleVariable() throws Exception {
+		Set<String> expectedValue = newHashSet("item1");
+		final AllParamsTestConfig config = parse(AllParamsTestConfig.class, "config-stringCollectionSingleValue.yml");
+		assertNotNull(config);
+		assertEquals(expectedValue, config.getStringCollection());
+	}
+	
+	@Test
+	public void build_FromYamlFileNoValidation_ShouldExtractStringCollectionMultiVariable() throws Exception {
+		Set<String> expectedValue = newHashSet("item1", "item2", "item3");
+		final AllParamsTestConfig config = parse(AllParamsTestConfig.class, "config-stringCollectionMultiValue.yml");
+		assertNotNull(config);
+		assertEquals(expectedValue, config.getStringCollection());
+	}
+	
+	@Test
+	public void build_FromYamlFileNoValidation_ShouldExtractStringCollectionMultiDashVariable() throws Exception {
+		Set<String> expectedValue = newHashSet("item1", "item2", "item3");
+		final AllParamsTestConfig config = parse(AllParamsTestConfig.class, "config-stringCollectionMultiValueDash.yml");
+		assertNotNull(config);
+		assertEquals(expectedValue, config.getStringCollection());
 	}
 	
 	@Test

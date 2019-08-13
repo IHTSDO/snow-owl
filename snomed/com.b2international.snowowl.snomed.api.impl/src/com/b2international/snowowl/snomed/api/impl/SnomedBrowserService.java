@@ -175,7 +175,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				browserConcept.setEffectiveTime(concept.getEffectiveTime());
 				browserConcept.setModuleId(concept.getModuleId());
 				
-				browserConcept.setDefinitionStatus(concept.getDefinitionStatus());
+				browserConcept.setDefinitionStatus(DefinitionStatus.getByConceptId(concept.getDefinitionStatusId()));
 				
 				browserConcept.setInactivationIndicator(concept.getInactivationIndicator());
 				browserConcept.setAssociationTargets(concept.getAssociationTargets());
@@ -277,31 +277,43 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	@Override
-	public List<ISnomedBrowserParentConcept> getConceptParents(final String branchPath, final String conceptId, final List<ExtendedLocale> locales, boolean isStatedForm, SnomedBrowserDescriptionType preferredDescriptionType) {
+	public List<ISnomedBrowserParentConcept> getConceptParents(
+			final String branchPath,
+			final String conceptId,
+			final List<ExtendedLocale> locales,
+			boolean isStatedForm,
+			SnomedBrowserDescriptionType preferredDescriptionType) {
+		
 		final DescriptionService descriptionService = new DescriptionService(getBus(), branchPath);
 	
 		return new FsnJoinerOperation<ISnomedBrowserParentConcept>(conceptId, locales, descriptionService, preferredDescriptionType) {
 			
 			@Override
 			protected Iterable<SnomedConcept> getConceptEntries(String conceptId) {
+				
 				SnomedConcept concept = SnomedRequests.prepareGetConcept(conceptId)
 						.setExpand(isStatedForm ? "statedAncestors(direct:true)" : "ancestors(direct:true)")
 						.setLocales(locales)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 						.execute(getBus())
 						.getSync();
+				
 				return isStatedForm ? concept.getStatedAncestors() : concept.getAncestors();
 			}
 	
 			@Override
 			protected ISnomedBrowserParentConcept convertConceptEntry(SnomedConcept conceptEntry, Optional<SnomedDescription> descriptionOptional) {
-				final String childConceptId = conceptEntry.getId();
+				
+				final String parentConceptId = conceptEntry.getId();
 				final SnomedBrowserParentConcept convertedConcept = new SnomedBrowserParentConcept(); 
 	
-				convertedConcept.setConceptId(childConceptId);
-				convertedConcept.setDefinitionStatus(conceptEntry.getDefinitionStatus());
+				convertedConcept.setConceptId(parentConceptId);
+				convertedConcept.setDefinitionStatus(DefinitionStatus.getByConceptId(conceptEntry.getDefinitionStatusId()));
+				convertedConcept.setActive(conceptEntry.isActive());
+				convertedConcept.setModuleId(conceptEntry.getModuleId());
 				
 				SnomedBrowserTerm term = descriptionOptional.transform(description -> new SnomedBrowserTerm(description)).or(new SnomedBrowserTerm(conceptEntry.getId()));
+				
 				if (preferredDescriptionType == SnomedBrowserDescriptionType.FSN) {
 					convertedConcept.setFsn(term);
 				} else if (preferredDescriptionType == SnomedBrowserDescriptionType.SYNONYM) {
@@ -348,11 +360,11 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 				convertedConcept.setConceptId(childConceptId);
 				convertedConcept.setActive(conceptEntry.isActive());
-				convertedConcept.setDefinitionStatus(conceptEntry.getDefinitionStatus());
+				convertedConcept.setDefinitionStatus(DefinitionStatus.getByConceptId(conceptEntry.getDefinitionStatusId()));
 				convertedConcept.setModuleId(conceptEntry.getModuleId());
 				
-				
 				SnomedBrowserTerm term = descriptionOptional.transform(description -> new SnomedBrowserTerm(description)).or(new SnomedBrowserTerm(conceptEntry.getId()));
+				
 				if (preferredDescriptionType == SnomedBrowserDescriptionType.FSN) {
 					convertedConcept.setFsn(term);
 				} else if (preferredDescriptionType == SnomedBrowserDescriptionType.SYNONYM) {
@@ -439,7 +451,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 						if (concept != null) {
 							details.setActive(concept.isActive());
 							details.setConceptId(concept.getId());
-							details.setDefinitionStatus(concept.getDefinitionStatus());
+							details.setDefinitionStatus(DefinitionStatus.getByConceptId(concept.getDefinitionStatusId()));
 							details.setModuleId(concept.getModuleId());
 							
 							if (preferredDescriptionType == SnomedBrowserDescriptionType.FSN) {
@@ -816,10 +828,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			final SnomedBrowserRelationship convertedRelationship = new SnomedBrowserRelationship(relationship.getId());
 			
 			convertedRelationship.setActive(relationship.isActive());
-			convertedRelationship.setCharacteristicType(relationship.getCharacteristicType());
+			convertedRelationship.setCharacteristicType(CharacteristicType.getByConceptId(relationship.getCharacteristicTypeId()));
 			convertedRelationship.setEffectiveTime(relationship.getEffectiveTime());
 			convertedRelationship.setGroupId(relationship.getGroup());
-			convertedRelationship.setModifier(relationship.getModifier());
+			convertedRelationship.setModifier(RelationshipModifier.getByConceptId(relationship.getModifierId()));
 			convertedRelationship.setModuleId(relationship.getModuleId());
 			convertedRelationship.setReleased(relationship.isReleased());
 			convertedRelationship.setSourceId(relationship.getSourceId());
@@ -857,7 +869,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final SnomedBrowserRelationshipTarget result = new SnomedBrowserRelationshipTarget(concept.getId());
 		
 		result.setActive(concept.isActive());
-		result.setDefinitionStatus(concept.getDefinitionStatus());
+		result.setDefinitionStatus(DefinitionStatus.getByConceptId(concept.getDefinitionStatusId()));
 		result.setEffectiveTime(concept.getEffectiveTime());
 		result.setFsn(concept.getFsn() != null ? new SnomedBrowserTerm(concept.getFsn()) : new SnomedBrowserTerm(concept.getId()));
 		result.setPt(concept.getPt() != null ? new SnomedBrowserTerm(concept.getPt()) : new SnomedBrowserTerm(concept.getId()));
@@ -885,7 +897,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final SnomedBrowserRelationshipTarget target = new SnomedBrowserRelationshipTarget(destinationConcept.getId());
 
 		target.setActive(destinationConcept.isActive());
-		target.setDefinitionStatus(destinationConcept.getDefinitionStatus());
+		target.setDefinitionStatus(DefinitionStatus.getByConceptId(destinationConcept.getDefinitionStatusId()));
 		target.setEffectiveTime(destinationConcept.getEffectiveTime());
 		target.setModuleId(destinationConcept.getModuleId());
 

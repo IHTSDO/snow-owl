@@ -35,21 +35,23 @@ def bus = ApplicationContext.getServiceForClass(IEventBus)
 def repositoryId = SnomedDatastoreActivator.REPOSITORY_UUID
 
 // specify the path of the target version
-def targetVersionPath = "MAIN/2019-07-31-STATED"
+def targetVersionPath = "MAIN/2019-07-31"
 // specify the short name of the target version (used for metadata)
 def targetVersionShortName = "20190731"
+// specify the name of the SNAPSHOT RF2 archive that contains the content of the new INT version branch
+def dependencyPackage = "prod-ms_main_20190731_20190717205238.zip"
 
 // specify the short name of the extension and the name of the related project branches here that need to be handled during the upgrade
 def extensionsAndProjects = ImmutableListMultimap.builder()
-//	.put("SNOMEDCT-US", "USSEP19")
-	.put("SNOMEDCT-DK", "DKSEP19")
-	.put("SNOMEDCT-BE", "BESEP19")
-	.put("SNOMEDCT-SE", "SENOV19")
 	.put("SNOMEDCT-NO", "NOOCT19")
-	.put("SNOMEDCT-IE", "IEOCT19")
 	.put("SNOMEDCT-CH", "CHPRE19")
 	.put("SNOMEDCT-EE", "EEPRE19")
-	.put("SNOMEDCT-LOINC", "LOINC2019")
+//	.put("SNOMEDCT-US", "USSEP19")
+//	.put("SNOMEDCT-IE", "IEOCT19")
+//	.put("SNOMEDCT-SE", "SENOV19")
+//	.put("SNOMEDCT-DK", "DKSEP19")
+//	.put("SNOMEDCT-BE", "BESEP19")
+//	.put("SNOMEDCT-LOINC", "LOINC2019")
 	.build()
 
 def extensionsToCurrentBranchMap = [:]
@@ -212,6 +214,7 @@ def upgrade = { shortName ->
 			
 			Metadata metadata = extensionsToMetadataMap.get(shortName)
 			metadata.put("dependencyRelease", targetVersionShortName)
+			metadata.put("dependencyPackage", dependencyPackage)
 			
 			def success = RepositoryRequests.branching()
 				.prepareUpdate(targetExtensionBranchPath)
