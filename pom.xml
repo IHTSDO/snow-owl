@@ -78,7 +78,7 @@
 		</repository>
 		<repository>
         	<id>snomed-international-releases</id>
-        	<url>https://maven.ihtsdotools.org/content/repositories/releases/</url>
+        	<url>https://nexus3.ihtsdotools.org/repository/maven-releases/</url>
         	<releases>
            		<enabled>true</enabled>
         	</releases>
@@ -88,7 +88,7 @@
      	</repository>
      	<repository>
         	<id>snomed-international-snapshots</id>
-        	<url>https://maven.ihtsdotools.org/content/repositories/snapshots/</url>
+        	<url>https://nexus3.ihtsdotools.org/repository/maven-snapshots/</url>
         	<releases>
            		<enabled>false</enabled>
         	</releases>
@@ -1005,12 +1005,14 @@
 
 	<distributionManagement>
 		<repository>
-			<id>${maven.repository.id}</id>
-			<url>${nexus.releases.url}</url>
+			<id>ihtsdo-public-nexus</id>
+			<name>IHTSDO Public Nexus Releases</name>
+			<url>https://nexus3.ihtsdotools.org/repository/maven-releases/</url>
 		</repository>
 		<snapshotRepository>
-			<id>${maven.repository.id}</id>
-			<url>${nexus.snapshots.url}</url>
+			<id>ihtsdo-public-nexus</id>
+			<name>IHTSDO Public Nexus Snapshots</name>
+			<url>https://nexus3.ihtsdotools.org/repository/maven-snapshots/</url>
 		</snapshotRepository>
 	</distributionManagement>
 
