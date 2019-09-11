@@ -88,8 +88,28 @@
         	</snapshots>
      	</repository>
      	<repository>
+        	<id>snomed-international-releases-old</id>
+        	<url>https://maven.ihtsdotools.org/content/repositories/releases/</url>
+        	<releases>
+           		<enabled>true</enabled>
+        	</releases>
+        	<snapshots>
+          		<enabled>false</enabled>
+        	</snapshots>
+     	</repository>
+     	<repository>
         	<id>snomed-international-snapshots</id>
         	<url>https://nexus3.ihtsdotools.org/repository/maven-snapshots/</url>
+        	<releases>
+           		<enabled>false</enabled>
+        	</releases>
+        	<snapshots>
+          		<enabled>true</enabled>
+        	</snapshots>
+     	</repository>
+     	<repository>
+        	<id>snomed-international-snapshots-old</id>
+        	<url>https://maven.ihtsdotools.org/content/repositories/snapshots/</url>
         	<releases>
            		<enabled>false</enabled>
         	</releases>
