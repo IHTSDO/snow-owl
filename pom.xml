@@ -39,7 +39,7 @@
 		<javax.activation.version>1.2.0</javax.activation.version>
 		
 		<snomed.owl.toolkit.version>2.7.0</snomed.owl.toolkit.version>
-		<snomed-drools-engine.version>2.1.2</snomed-drools-engine.version>
+		<snomed-drools-engine.version>2.1.4</snomed-drools-engine.version>
 		
 		<!-- Build tool/compiler versions -->
 		<tycho.version>1.2.0</tycho.version>
