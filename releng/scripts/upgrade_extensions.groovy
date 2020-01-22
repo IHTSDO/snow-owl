@@ -35,23 +35,23 @@ def bus = ApplicationContext.getServiceForClass(IEventBus)
 def repositoryId = SnomedDatastoreActivator.REPOSITORY_UUID
 
 // specify the path of the target version
-def targetVersionPath = "MAIN/2019-07-31"
+def targetVersionPath = "MAIN/2020-01-31"
 // specify the short name of the target version (used for metadata)
-def targetVersionShortName = "20190731"
+def targetVersionShortName = "20200131"
 // specify the name of the SNAPSHOT RF2 archive that contains the content of the new INT version branch
-def dependencyPackage = "prod-ms_main_20190731_20190717205238.zip"
+def dependencyPackage = "prod-ms_main_2020-01-31_20200108150048.zip"
 
 // specify the short name of the extension and the name of the related project branches here that need to be handled during the upgrade
 def extensionsAndProjects = ImmutableListMultimap.builder()
-	.put("SNOMEDCT-NO", "NOOCT19")
-	.put("SNOMEDCT-CH", "CHPRE19")
-	.put("SNOMEDCT-EE", "EEPRE19")
-//	.put("SNOMEDCT-US", "USSEP19")
-//	.put("SNOMEDCT-IE", "IEOCT19")
-//	.put("SNOMEDCT-SE", "SENOV19")
-//	.put("SNOMEDCT-DK", "DKSEP19")
-//	.put("SNOMEDCT-BE", "BESEP19")
-//	.put("SNOMEDCT-LOINC", "LOINC2019")
+	.put("SNOMEDCT-US", "USMAR20")
+//	.put("SNOMEDCT-DK", "DKMAR20")
+//	.put("SNOMEDCT-BE", "BEMAR20")
+//	.put("SNOMEDCT-SE", "SEMAY20")
+//	.put("SNOMEDCT-NO", "NOAPR20")
+//	.put("SNOMEDCT-IE", "IEAPR19")
+//	.put("SNOMEDCT-CH", "CHPRE19")
+//	.put("SNOMEDCT-EE", "EEMAY20")
+//	.put("SNOMEDCT-NZ", "NZAPR20")
 	.build()
 
 def extensionsToCurrentBranchMap = [:]
