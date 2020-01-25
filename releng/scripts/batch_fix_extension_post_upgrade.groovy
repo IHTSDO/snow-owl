@@ -3,15 +3,27 @@
  *******************************************************************************/
 package scripts
 
+import java.util.Map.Entry
 import java.util.stream.Collectors
 
+import org.snomed.otf.owltoolkit.domain.AxiomRepresentation
+import org.snomed.otf.owltoolkit.domain.Relationship
+
+import com.b2international.commons.options.OptionsBuilder
 import com.b2international.snowowl.core.ApplicationContext
+import com.b2international.snowowl.core.SnowOwlApplication
 import com.b2international.snowowl.core.branch.Branch
+import com.b2international.snowowl.core.domain.BranchContext
 import com.b2international.snowowl.core.events.AsyncRequest
+import com.b2international.snowowl.core.events.Request
 import com.b2international.snowowl.core.events.bulk.BulkRequest
 import com.b2international.snowowl.core.request.SearchResourceRequestBuilder
 import com.b2international.snowowl.core.request.SearchResourceRequestIterator
+import com.b2international.snowowl.datastore.request.BranchRequest
+import com.b2international.snowowl.datastore.request.RepositoryRequest
 import com.b2international.snowowl.datastore.request.RepositoryRequests
+import com.b2international.snowowl.datastore.request.RevisionIndexReadRequest
+import com.b2international.snowowl.datastore.server.snomed.SnomedBrowserAxiomConverter
 import com.b2international.snowowl.eventbus.IEventBus
 import com.b2international.snowowl.identity.domain.User
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts
@@ -30,13 +42,19 @@ import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetM
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedOWLRelationshipDocument
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptSearchRequestBuilder
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionSearchRequestBuilder
+import com.b2international.snowowl.snomed.datastore.request.SnomedOWLExpressionConverter
 import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberSearchRequestBuilder
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType
+import com.google.common.base.Joiner
 import com.google.common.base.Splitter
+import com.google.common.collect.ArrayListMultimap
+import com.google.common.collect.ImmutableMap
+import com.google.common.collect.Multimaps
 
 def branches = [ 
 		"MAIN/2020-01-31/SNOMEDCT-US/USMAR20/USMAR20-10",
@@ -45,9 +63,11 @@ def branches = [
 
 def dryRun = true
 
-def useAutoReplacementForType = true
-def useAutoReplacementForSource = true
-def useAutoReplacementForDestination = true
+def useAutoReplacementForType = false
+def useAutoReplacementForSource = false
+def useAutoReplacementForDestination = false
+def useAutoReplacementForOwlReferencedComponents = true
+def useAutoReplacementForOwlExpressions = true
 
 def BATCH_SIZE = 20000
 def SCROLL_KEEPALIVE = "1h"
@@ -331,7 +351,7 @@ def fixInactiveRelationshipTypes = { Branch branch, String moduleId, String name
 		createReport(relationshipIdsToInactivate, "active_relationships_w_inactive_type", branch)
 	}
 	
-	if (relationshipIdsToReplace.size > 1) {
+	if (relationshipIdsToReplace.size() > 1) {
 		createReport(relationshipIdsToReplace, "active_relationships_w_inactive_type_replaced", branch)
 	}
 	
@@ -449,7 +469,7 @@ def fixInactiveRelationshipSources = {  Branch branch, String moduleId, String n
 		createReport(relationshipIdsToInactivate, "active_relationships_w_inactive_source", branch)
 	}
 	
-	if (relationshipIdsToReplace.size > 1) {
+	if (relationshipIdsToReplace.size() > 1) {
 		createReport(relationshipIdsToReplace, "active_relationships_w_inactive_source_replaced", branch)
 	}
 	
@@ -567,9 +587,375 @@ def fixInactiveRelationshipDestinations = {  Branch branch, String moduleId, Str
 		createReport(relationshipIdsToInactivate, "active_relationships_w_inactive_destination", branch)
 	}
 	
-	if (relationshipIdsToReplace.size > 1) {
+	if (relationshipIdsToReplace.size() > 1) {
 		createReport(relationshipIdsToReplace, "active_relationships_w_inactive_destination_replaced", branch)
 	}
+	
+}
+
+def validateOwlReferencedComponents = { Branch branch, String moduleId, Set<String> inactiveConceptIds ->
+	
+	def referencedComponentIds = [] as Set
+	def memberIdsToInactivate = [] as Set
+	def memberIdsToReplace = ["oldId\toldReferencedComponentId\tnewReferencedComponentId"]
+	
+	def activeMembersWithInactiveReferencedComponent = SnomedRequests.prepareSearchMember()
+		.all()
+		.filterByActive(true)
+		.filterByModule(moduleId)
+		.filterByReferencedComponent(inactiveConceptIds)
+		.filterByRefSetType(SnomedRefSetType.OWL_AXIOM)
+		.build(repo, branch.path())
+		.execute(bus)
+		.getSync()
+		.stream()
+		.peek { SnomedReferenceSetMember m -> 
+			referencedComponentIds.add(m.getReferencedComponentId())
+			memberIdsToInactivate.add(m.getId())
+		}
+		.collect(Collectors.toList())
+		
+	log("Found ${activeMembersWithInactiveReferencedComponent.size()} active OWL expression refset members where the referenced component is inactive on branch '${branch.path()}'")
+	
+	if (!referencedComponentIds.isEmpty()) {
+		
+		def referencedComponentToReplacementMap = [:]
+		
+		SnomedRequests.prepareSearchMember()
+			.all()
+			.filterByRefSet([Concepts.REFSET_REPLACED_BY_ASSOCIATION, Concepts.REFSET_SAME_AS_ASSOCIATION])
+			.filterByActive(true)
+			.filterByReferencedComponent(referencedComponentIds)
+			.build(repo, branch.path())
+			.execute(bus)
+			.getSync()
+			.stream()
+			.each{ SnomedReferenceSetMember m ->
+				referencedComponentToReplacementMap.put(m.getReferencedComponent().getId(), m.getProperties().get(SnomedRf2Headers.FIELD_TARGET_COMPONENT).getId())
+			}
+		
+		def conceptIdsToFetch = referencedComponentToReplacementMap.keySet() + referencedComponentToReplacementMap.values()
+		def idToFsnMap = [:]
+		
+		SnomedRequests.prepareSearchConcept()
+			.filterByIds(conceptIdsToFetch)
+			.setLimit(conceptIdsToFetch.size())
+			.setExpand("fsn()")
+			.build(repo, branch.path())
+			.execute(bus)
+			.getSync()
+			.each { SnomedConcept c -> idToFsnMap.put(c.getId(), c.getFsn().getTerm()) }
+		
+		referencedComponentToReplacementMap.each{ k,v ->
+			log("Referenced component '${k} | ${idToFsnMap.get(k)}' has a replacement '${v} | ${idToFsnMap.get(v)}'")
+		}
+		
+		if (!dryRun) {
+			
+			def bulk = BulkRequest.create()
+					
+			activeMembersWithInactiveReferencedComponent.each{ SnomedReferenceSetMember m ->
+			
+				bulk.add(
+					SnomedRequests.prepareUpdateMember()
+						.setMemberId(m.getId())
+						.setSource(ImmutableMap.<String, Object>builder().put(SnomedRf2Headers.FIELD_ACTIVE, false).build())
+				)
+				
+				if (useAutoReplacementForOwlReferencedComponents && referencedComponentToReplacementMap.containsKey(m.getReferencedComponentId())) {
+					
+					def owlExpression = m.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION)
+					def replacement = referencedComponentToReplacementMap.get(m.getReferencedComponentId())
+					
+					bulk.add(SnomedRequests.prepareNewMember()
+						.setActive(true)
+						.setModuleId(moduleId)
+						.setReferenceSetId(Concepts.REFSET_OWL_AXIOM)
+						.setReferencedComponentId(replacement)
+						.setProperties(ImmutableMap.<String, Object>of(SnomedRf2Headers.FIELD_OWL_EXPRESSION, owlExpression)))
+					
+					memberIdsToReplace.add("${m.getId()}\t${m.getReferencedComponentId()}\t${replacement}")
+							
+				}
+					
+			}
+			
+			String replace = useAutoReplacementForOwlReferencedComponents ? " / replaced" : ""
+			
+			SnomedRequests.prepareCommit()
+				.setBody(bulk)
+				.setCommitComment("Inactivated${replace} ${memberIdsToInactivate.size()} OWL expression refset members with inactive referenced component")
+				.setUserId(User.SYSTEM.username)
+				.build(repo, branch.path())
+				.get()
+			
+		}
+	
+	}
+	
+	if (!memberIdsToInactivate.isEmpty()) {
+		createReport(memberIdsToInactivate, "active_owl_members_w_inactive_referenced_component", branch)
+	}
+	
+	if (memberIdsToReplace.size() > 1) {
+		createReport(memberIdsToReplace, "active_owl_members_w_inactive_referenced_component_replaced", branch)
+	}
+	
+}
+
+def getReferencedInactiveConcepts = { SnomedReferenceSetMember member, SnomedOWLExpressionConverter converter, Set<String> inactiveConceptIds ->
+	
+	def referencedInactiveConceptIds = [] as Set
+	def owlExpression = member.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION)
+	def result = converter.toSnomedOWLRelationships(member.getReferencedComponentId(), owlExpression)
+	
+	if (result.getClassAxiomRelationships() != null) {
+		
+		result.getClassAxiomRelationships().each { SnomedOWLRelationshipDocument r ->
+			
+			if (inactiveConceptIds.contains(r.getTypeId())) {
+				referencedInactiveConceptIds.add(r.getTypeId())
+			}
+			
+			if (inactiveConceptIds.contains(r.getDestinationId())) {
+				referencedInactiveConceptIds.add(r.getDestinationId())
+			}
+			
+		}
+		
+	}
+	
+	if (result.getGciAxiomRelationships() != null) {
+		
+		result.getGciAxiomRelationships().each { SnomedOWLRelationshipDocument r ->
+			
+			if (inactiveConceptIds.contains(r.getTypeId())) {
+				referencedInactiveConceptIds.add(r.getTypeId())
+			}
+			
+			if (inactiveConceptIds.contains(r.getDestinationId())) {
+				referencedInactiveConceptIds.add(r.getDestinationId())
+			}
+			
+		}
+		
+	}
+	
+	return referencedInactiveConceptIds
+}
+
+def validateOwlExpressionReferences = { Branch branch, String moduleId, Set<String> inactiveConceptIds ->
+	
+	def referencedConceptIds = [] as Set
+	def ambiguousMembers = []
+	def owlExpressionsReplaced = ["id\treferencedComponentId\toldOwlExpression\tnewOwlExpression"]
+	
+	SnomedOWLExpressionConverter converter = new RepositoryRequest<>(repo,
+				new BranchRequest<>(branch.path(), 
+					new RevisionIndexReadRequest<>(new Request<BranchContext, SnomedOWLExpressionConverter>() {
+						@Override
+						public SnomedOWLExpressionConverter execute(BranchContext branchContext) {
+							return new SnomedOWLExpressionConverter(branchContext)
+						}
+					})
+				)
+			).execute(SnowOwlApplication.INSTANCE.getEnviroment())
+			
+	def axiomConverter = new SnomedBrowserAxiomConverter()
+	
+	def activeMembersWithInactiveExpressionReference = SnomedRequests.prepareSearchMember()
+		.all()
+		.filterByActive(true)
+		.filterByModule(moduleId)
+		.filterByProps(OptionsBuilder.newBuilder().put(SnomedRefSetMemberSearchRequestBuilder.OWL_EXPRESSION_CONCEPTID, inactiveConceptIds).build())
+		.filterByRefSetType(SnomedRefSetType.OWL_AXIOM)
+		.build(repo, branch.path())
+		.execute(bus)
+		.getSync()
+		.stream()
+		.peek { SnomedReferenceSetMember m -> 
+			referencedConceptIds.addAll(getReferencedInactiveConcepts(m, converter, inactiveConceptIds))
+		}
+		.collect(Collectors.toList())
+		
+	log("Found ${activeMembersWithInactiveExpressionReference.size()} active OWL expression refset members where the expression contains inactive reference on branch '${branch.path()}'")
+
+		
+	if (!activeMembersWithInactiveExpressionReference.isEmpty()) {
+		
+		def referencedConceptToReplacementMap = [:]
+		
+		SnomedRequests.prepareSearchMember()
+			.all()
+			.filterByRefSet([Concepts.REFSET_REPLACED_BY_ASSOCIATION, Concepts.REFSET_SAME_AS_ASSOCIATION])
+			.filterByActive(true)
+			.filterByReferencedComponent(referencedConceptIds)
+			.build(repo, branch.path())
+			.execute(bus)
+			.getSync()
+			.stream()
+			.each{ SnomedReferenceSetMember m ->
+				referencedConceptToReplacementMap.put(m.getReferencedComponent().getId(), m.getProperties().get(SnomedRf2Headers.FIELD_TARGET_COMPONENT).getId())
+			}
+		
+		def conceptIdsToFetch = referencedConceptToReplacementMap.keySet() + referencedConceptToReplacementMap.values()
+		def idToFsnMap = [:]
+		
+		SnomedRequests.prepareSearchConcept()
+			.filterByIds(conceptIdsToFetch)
+			.setLimit(conceptIdsToFetch.size())
+			.setExpand("fsn()")
+			.build(repo, branch.path())
+			.execute(bus)
+			.getSync()
+			.each { SnomedConcept c -> idToFsnMap.put(c.getId(), c.getFsn().getTerm()) }
+		
+		referencedConceptToReplacementMap.each{ k,v ->
+			log("Referenced expression concept '${k} | ${idToFsnMap.get(k)}' has a replacement '${v} | ${idToFsnMap.get(v)}'")
+		}
+		
+		def bulk = BulkRequest.create()
+				
+		activeMembersWithInactiveExpressionReference.each{ SnomedReferenceSetMember m ->
+		
+			def referencedInactiveConceptIds = getReferencedInactiveConcepts(m, converter, inactiveConceptIds)
+			
+			if (referencedInactiveConceptIds.any { id -> referencedConceptToReplacementMap.containsKey(id) }) {
+				
+				if (useAutoReplacementForOwlExpressions) {
+					
+					// Replace inactive references within the OWL expression
+					
+					def owlExpression = m.getProperties().get(SnomedRf2Headers.FIELD_OWL_EXPRESSION)
+					
+					def AxiomRepresentation axiomRepresentation = axiomConverter.convertAxiomToRelationships(owlExpression, branch.path())
+					def AxiomRepresentation newAxiomRepresentation = new AxiomRepresentation()
+					
+					newAxiomRepresentation.setPrimitive(axiomRepresentation.isPrimitive())
+					newAxiomRepresentation.setLeftHandSideNamedConcept(axiomRepresentation.getLeftHandSideNamedConcept())
+					newAxiomRepresentation.setRightHandSideNamedConcept(axiomRepresentation.getRightHandSideNamedConcept())
+					
+					if (axiomRepresentation.getLeftHandSideRelationships() != null) {
+						
+						ArrayListMultimap<Integer, Relationship> newLeftHandSideRelationships = ArrayListMultimap.create()
+						
+						for (Entry<Integer, List<Relationship>> entry : axiomRepresentation.getLeftHandSideRelationships().entrySet()) {
+							
+							Integer group = entry.getKey()
+							List<Relationship> relationships = entry.getValue()
+							
+							for (Relationship relationship : relationships) {
+								
+								String typeId = Long.toString(relationship.getTypeId())
+								String destinationId = Long.toString(relationship.getDestinationId())
+								
+								String newTypeId = typeId
+								String newDestinationId = destinationId
+								
+								if (referencedConceptToReplacementMap.containsKey(typeId)) {
+									newTypeId = referencedConceptToReplacementMap.get(typeId)
+								}
+								
+								if (referencedConceptToReplacementMap.containsKey(destinationId)) {
+									newDestinationId = referencedConceptToReplacementMap.get(destinationId)
+								}
+								
+								newLeftHandSideRelationships.put(group, new Relationship(group, Long.valueOf(newTypeId), Long.valueOf(newDestinationId)))
+								
+							}
+							
+						}
+						
+						newAxiomRepresentation.setLeftHandSideRelationships(Multimaps.asMap(newLeftHandSideRelationships))
+						
+					}
+					
+					if (axiomRepresentation.getRightHandSideRelationships() != null) {
+						
+						ArrayListMultimap<Integer, Relationship> newRightHandSideRelationships = ArrayListMultimap.create()
+						
+						for (Entry<Integer, List<Relationship>> entry : axiomRepresentation.getRightHandSideRelationships().entrySet()) {
+							
+							Integer group = entry.getKey()
+							List<Relationship> relationships = entry.getValue()
+							
+							for (Relationship relationship : relationships) {
+								
+								String typeId = Long.toString(relationship.getTypeId())
+								String destinationId = Long.toString(relationship.getDestinationId())
+								
+								String newTypeId = typeId
+								String newDestinationId = destinationId
+								
+								if (referencedConceptToReplacementMap.containsKey(typeId)) {
+									newTypeId = referencedConceptToReplacementMap.get(typeId)
+								}
+								
+								if (referencedConceptToReplacementMap.containsKey(destinationId)) {
+									newDestinationId = referencedConceptToReplacementMap.get(destinationId)
+								}
+								
+								newRightHandSideRelationships.put(group, new Relationship(group, Long.valueOf(newTypeId), Long.valueOf(newDestinationId)))
+								
+							}
+							
+						}
+						
+						newAxiomRepresentation.setRightHandSideRelationships(Multimaps.asMap(newRightHandSideRelationships))
+						
+					}
+					
+					def newOwlExpression = axiomConverter.convertRelationshipsToAxiom(newAxiomRepresentation, branch.path())
+							
+					bulk.add(SnomedRequests.prepareUpdateMember()
+							.setMemberId(m.getId())
+							.setSource(ImmutableMap.<String, Object>builder().put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, newOwlExpression).build())
+					)
+									
+					owlExpressionsReplaced.add("${m.getId()}\t${m.getReferencedComponentId()}\t${owlExpression}\t${newOwlExpression}")
+					
+				}
+				
+			} else {
+				
+				// Unable to fix OWL expression automatically
+				
+				def references = Joiner.on(", ").join(referencedInactiveConceptIds)
+				ambiguousMembers.add("Unable to replace OWL expression refset member with ID '${m.getId()}', referenced component: '${m.getReferencedComponentId()}' because of ambiguous replacements for (${references})")
+				
+			}
+				
+		}
+		
+		def bulkRequest = bulk.build()
+		
+		if (!dryRun && !bulkRequest.getRequests().isEmpty()) {
+			
+			SnomedRequests.prepareCommit()
+				.setBody(bulk)
+				.setCommitComment("Replaced ${owlExpressionsReplaced.size()} OWL expressions with inactive reference")
+				.setUserId(User.SYSTEM.username)
+				.build(repo, branch.path())
+				.get()
+			
+		}
+			
+	}
+	
+	if (owlExpressionsReplaced.size() > 1) {
+		createReport(owlExpressionsReplaced, "active_owl_members_w_inactive_reference_replaced", branch)
+	}
+	
+	if (!ambiguousMembers.isEmpty()) {
+		createReport(ambiguousMembers, "active_owl_members_w_ambiguous_references", branch)
+	}
+	
+}
+
+def validateOwlReferences = { Branch branch, String moduleId, Set<String> inactiveConceptIds ->
+	
+	validateOwlReferencedComponents(branch, moduleId, inactiveConceptIds)
+	validateOwlExpressionReferences(branch, moduleId, inactiveConceptIds)
 	
 }
 
@@ -623,5 +1009,6 @@ branches.each { branchPath ->
 	
 	validateDescriptionsAndLanguageRefsetMembers(branch, moduleId, inactiveConceptIds)
 	validateRelationshipReferences(branch, moduleId, namespace, inactiveConceptIds)
+	validateOwlReferences(branch, moduleId, inactiveConceptIds)
 	
 }
