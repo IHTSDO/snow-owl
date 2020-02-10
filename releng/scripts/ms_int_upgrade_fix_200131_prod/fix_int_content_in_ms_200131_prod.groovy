@@ -63,12 +63,17 @@ def getExistingRelationshipIds = { branchPath, relationshipIds ->
 	return SnomedRequests.prepareSearchRelationship()
 			.all()
 			.filterByIds(relationshipIds)
-			.setFields(SnomedRelationshipIndexEntry.Fields.ID)
+			.setFields(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.EFFECTIVE_TIME)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 			.execute(bus)
 			.getSync()
 			.getItems()
-			.collect { relationship -> relationship.getId() }
+			.collect { SnomedRelationship relationship ->
+				if (EffectiveTimes.format(relationship.getEffectiveTime()).equals(EffectiveTimes.UNSET_EFFECTIVE_TIME_LABEL)) {
+					println("Changed but to be deleted relationship '${relationship.getId()}'")
+				} 
+				return relationship.getId()
+			}
 			.toSet()
 	
 }
