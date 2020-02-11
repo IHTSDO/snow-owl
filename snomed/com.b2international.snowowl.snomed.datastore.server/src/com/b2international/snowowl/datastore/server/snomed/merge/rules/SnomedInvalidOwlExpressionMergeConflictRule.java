@@ -19,6 +19,7 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 import java.util.Collection;
@@ -58,7 +59,6 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.base.Strings;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 
 /**
@@ -75,11 +75,13 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 			).spliterator(), false)
 				.filter(SnomedOWLExpressionRefSetMember.class::isInstance)
 				.map(SnomedOWLExpressionRefSetMember.class::cast)
-				.filter(SnomedOWLExpressionRefSetMember::isActive)
 				.collect(toSet());
 
-		Set<Concept> newOrDirtyConcepts = StreamSupport.stream(Iterables.concat(ComponentUtils2.getDirtyObjects(transaction, Concept.class),
-				ComponentUtils2.getNewObjects(transaction, Concept.class)).spliterator(), false).collect(toSet());
+		Set<Concept> newOrDirtyConcepts = StreamSupport.stream(Iterables.concat(
+				ComponentUtils2.getDirtyObjects(transaction, Concept.class),
+				ComponentUtils2.getNewObjects(transaction, Concept.class)
+			).spliterator(), false)
+				.collect(toSet());
 		
 		if (newOrDirtyConcepts.isEmpty() && newOrDirtyOwlMembers.isEmpty()) {
 			return emptySet();
@@ -95,117 +97,126 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 				)
 			).execute(SnowOwlApplication.INSTANCE.getEnviroment());
 		
+		// Find members that would cause an inactive reference except the ones that have been fixed in this transaction
+		
 		Set<String> referencedConceptIds = newHashSet();
 		
-		Multimap<String, String> memberToTypeIdsMap = HashMultimap.create();
-		Multimap<String, String> memberToDestinationIdsMap = HashMultimap.create();
+		Multimap<String, String> newOrDirtyMemberToTypeIdsMap = HashMultimap.create();
+		Multimap<String, String> newOrDirtyMemberToDestinationIdsMap = HashMultimap.create();
+		
 		Map<String, SnomedOWLExpressionConverterResult> newOrDirtyMemberToResultMap = newHashMap();
 		
 		for (SnomedOWLExpressionRefSetMember member : newOrDirtyOwlMembers) {
 			
-			SnomedOWLExpressionConverterResult result = converter.toSnomedOWLRelationships(member.getReferencedComponentId(), member.getOwlExpression());
-			newOrDirtyMemberToResultMap.put(member.getUuid(), result);
-			
-			if (result.getClassAxiomRelationships() != null) {
+			if (member.isActive()) {
 				
-				result.getClassAxiomRelationships().forEach( axiomRelationship -> {
-					memberToTypeIdsMap.put(member.getUuid(), axiomRelationship.getTypeId());
-					memberToDestinationIdsMap.put(member.getUuid(), axiomRelationship.getDestinationId());
-				});
+				SnomedOWLExpressionConverterResult result = converter.toSnomedOWLRelationships(member.getReferencedComponentId(), member.getOwlExpression());
+				newOrDirtyMemberToResultMap.put(member.getUuid(), result);
 				
-			} else if (result.getGciAxiomRelationships() != null) {
-				
-				result.getGciAxiomRelationships().forEach( axiomRelationship -> {
-					memberToTypeIdsMap.put(member.getUuid(), axiomRelationship.getTypeId());
-					memberToDestinationIdsMap.put(member.getUuid(), axiomRelationship.getDestinationId());
-				});
+				if (result.getClassAxiomRelationships() != null) {
+					
+					result.getClassAxiomRelationships().forEach( axiomRelationship -> {
+						newOrDirtyMemberToTypeIdsMap.put(member.getUuid(), axiomRelationship.getTypeId());
+						newOrDirtyMemberToDestinationIdsMap.put(member.getUuid(), axiomRelationship.getDestinationId());
+					});
+					
+				} else if (result.getGciAxiomRelationships() != null) {
+					
+					result.getGciAxiomRelationships().forEach( axiomRelationship -> {
+						newOrDirtyMemberToTypeIdsMap.put(member.getUuid(), axiomRelationship.getTypeId());
+						newOrDirtyMemberToDestinationIdsMap.put(member.getUuid(), axiomRelationship.getDestinationId());
+					});
+					
+				}
 				
 			}
 			
 		}
 		
-		referencedConceptIds.addAll(memberToTypeIdsMap.values());
-		referencedConceptIds.addAll(memberToDestinationIdsMap.values());
+		referencedConceptIds.addAll(newOrDirtyMemberToTypeIdsMap.values());
+		referencedConceptIds.addAll(newOrDirtyMemberToDestinationIdsMap.values());
 		
-		Set<String> existingInactiveConceptIds;
+		Set<String> inactiveReferencedConceptIds = newHashSet();
 		
 		if (!referencedConceptIds.isEmpty()) {
 			
-			existingInactiveConceptIds = SnomedRequests.prepareSearchConcept()
+			Set<String> inactiveReferencedConceptIdsOnTarget = SnomedRequests.prepareSearchConcept()
+				.setLimit(referencedConceptIds.size())
 				.filterByIds(referencedConceptIds)
 				.filterByActive(false)
-				.all()
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(getEventBus())
 				.then(concepts -> concepts.getItems().stream().map(IComponent::getId).collect(toSet()))
 				.getSync();
-			
-		} else {
-			
-			existingInactiveConceptIds = emptySet();
-			
-		}
-		
-		Set<String> newOrDirtyInactiveConceptIds = newHashSet();
-		
-		for (Concept concept : newOrDirtyConcepts) {
-			
-			String conceptId = concept.getId();
-			
-			if (referencedConceptIds.contains(conceptId)) {
-				
-				if (concept.isActive()) {
-					existingInactiveConceptIds.remove(conceptId);
-				} else {
-					existingInactiveConceptIds.add(conceptId);
-				}
-				
-			} else if (!concept.isActive()) {
-				newOrDirtyInactiveConceptIds.add(concept.getId());
-			}
-			
-		}
 
-		if (existingInactiveConceptIds.isEmpty() && newOrDirtyInactiveConceptIds.isEmpty()) {
-			return emptySet();
+			Set<String> fixedConceptIdsInTransaction = newOrDirtyConcepts.stream() // concepts that have been "fixed" in this transaction
+				.filter(concept -> inactiveReferencedConceptIdsOnTarget.contains(concept.getId()) && concept.isActive())
+				.map(Concept::getId)
+				.collect(toSet());
+			
+			inactiveReferencedConceptIds.addAll(inactiveReferencedConceptIdsOnTarget);
+			inactiveReferencedConceptIds.removeAll(fixedConceptIdsInTransaction);
+			
 		}
 		
 		List<MergeConflict> conflicts = newArrayList();
 		
-		if (!existingInactiveConceptIds.isEmpty()) {
+		if (!inactiveReferencedConceptIds.isEmpty()) {
 			
 			for (SnomedOWLExpressionRefSetMember member : newOrDirtyOwlMembers) {
-				
-				memberToTypeIdsMap.get(member.getUuid()).stream()
-					.filter(existingInactiveConceptIds::contains)
-					.forEach( typeId -> {
-						conflicts.add(buildMemberConflict(member, typeId, false));
-					});
-				
-				memberToDestinationIdsMap.get(member.getUuid()).stream()
-					.filter(existingInactiveConceptIds::contains)
-					.forEach( destinationId -> {
-						conflicts.add(buildMemberConflict(member, destinationId, true));
-					});
+
+				if (member.isActive()) {
+					
+					newOrDirtyMemberToTypeIdsMap.get(member.getUuid()).stream()
+						.filter(inactiveReferencedConceptIds::contains)
+						.forEach( typeId -> {
+							conflicts.add(buildMemberConflict(member, typeId, false));
+						});
+					
+					newOrDirtyMemberToDestinationIdsMap.get(member.getUuid()).stream()
+						.filter(inactiveReferencedConceptIds::contains)
+						.forEach( destinationId -> {
+							conflicts.add(buildMemberConflict(member, destinationId, true));
+						});
+					
+				}
 				
 			}
 			
 		}
 		
-		if (!newOrDirtyInactiveConceptIds.isEmpty()) {
-			
-			Map<String, SnomedOWLExpressionRefSetMember> newOrDirtyMemberIdToMemberMap = Maps.uniqueIndex(newOrDirtyOwlMembers, SnomedOWLExpressionRefSetMember::getUuid);
+		// Find concepts that would cause and inactive reference except the ones that have been fixed in this transaction
+		
+		Set<String> inactiveConceptIdsInTransaction = newOrDirtyConcepts.stream()
+			.filter(concept -> !concept.isActive())
+			.map(Concept::getId)
+			.collect(toSet());
+		
+		if (!inactiveConceptIdsInTransaction.isEmpty()) {
 			
 			SnomedReferenceSetMembers members = SnomedRequests.prepareSearchMember()
 				.all()
 				.filterByActive(true)
 				.filterByRefSetType(SnomedRefSetType.OWL_AXIOM)
-				.filterByProps(OptionsBuilder.newBuilder().put(SnomedRefSetMemberSearchRequestBuilder.OWL_EXPRESSION_CONCEPTID, newOrDirtyInactiveConceptIds).build())
+				.filterByProps(OptionsBuilder.newBuilder().put(SnomedRefSetMemberSearchRequestBuilder.OWL_EXPRESSION_CONCEPTID, inactiveConceptIdsInTransaction).build())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(getEventBus())
 				.getSync();
 			
+			Set<String> fixedMemberIdsInTransaction = newOrDirtyOwlMembers.stream()
+				.filter(member -> !member.isActive())
+				.map(SnomedOWLExpressionRefSetMember::getUuid)
+				.collect(toSet());
+			
+			Map<String, SnomedOWLExpressionRefSetMember> newOrDirtyMemberIdToMemberMap = newOrDirtyOwlMembers.stream()
+				.filter(member -> member.isActive())
+				.collect(toMap(member -> member.getUuid(), member -> member));
+			
 			for (SnomedReferenceSetMember member : members) {
+				
+				if (fixedMemberIdsInTransaction.contains(member.getId())) {
+					continue; // skip members that have been inactivated in this transaction
+				}
 				
 				String owlExpression;
 				SnomedOWLExpressionConverterResult result = SnomedOWLExpressionConverterResult.EMPTY;
@@ -230,13 +241,13 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 					
 					for (SnomedOWLRelationshipDocument relationship : result.getClassAxiomRelationships()) {
 						
-						if (newOrDirtyInactiveConceptIds.contains(relationship.getDestinationId())) {
+						if (inactiveConceptIdsInTransaction.contains(relationship.getDestinationId())) {
 							if (conflicts.stream().noneMatch(conflict -> conflict.getComponentId().equals(relationship.getDestinationId())
 									&& conflict.getType() == ConflictType.CAUSES_INACTIVE_REFERENCE)) {
 								conflicts.add(buildConceptConflict(member.getId(), owlExpression, relationship.getDestinationId(), true));
 								break;
 							}
-						} else if (newOrDirtyInactiveConceptIds.contains(relationship.getTypeId())) {
+						} else if (inactiveConceptIdsInTransaction.contains(relationship.getTypeId())) {
 							if (conflicts.stream().noneMatch(conflict -> conflict.getComponentId().equals(relationship.getTypeId())
 									&& conflict.getType() == ConflictType.CAUSES_INACTIVE_REFERENCE)) {
 								conflicts.add(buildConceptConflict(member.getId(), owlExpression, relationship.getTypeId(), false));
@@ -250,13 +261,13 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 					
 					for (SnomedOWLRelationshipDocument relationship : result.getGciAxiomRelationships()) {
 						
-						if (newOrDirtyInactiveConceptIds.contains(relationship.getDestinationId())) {
+						if (inactiveConceptIdsInTransaction.contains(relationship.getDestinationId())) {
 							if (conflicts.stream().noneMatch(conflict -> conflict.getComponentId().equals(relationship.getDestinationId())
 									&& conflict.getType() == ConflictType.CAUSES_INACTIVE_REFERENCE)) {
 								conflicts.add(buildConceptConflict(member.getId(), owlExpression, relationship.getDestinationId(), true));
 								break;
 							}
-						} else if (newOrDirtyInactiveConceptIds.contains(relationship.getTypeId())) {
+						} else if (inactiveConceptIdsInTransaction.contains(relationship.getTypeId())) {
 							if (conflicts.stream().noneMatch(conflict -> conflict.getComponentId().equals(relationship.getTypeId())
 									&& conflict.getType() == ConflictType.CAUSES_INACTIVE_REFERENCE)) {
 								conflicts.add(buildConceptConflict(member.getId(), owlExpression, relationship.getTypeId(), false));
@@ -278,11 +289,13 @@ public class SnomedInvalidOwlExpressionMergeConflictRule extends AbstractSnomedM
 	private MergeConflictImpl buildMemberConflict(SnomedOWLExpressionRefSetMember member, String referencedId, boolean isDestinationId) {
 		
 		String memberConflictMessage = String.format(MergeConflictImpl.DEFAULT_CONFLICT_MESSAGE,
-						SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER.getName(),
-						member.getUuid(),
-						ConflictType.HAS_INACTIVE_REFERENCE,
-						String.format(", OWL expression '%s' is referencing inactive concept: %s -> %s", member.getOwlExpression(),
-							isDestinationId ? "destinationId" : "typeId", referencedId));
+				SnomedRefSetPackage.Literals.SNOMED_OWL_EXPRESSION_REF_SET_MEMBER.getName(),
+				member.getUuid(),
+				ConflictType.HAS_INACTIVE_REFERENCE,
+				String.format(", OWL expression '%s' is referencing inactive concept: %s -> %s",
+						member.getOwlExpression(),
+						isDestinationId ? "destinationId" : "typeId",
+						referencedId));
 		
 		return MergeConflictImpl.builder()
 				.componentId(member.getUuid())

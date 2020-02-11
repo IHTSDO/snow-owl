@@ -34,6 +34,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.cre
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewTextDefinition;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRefSetMemberRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateMember;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.merge;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Maps.newHashMap;
@@ -68,6 +69,8 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
+import com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests;
+import com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetMemberRestInput;
@@ -511,6 +514,67 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 		
 	}
 	
+	@Test
+	public void mergeInactiveConceptWithInactiveOwlExpression() {
+		
+		String shortName = "SNOMEDCT-owl-expression-conflict";
+		CodeSystemRestRequests.createCodeSystem(branchPath, shortName).statusCode(201);
+		
+		String parentConceptId = createNewConcept(branchPath);
+		String childConceptId = createNewConcept(branchPath);
+		
+		String parentOwlExpression = "SubClassOf(:" + parentConceptId + " :" + Concepts.ROOT_CONCEPT + ")";
+		
+		Map<?, ?> parentRequestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, parentConceptId)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, parentOwlExpression)
+					.build())
+				.put("commitComment", "Created new OWL Axiom reference set member")
+				.build();
+		
+		String parentMemberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, parentRequestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		String childOwlExpression = "SubClassOf(:" + childConceptId + " :" + parentConceptId + ")";
+		
+		Map<?, ?> requestBody = createRefSetMemberRequestBody(Concepts.REFSET_OWL_AXIOM, childConceptId)
+				.put(SnomedRefSetMemberRestInput.ADDITIONAL_FIELDS, ImmutableMap.<String, Object>builder()
+					.put(SnomedRf2Headers.FIELD_OWL_EXPRESSION, childOwlExpression)
+					.build())
+				.put("commitComment", "Created new OWL Axiom reference set member")
+				.build();
+		
+		String childMemberId = lastPathSegment(createComponent(branchPath, SnomedComponentType.MEMBER, requestBody)
+				.statusCode(201)
+				.extract().header("Location"));
+		
+		final String effectiveDate = CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString(shortName);		
+		CodeSystemVersionRestRequests.createVersion(shortName, effectiveDate, effectiveDate).assertThat().statusCode(201);
+		
+		getComponent(branchPath, SnomedComponentType.CONCEPT, parentConceptId).statusCode(200).body("effectiveTime", equalTo(effectiveDate));
+		getComponent(branchPath, SnomedComponentType.CONCEPT, parentConceptId).statusCode(200).body("released", equalTo(true));
+		getComponent(branchPath, SnomedComponentType.CONCEPT, childConceptId).statusCode(200).body("effectiveTime", equalTo(effectiveDate));
+		getComponent(branchPath, SnomedComponentType.CONCEPT, childConceptId).statusCode(200).body("released", equalTo(true));
+		
+		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
+		createBranch(a).statusCode(201);
+		
+		inactivateConcept(a, parentConceptId);
+		getComponent(a, SnomedComponentType.CONCEPT, parentConceptId).statusCode(200).body("active", equalTo(false));
+		inactivateMember(a, parentMemberId);
+		getComponent(a, SnomedComponentType.MEMBER, parentMemberId).statusCode(200).body("active", equalTo(false));
+		
+		inactivateConcept(a, childConceptId);
+		getComponent(a, SnomedComponentType.CONCEPT, childConceptId).statusCode(200).body("active", equalTo(false));
+		inactivateMember(a, childMemberId);
+		getComponent(a, SnomedComponentType.MEMBER, childMemberId).statusCode(200).body("active", equalTo(false));
+		
+		merge(a, branchPath, "Merge inactivate concepts with inactive owl expression members")
+			.body("status", equalTo(Merge.Status.COMPLETED.name()));
+
+	}
+
 	@Test
 	public void noRebaseInactivationOverOwlExpression() {
 		
